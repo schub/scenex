@@ -1,24 +1,20 @@
 defmodule ScenexWeb.HomeLiveTest do
-  use ScenexWeb.ConnCase
+  use ScenexWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
 
-  test "renders the landing page and shows a connected socket", %{conn: conn} do
-    {:ok, lv, html} = live(conn, ~p"/")
+  test "shows sign-in options to a visitor", %{conn: conn} do
+    {:ok, _lv, html} = live(conn, ~p"/")
 
     assert html =~ "Scenex"
-    # In LiveView tests the socket is connected, so mount reports connectivity.
-    assert render(lv) =~ "connected"
-    assert has_element?(lv, "p.tabular-nums", "0")
+    assert html =~ ~p"/users/register"
+    assert html =~ ~p"/users/log-in"
   end
 
-  test "the counter increments over the socket", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, ~p"/")
+  test "shows a games link to a logged-in user", %{conn: conn} do
+    conn = register_and_log_in_user(%{conn: conn}).conn
+    {:ok, _lv, html} = live(conn, ~p"/")
 
-    lv |> element("button[phx-click=inc]") |> render_click()
-    assert has_element?(lv, "p.tabular-nums", "1")
-
-    lv |> element("button[phx-click=inc]") |> render_click()
-    assert has_element?(lv, "p.tabular-nums", "2")
+    assert html =~ ~p"/games"
   end
 end
