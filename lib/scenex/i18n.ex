@@ -70,6 +70,14 @@ defmodule Scenex.I18n do
     t(translations, locale, opts) || default
   end
 
+  @doc "Whether a translations map contains at least one non-blank value."
+  @spec present?(translations()) :: boolean()
+  def present?(translations) when is_map(translations) do
+    translations |> Map.values() |> Enum.any?(&(present(&1) != nil))
+  end
+
+  def present?(_), do: false
+
   defp normalize_locale(nil), do: nil
   defp normalize_locale(locale), do: to_string(locale)
 
