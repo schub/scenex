@@ -57,6 +57,9 @@ defmodule ScenexWeb.Router do
       on_mount: [{ScenexWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+
+      live "/games", GameLive.Index, :index
+      live "/games/:id", GameLive.Show, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password
