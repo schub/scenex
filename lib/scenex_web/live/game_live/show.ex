@@ -25,6 +25,9 @@ defmodule ScenexWeb.GameLive.Show do
           <span :if={not @can_edit?} class="badge badge-sm badge-warning">read-only ({@role})</span>
         </:subtitle>
         <:actions>
+          <.link navigate={~p"/games/#{@game.id}/simulate"} class="btn btn-sm btn-accent btn-soft">
+            Dry run
+          </.link>
           <.link navigate={~p"/games"} class="btn btn-sm btn-ghost">← All games</.link>
         </:actions>
       </.header>

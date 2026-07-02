@@ -60,6 +60,7 @@ defmodule ScenexWeb.Router do
 
       live "/games", GameLive.Index, :index
       live "/games/:id", GameLive.Show, :show
+      live "/games/:id/simulate", GameLive.Simulate, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password
