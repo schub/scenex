@@ -37,5 +37,9 @@ defmodule Scenex.Authoring.DecisionOption do
     |> validate_localized_required(:text)
     |> assoc_constraint(:event)
     |> assoc_constraint(:group)
+    |> unique_constraint(:handle,
+      name: :decision_options_event_id_handle_index,
+      message: "is already used in this event"
+    )
   end
 end

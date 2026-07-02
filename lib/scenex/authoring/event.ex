@@ -52,5 +52,9 @@ defmodule Scenex.Authoring.Event do
     |> validate_localized_required(:title)
     |> validate_number(:deadline_seconds, greater_than: 0)
     |> assoc_constraint(:game)
+    |> unique_constraint(:handle,
+      name: :events_game_id_handle_index,
+      message: "is already used in this game"
+    )
   end
 end

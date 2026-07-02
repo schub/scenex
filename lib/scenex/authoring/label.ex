@@ -38,5 +38,9 @@ defmodule Scenex.Authoring.Label do
     |> validate_required([:game_id, :handle, :color])
     |> validate_localized_required(:name)
     |> assoc_constraint(:game)
+    |> unique_constraint(:handle,
+      name: :labels_game_id_handle_index,
+      message: "is already used in this game"
+    )
   end
 end

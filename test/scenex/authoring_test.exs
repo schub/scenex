@@ -123,6 +123,27 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
+  describe "handle uniqueness" do
+    test "two groups in the same game can't share a handle" do
+      user = user_fixture()
+      game = game_fixture(user)
+
+      assert {:ok, _} = Authoring.create_group(game, %{handle: "Gov", name: %{"en" => "A"}})
+
+      assert {:error, cs} = Authoring.create_group(game, %{handle: "Gov", name: %{"en" => "B"}})
+      assert %{handle: ["is already used in this game"]} = errors_on(cs)
+    end
+
+    test "the same handle is allowed in a different game" do
+      user = user_fixture()
+      game1 = game_fixture(user)
+      game2 = game_fixture(user)
+
+      assert {:ok, _} = Authoring.create_group(game1, %{handle: "Gov", name: %{"en" => "A"}})
+      assert {:ok, _} = Authoring.create_group(game2, %{handle: "Gov", name: %{"en" => "B"}})
+    end
+  end
+
   describe "group initial values (upsert)" do
     test "creates then updates by (group, value_definition)" do
       user = user_fixture()

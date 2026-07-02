@@ -26,28 +26,31 @@ defmodule Scenex.AuthoringFixtures do
   end
 
   def group_fixture(game, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{handle: "Government", name: %{"en" => "Government"}})
+    attrs = Enum.into(attrs, %{handle: unique("group"), name: %{"en" => "Government"}})
     {:ok, group} = Authoring.create_group(game, attrs)
     group
   end
 
   def event_fixture(game, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{handle: "Blackout", title: %{"en" => "Blackout"}})
+    attrs = Enum.into(attrs, %{handle: unique("event"), title: %{"en" => "Blackout"}})
     {:ok, event} = Authoring.create_event(game, attrs)
     event
   end
 
   def decision_option_fixture(event, group, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{handle: "Ration power", text: %{"en" => "Ration power"}})
+    attrs = Enum.into(attrs, %{handle: unique("option"), text: %{"en" => "Ration power"}})
     {:ok, option} = Authoring.create_decision_option(event, group, attrs)
     option
   end
 
   def label_fixture(game, attrs \\ %{}) do
     attrs =
-      Enum.into(attrs, %{handle: "Aggressive", name: %{"en" => "Aggressive"}, color: :error})
+      Enum.into(attrs, %{handle: unique("label"), name: %{"en" => "Aggressive"}, color: :error})
 
     {:ok, label} = Authoring.create_label(game, attrs)
     label
   end
+
+  # Handles must be unique within their scope; keep default fixtures distinct.
+  defp unique(prefix), do: "#{prefix}-#{System.unique_integer([:positive])}"
 end

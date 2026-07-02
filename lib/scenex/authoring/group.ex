@@ -29,5 +29,9 @@ defmodule Scenex.Authoring.Group do
     |> validate_required([:game_id, :handle])
     |> validate_localized_required(:name)
     |> assoc_constraint(:game)
+    |> unique_constraint(:handle,
+      name: :groups_game_id_handle_index,
+      message: "is already used in this game"
+    )
   end
 end
