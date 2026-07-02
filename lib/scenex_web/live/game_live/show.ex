@@ -62,6 +62,10 @@ defmodule ScenexWeb.GameLive.Show do
         <div :if={@section == :settings}>
           <.form for={@settings_form} phx-submit="save_settings" class="max-w-xl space-y-4">
             <.input
+              field={@settings_form[:handle]}
+              label="Handle (internal, not translated)"
+            />
+            <.input
               type="text"
               name={"game[name][#{@locale}]"}
               value={LocalizedForm.value(@settings_form, :name, @locale)}
@@ -190,13 +194,15 @@ defmodule ScenexWeb.GameLive.Show do
             <table class="table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Handle</th>
+                  <th>Name ({@locale})</th>
                   <th>Position</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr :for={g <- @groups}>
+                  <td class="font-medium">{g.handle}</td>
                   <td>{I18n.t!(g.name, @locale, default: "—")}</td>
                   <td>{g.position}</td>
                   <td class="text-right whitespace-nowrap">
@@ -222,7 +228,7 @@ defmodule ScenexWeb.GameLive.Show do
                   </td>
                 </tr>
                 <tr :if={@groups == []}>
-                  <td colspan="3" class="opacity-70">No groups yet.</td>
+                  <td colspan="4" class="opacity-70">No groups yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -232,6 +238,7 @@ defmodule ScenexWeb.GameLive.Show do
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_group, do: "Edit group", else: "New group"}</h3>
               <.form for={@group_form} phx-submit="save_group" class="grid gap-3 sm:grid-cols-2">
+                <.input field={@group_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
                   name={"group[name][#{@locale}]"}
@@ -311,7 +318,8 @@ defmodule ScenexWeb.GameLive.Show do
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Title</th>
+                  <th>Handle</th>
+                  <th>Title ({@locale})</th>
                   <th>Kind</th>
                   <th>Deadline</th>
                   <th></th>
@@ -320,6 +328,7 @@ defmodule ScenexWeb.GameLive.Show do
               <tbody>
                 <tr :for={e <- @events} class={e.id == @selected_event_id && "bg-base-200"}>
                   <td>{e.position}</td>
+                  <td class="font-medium">{e.handle}</td>
                   <td>{I18n.t!(e.title, @locale, default: "—")}</td>
                   <td>{e.kind}</td>
                   <td class="text-xs">{fmt_deadline(e.deadline_seconds)}</td>
@@ -354,7 +363,7 @@ defmodule ScenexWeb.GameLive.Show do
                   </td>
                 </tr>
                 <tr :if={@events == []}>
-                  <td colspan="5" class="opacity-70">No events yet.</td>
+                  <td colspan="6" class="opacity-70">No events yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -364,6 +373,7 @@ defmodule ScenexWeb.GameLive.Show do
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_event, do: "Edit event", else: "New event"}</h3>
               <.form for={@event_form} phx-submit="save_event" class="grid gap-3 sm:grid-cols-2">
+                <.input field={@event_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
                   name={"event[title][#{@locale}]"}
@@ -438,7 +448,8 @@ defmodule ScenexWeb.GameLive.Show do
                   class="flex items-center justify-between gap-2 rounded bg-base-200 px-3 py-2"
                 >
                   <div class="min-w-0">
-                    <span class="text-sm">{I18n.t!(o.text, @locale, default: "—")}</span>
+                    <span class="text-sm font-medium">{o.handle}</span>
+                    <span class="text-sm opacity-70">— {I18n.t!(o.text, @locale, default: "—")}</span>
                     <span :if={o.is_default} class="badge badge-xs badge-info ml-1">default</span>
                     <span :for={l <- o.labels} class={["badge badge-xs ml-1", label_class(l.color)]}>
                       {I18n.t!(l.name, @locale, default: "?")}
@@ -482,6 +493,7 @@ defmodule ScenexWeb.GameLive.Show do
                   {if @editing_option, do: "Edit option", else: "New option"}
                 </h4>
                 <.form for={@option_form} phx-submit="save_option" class="space-y-3">
+                  <.input field={@option_form[:handle]} label="Handle (internal)" />
                   <.input
                     type="text"
                     name={"option[text][#{@locale}]"}
@@ -564,7 +576,8 @@ defmodule ScenexWeb.GameLive.Show do
             <table class="table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Handle</th>
+                  <th>Name ({@locale})</th>
                   <th>Color</th>
                   <th>Icon</th>
                   <th>Position</th>
@@ -573,6 +586,7 @@ defmodule ScenexWeb.GameLive.Show do
               </thead>
               <tbody>
                 <tr :for={l <- @labels}>
+                  <td class="font-medium">{l.handle}</td>
                   <td>
                     <span class={["badge badge-sm", label_class(l.color)]}>
                       {I18n.t!(l.name, @locale, default: "—")}
@@ -604,7 +618,7 @@ defmodule ScenexWeb.GameLive.Show do
                   </td>
                 </tr>
                 <tr :if={@labels == []}>
-                  <td colspan="5" class="opacity-70">No labels yet.</td>
+                  <td colspan="6" class="opacity-70">No labels yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -614,6 +628,7 @@ defmodule ScenexWeb.GameLive.Show do
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_label, do: "Edit label", else: "New label"}</h3>
               <.form for={@label_form} phx-submit="save_label" class="grid gap-3 sm:grid-cols-2">
+                <.input field={@label_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
                   name={"label[name][#{@locale}]"}

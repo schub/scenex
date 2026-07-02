@@ -4,7 +4,9 @@ defmodule Scenex.AuthoringFixtures do
   alias Scenex.Authoring
 
   def game_fixture(user, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{name: %{"en" => "Test Game"}, source_locale: "en"})
+    attrs =
+      Enum.into(attrs, %{handle: "Test Game", name: %{"en" => "Test Game"}, source_locale: "en"})
+
     {:ok, game} = Authoring.create_game(user, attrs)
     game
   end
@@ -24,25 +26,27 @@ defmodule Scenex.AuthoringFixtures do
   end
 
   def group_fixture(game, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{name: %{"en" => "Government"}})
+    attrs = Enum.into(attrs, %{handle: "Government", name: %{"en" => "Government"}})
     {:ok, group} = Authoring.create_group(game, attrs)
     group
   end
 
   def event_fixture(game, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{title: %{"en" => "Blackout"}})
+    attrs = Enum.into(attrs, %{handle: "Blackout", title: %{"en" => "Blackout"}})
     {:ok, event} = Authoring.create_event(game, attrs)
     event
   end
 
   def decision_option_fixture(event, group, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{text: %{"en" => "Ration power"}})
+    attrs = Enum.into(attrs, %{handle: "Ration power", text: %{"en" => "Ration power"}})
     {:ok, option} = Authoring.create_decision_option(event, group, attrs)
     option
   end
 
   def label_fixture(game, attrs \\ %{}) do
-    attrs = Enum.into(attrs, %{name: %{"en" => "Aggressive"}, color: :error})
+    attrs =
+      Enum.into(attrs, %{handle: "Aggressive", name: %{"en" => "Aggressive"}, color: :error})
+
     {:ok, label} = Authoring.create_label(game, attrs)
     label
   end

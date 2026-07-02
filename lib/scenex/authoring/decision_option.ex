@@ -17,6 +17,7 @@ defmodule Scenex.Authoring.DecisionOption do
   @timestamps_opts [type: :utc_datetime]
 
   schema "decision_options" do
+    field :handle, :string
     field :text, :map, default: %{}
     field :is_default, :boolean, default: false
     field :position, :integer, default: 0
@@ -31,8 +32,8 @@ defmodule Scenex.Authoring.DecisionOption do
 
   def changeset(decision_option, attrs) do
     decision_option
-    |> cast(attrs, [:event_id, :group_id, :text, :is_default, :position])
-    |> validate_required([:event_id, :group_id])
+    |> cast(attrs, [:event_id, :group_id, :handle, :text, :is_default, :position])
+    |> validate_required([:event_id, :group_id, :handle])
     |> validate_localized_required(:text)
     |> assoc_constraint(:event)
     |> assoc_constraint(:group)

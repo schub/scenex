@@ -3,7 +3,6 @@ defmodule ScenexWeb.GameLive.Index do
   use ScenexWeb, :live_view
 
   alias Scenex.Authoring
-  alias Scenex.I18n
 
   @impl true
   def render(assigns) do
@@ -15,7 +14,7 @@ defmodule ScenexWeb.GameLive.Index do
       </.header>
 
       <.form for={@form} id="new-game" phx-submit="create" class="mt-6 flex flex-wrap items-end gap-3">
-        <.input field={@form[:name]} label="New game name" class="w-64" />
+        <.input field={@form[:handle]} label="New game name" class="w-64" />
         <.input
           field={@form[:source_locale]}
           type="select"
@@ -30,7 +29,7 @@ defmodule ScenexWeb.GameLive.Index do
           <div class="card-body flex-row items-center justify-between py-4">
             <div>
               <.link navigate={~p"/games/#{game.id}"} class="text-lg font-semibold hover:underline">
-                {I18n.t!(game.name, game.source_locale, default: "Untitled game")}
+                {game.handle}
               </.link>
               <div class="mt-1 flex gap-2 text-xs">
                 <span class="badge badge-sm">{game.visibility}</span>
@@ -62,8 +61,13 @@ defmodule ScenexWeb.GameLive.Index do
   end
 
   @impl true
-  def handle_event("create", %{"game" => %{"name" => name, "source_locale" => locale}}, socket) do
-    attrs = %{name: %{locale => name}, source_locale: locale}
+  def handle_event(
+        "create",
+        %{"game" => %{"handle" => handle, "source_locale" => locale}},
+        socket
+      ) do
+    # Seed the localized display name from the handle; refine per-locale later.
+    attrs = %{handle: handle, name: %{locale => handle}, source_locale: locale}
 
     case Authoring.create_game(socket.assigns.current_scope.user, attrs) do
       {:ok, game} ->
@@ -75,6 +79,6 @@ defmodule ScenexWeb.GameLive.Index do
   end
 
   defp assign_new_form(socket) do
-    assign(socket, :form, to_form(%{"name" => "", "source_locale" => "en"}, as: :game))
+    assign(socket, :form, to_form(%{"handle" => "", "source_locale" => "en"}, as: :game))
   end
 end

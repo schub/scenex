@@ -15,6 +15,7 @@ defmodule Scenex.Authoring.Game do
   def visibilities, do: @visibilities
 
   schema "games" do
+    field :handle, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
     field :source_locale, :string, default: "en"
@@ -31,8 +32,8 @@ defmodule Scenex.Authoring.Game do
 
   def changeset(game, attrs) do
     game
-    |> cast(attrs, [:name, :description, :source_locale, :visibility])
-    |> validate_required([:source_locale])
+    |> cast(attrs, [:handle, :name, :description, :source_locale, :visibility])
+    |> validate_required([:handle, :source_locale])
     |> validate_localized_required(:name)
     |> validate_format(:source_locale, ~r/^[a-z]{2}(-[A-Za-z]{2,})?$/,
       message: "must be a locale code like \"en\" or \"pt-BR\""

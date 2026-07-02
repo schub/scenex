@@ -15,7 +15,7 @@ defmodule ScenexWeb.GameLiveTest do
 
       assert {:ok, _show_lv, html} =
                lv
-               |> form("#new-game", %{"game" => %{"name" => "My Game", "source_locale" => "en"}})
+               |> form("#new-game", %{"game" => %{"handle" => "My Game", "source_locale" => "en"}})
                |> render_submit()
                |> follow_redirect(conn)
 
@@ -23,7 +23,7 @@ defmodule ScenexWeb.GameLiveTest do
     end
 
     test "lists games the user can see", %{conn: conn, user: user} do
-      game = game_fixture(user, name: %{"en" => "Listed Game"})
+      game = game_fixture(user, handle: "Listed Game")
       {:ok, _lv, html} = live(conn, ~p"/games")
       assert html =~ "Listed Game"
       assert html =~ "/games/#{game.id}"
@@ -82,7 +82,7 @@ defmodule ScenexWeb.GameLiveTest do
       html =
         lv
         |> form(~s(form[phx-submit="save_group"]), %{
-          "group" => %{"name" => %{"en" => "Government"}, "position" => "0"}
+          "group" => %{"handle" => "Gov", "name" => %{"en" => "Government"}, "position" => "0"}
         })
         |> render_submit()
 
@@ -103,7 +103,12 @@ defmodule ScenexWeb.GameLiveTest do
       html =
         lv
         |> form(~s(form[phx-submit="save_event"]), %{
-          "event" => %{"title" => %{"en" => "Blackout"}, "kind" => "event", "position" => "0"}
+          "event" => %{
+            "handle" => "Blackout",
+            "title" => %{"en" => "Blackout"},
+            "kind" => "event",
+            "position" => "0"
+          }
         })
         |> render_submit()
 
@@ -117,7 +122,12 @@ defmodule ScenexWeb.GameLiveTest do
       html =
         lv
         |> form(~s(form[phx-submit="save_label"]), %{
-          "label" => %{"name" => %{"en" => "Aggressive"}, "color" => "error", "position" => "0"}
+          "label" => %{
+            "handle" => "Aggressive",
+            "name" => %{"en" => "Aggressive"},
+            "color" => "error",
+            "position" => "0"
+          }
         })
         |> render_submit()
 
@@ -145,6 +155,7 @@ defmodule ScenexWeb.GameLiveTest do
         lv
         |> form(~s(form[phx-submit="save_option"]), %{
           "option" => %{
+            "handle" => "Ration",
             "text" => %{"en" => "Ration power"},
             "position" => "0",
             "labels" => [label.id]

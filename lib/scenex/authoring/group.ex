@@ -12,6 +12,7 @@ defmodule Scenex.Authoring.Group do
   @timestamps_opts [type: :utc_datetime]
 
   schema "groups" do
+    field :handle, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
     field :position, :integer, default: 0
@@ -24,8 +25,8 @@ defmodule Scenex.Authoring.Group do
 
   def changeset(group, attrs) do
     group
-    |> cast(attrs, [:game_id, :name, :description, :position])
-    |> validate_required([:game_id])
+    |> cast(attrs, [:game_id, :handle, :name, :description, :position])
+    |> validate_required([:game_id, :handle])
     |> validate_localized_required(:name)
     |> assoc_constraint(:game)
   end

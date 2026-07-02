@@ -10,7 +10,7 @@ defmodule Scenex.AuthoringTest do
   describe "create_game/2 and authorization" do
     test "creates the game and makes the creator the owner" do
       user = user_fixture()
-      assert {:ok, game} = Authoring.create_game(user, %{name: %{"en" => "Lux"}})
+      assert {:ok, game} = Authoring.create_game(user, %{handle: "Lux", name: %{"en" => "Lux"}})
 
       assert Authoring.get_user_role(game, user) == :owner
       assert Authoring.is_owner?(game, user)
@@ -151,7 +151,10 @@ defmodule Scenex.AuthoringTest do
 
     test "an option belongs to an event and a group", %{event: event, group: group} do
       assert {:ok, option} =
-               Authoring.create_decision_option(event, group, %{text: %{"en" => "Ration"}})
+               Authoring.create_decision_option(event, group, %{
+                 handle: "Ration",
+                 text: %{"en" => "Ration"}
+               })
 
       assert option.event_id == event.id
       assert option.group_id == group.id

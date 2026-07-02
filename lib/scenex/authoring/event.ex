@@ -22,6 +22,7 @@ defmodule Scenex.Authoring.Event do
   def triggers, do: @triggers
 
   schema "events" do
+    field :handle, :string
     field :title, :map, default: %{}
     field :narrative, :map, default: %{}
     field :position, :integer, default: 0
@@ -37,8 +38,17 @@ defmodule Scenex.Authoring.Event do
 
   def changeset(event, attrs) do
     event
-    |> cast(attrs, [:game_id, :title, :narrative, :position, :kind, :trigger, :deadline_seconds])
-    |> validate_required([:game_id, :kind, :trigger])
+    |> cast(attrs, [
+      :game_id,
+      :handle,
+      :title,
+      :narrative,
+      :position,
+      :kind,
+      :trigger,
+      :deadline_seconds
+    ])
+    |> validate_required([:game_id, :handle, :kind, :trigger])
     |> validate_localized_required(:title)
     |> validate_number(:deadline_seconds, greater_than: 0)
     |> assoc_constraint(:game)
