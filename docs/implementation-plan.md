@@ -1,24 +1,26 @@
 # Scenex — Implementation Plan
 
-> **Status:** planning → ready to execute
+> **Status:** in execution — Phases 0–2 built; design hardened; Phase 2.5 (design alignment) is next.
 > **Author of record:** the maintainer (architect / supervisor). Claude writes the code.
 > **Hard deadline:** **14 July 2026** — the eve of the first content-creation workshop (which starts 15 July 2026).
-> **Today:** 1 July 2026 → build window ≈ **13 days**.
+> **Today:** 3 July 2026 → remaining build window ≈ **11 days**.
 > **Deliverable at deadline:** a *workable beta of the whole system* — both the authoring CMS **and** the live-session engine — polished enough to (a) enter real game content, (b) run small-scale live playtests, and (c) **train partners** on both. Not pixel-perfect; things may change afterward. Little to no further software work is planned after the workshop, so this is effectively the finish line, not a checkpoint.
+>
+> **Authoritative mechanics spec:** the game design document (`docs/concept/game-design-concept-and-mechanics.md` in the parent project). This plan maps those mechanics onto software; where the two disagree, the design document wins.
 
 ---
 
 ## 1. What we are building
 
-**Scenex** is a multi-tenant web platform for **authoring and running** large, analog, role-based simulation games ("megagames"). Any specific game is **one** definition hosted on the platform; the platform itself is **generic**.
+**Scenex** is a multi-tenant web platform for **authoring and running** large, analog, role-based simulation games ("megagames") staged as theatrical performances. Any specific game is **one** definition hosted on the platform; the platform itself is **generic**.
 
 The single most important architectural idea, which everything below serves: **separate the generic engine from game-specific content, and separate authored content from a live play-through.** Three layers:
 
 | Layer | What it is | How it's stored | Analogy |
 |---|---|---|---|
-| **1. Engine** | The rules of physics: values, aggregation, timeline, effects. Identical for every game. | **Code** (pure functions). | The game's rulebook. |
-| **2. Definition** | A specific game — which values, groups, events, decisions exist. Reusable. | **CRUD** in Postgres. | A boxed game on the shelf. |
-| **3. Session** | One live run of a definition, at one theatre, on one day, with real players. | **Event-sourced** append-only log + in-memory projection. | Tonight's actual game night. |
+| **1. Engine** | The rules of physics: values, aggregation, conditions, effects. Identical for every game. | **Code** (pure functions). | The game's rulebook. |
+| **2. Definition** | A specific game — which values, groups, events, options, endings exist. Reusable. | **CRUD** in Postgres. | A boxed game on the shelf. |
+| **3. Session** | One live run of a definition, at one venue, on one day, with real players. | **Event-sourced** append-only log + in-memory projection. | Tonight's actual game night. |
 
 One definition → **many concurrent, isolated sessions** (the same game can run in several cities at the same time without touching each other).
 
@@ -26,176 +28,188 @@ One definition → **many concurrent, isolated sessions** (the same game can run
 
 ## 2. Locked decisions (the foundation)
 
-These were settled in discussion and are treated as fixed. Changing one is an architecture decision, not a tweak.
+Settled in discussion and treated as fixed. Changing one is an architecture decision, not a tweak.
+
+**Game mechanics** (full spec in the game design document; the load-bearing points):
+
+- **Three timeline element kinds, three social scales.** This symmetry drives the model:
+
+  | Kind | Who decides | Whose values change |
+  |---|---|---|
+  | **Event** | each group separately | the deciding group's own values |
+  | **Election** | all players (one person, one vote; majority; GM breaks ties) | any groups' values (**outcome matrix**: per-group deltas authored per option) |
+  | **Sidequest** | one player; **GM adjudicates** success/failure | any groups' values (outcome matrix per outcome bundle) |
+
+- **Conditional options ("gates").** Any option may carry a condition on game state — `self(key)` (deciding group's value; event options only) and `global(key)`, one comparison, arithmetic allowed. Unmet options are **shown greyed-out with the reason, never hidden**.
+- **Endings.** Authored final scenes with optional conditions on the final globals + priority. At game end the system **recommends** matching endings; **the GM picks and may override**. Endings apply no effects.
+- **Director's notes (`gm_notes`).** A localized, GM-/performer-facing text field on nearly every content entity. Never shown to players.
+- **The system proposes, the GM disposes.** Nothing fires automatically in a live show: the GM triggers every timeline element, adjudicates sidequests, breaks ties, declares the end. Conditions, defaults, and ending matches are *recommendations*. No dice, no hidden randomness.
+- **Manual before automatic.** Election votes can always be entered as a GM hand-count tally; device-based individual voting is an enhancement, not a dependency. Well-being is collected analog (smiley coins) and entered by the GM.
+- **One person, one vote.** Vote weight is never derived from game state (mechanics must never depend on content).
 
 **Domain model**
+
 - **Three layers** as above. Layer 2 is plain CRUD; **only Layer 3 is event-sourced.**
 - **Values** carry an **`input_scope`**:
-  - `per_group` — each faction holds a number; the global value is derived by aggregating across groups (Stability, Solidarity, Resources, …).
-  - `per_participant` — each individual casts a vote; the "global" is aggregated across people (**Well-being**, the reality-check mechanic). Modelled generically via `input_scope`, but constrained to **at most one** per game for v1.
-- **Global values are derived**, never entered directly — computed from group/participant values via an **aggregation formula** (mean / min / median / max / arithmetic, parentheses).
-- **Sessions are event-sourced.** The live session is a growing, append-only list of facts (event triggered, decision entered, poll closed, deadline lapsed). Every scoreboard number is *derived* by folding the log. Nothing in live play is overwritten — only appended or corrected. This buys us **undo, live charts, crash-recovery, and cross-theatre analytics** for free.
-- **One in-memory process per running session** (a `GenServer`) holds the current projection, owns the session's **game clock (pausable)** and **server-side timers**, and broadcasts changes. Sessions are **isolated and concurrent**; a crash or pause in one never touches another. Crash recovery = replay that session's log on process restart.
-- **Timers run against a GM-controlled game clock**, not wall-clock. The GM can pause/resume; deadlines and their default (negative) consequences are measured against elapsed *game* time.
+  - `per_group` — each faction holds a number; the global value is derived by aggregating across groups.
+  - `per_participant` — individuals report it directly (the well-being reality-check); at most one per game for v1. Bounds (`min`/`max`/`default`) apply to per-group values only.
+- **Global values are derived**, never entered directly — computed via an **aggregation formula** (mean / min / median / max / sum, arithmetic, parentheses). Values are clamped to their `min`/`max` range.
+- **Every content entity carries a `handle`** — a required, non-translated organizational label, unique within its scope; localized fields hold the player-facing content.
+- **Author-defined labels** (name + color + icon, game-scoped, reusable) categorize options — presentation-only, no mechanical weight.
+- **Sessions are event-sourced.** The live session is a growing, append-only list of facts (event triggered, option chosen, tally entered, sidequest adjudicated, ending selected). Every scoreboard number is *derived* by folding the log. Nothing in live play is overwritten — only appended or corrected. This buys **undo, live charts, crash-recovery, and cross-venue analytics** for free.
+- **One in-memory process per running session** (a `GenServer`) holds the current projection, owns the session's **game clock (pausable)** and **server-side timers**, and broadcasts changes. Sessions are **isolated and concurrent**. Crash recovery = replay the log on restart.
+- **Timers run against a GM-controlled game clock**, not wall-clock. Deadlines and their default consequences are measured against elapsed *game* time.
 
 **Identity & permissions**
+
 - **Two-tier identity:**
   - **Real accounts** (email + magic-link, `phx.gen.auth`): platform admins, authors, game masters. Few, persistent.
-  - **Ephemeral capability tokens** (QR codes): a token grants write access to **exactly one group (or participant) in exactly one session**, expiring with the session. No account per player. The scope is baked into the token, so "a group can only edit its own group" is enforced by the token itself.
-- **Roles are scoped to a layer:** platform admin (global) · definition membership `owner / author / viewer` (per definition) · session role `game master / audience` (per session) · capability tokens (per group/participant, per session).
+  - **Ephemeral capability tokens** (QR codes): a token grants write access to **exactly one group (or participant) in exactly one session**, expiring with the session. No account per player; scope baked into the token.
+- **Roles are scoped to a layer:** platform admin (global) · definition membership `owner / author / viewer` (per definition) · session role `game master` (per session) · capability tokens (per group/participant, per session).
 
-**i18n (decided up front — it's a data-model decision, not a feature)**
-- **UI chrome** → standard **Gettext** locale files.
-- **Authored game content** → **localized fields** in the Layer-2 schema (value names, group names, event narratives, decision texts, poll wording). Rendered **per-viewer** with **fallback** to the definition's source locale. The event log stays language-neutral (records *which* decision by id; each viewer renders text in their own locale).
+**i18n (a data-model decision, not a feature)**
 
-**Platform**
-- **Multi-tenant**, single hosted platform for all theatres. Internet assumed available.
+- **UI chrome** → **Gettext** locale files.
+- **Authored content** → **localized `jsonb` fields** (`%{"en" => …, "de" => …}`) on names, narratives, option texts, endings, **and director's notes** — rendered per-viewer with fallback to the definition's `source_locale`. The event log stays language-neutral (ids, not text).
 
-**Tech stack**
-- **Elixir + Phoenix 1.8 + LiveView**, **PostgreSQL**, **Gettext**, minimal JS.
-- Chosen on merits: our hardest requirements (one supervised process per session, per-session server-side timers, sub-second push to many viewers, event-sourcing + crash-recovery, concurrent isolated sessions) map **1:1 onto OTP/BEAM**, and LiveView collapses backend+frontend into one codebase — decisive for a 13-day build. The maintainer's Scala/actor-model fluency makes it supervisable and ownable despite being new to Elixir.
+**Platform / tech / deployment** *(unchanged)*
 
-**Deployment & tooling**
-- Source on **GitHub**; **GitHub Actions** for test/build.
-- Image published to **GHCR**; deployed to a self-hosted **Debian VM** via **Docker Compose**, reusing the **existing Postgres container** (new DB + user).
-- The app VM sits in a **VLAN** behind a **front VM running nginx that terminates TLS** and proxies in. So: **no Caddy** — the app listens on plain HTTP on the VLAN. nginx must forward **websockets** (Upgrade/Connection headers) and **`X-Forwarded-Proto/Host/For`**; Phoenix endpoint configured with the public `url:` host and correct `check_origin`.
-- **Single always-on stateful node** (in-memory session state ⇒ no horizontal replicas). Fine at our scale; multi-node clustering (libcluster + Horde) is a deliberately-deferred "success problem."
+- **Multi-tenant**, single hosted platform. **Elixir + Phoenix 1.8 + LiveView**, **PostgreSQL**, **Gettext**, minimal JS — the per-session process / timers / realtime-push / event-sourcing requirements map 1:1 onto OTP.
+- GitHub + Actions CI → GHCR image → self-hosted Debian VM via Docker Compose, reusing the existing Postgres container. App VM in a VLAN behind an nginx front VM terminating TLS (websocket upgrade headers + `X-Forwarded-*` + `check_origin` on the public host). **Single always-on stateful node**; clustering is a deferred success-problem.
 
 ---
 
 ## 3. Architecture in code
 
-### Contexts (bounded modules)
+### Contexts
 
 ```
-Scenex.Accounts     # auth (phx.gen.auth), scopes  — Layer 2 identity
+Scenex.Accounts     # auth (phx.gen.auth), scopes — Layer 2 identity
 Scenex.Authoring    # game definitions: games, values, groups, events,
-                            #   decisions, effects, translations  — Layer 2 (CRUD)
-Scenex.Engine       # PURE functions: apply/2, aggregation, formula eval
-                            #   — Layer 1 (no DB, no processes, fully testable)
+                    #   options, effects, labels, endings — Layer 2 (CRUD)
+Scenex.Engine       # PURE: Sim (state + effects + clamping), Formula
+                    #   (aggregation), Condition (gates/endings evaluation)
+                    #   — Layer 1 (no DB, no processes)
 Scenex.Play         # sessions, event log, capability tokens, runtime
-                            #   — Layer 3 (event-sourced)
+                    #   — Layer 3 (event-sourced)
 ```
 
-- **`Engine` is the heart and has no dependencies** on Ecto or processes. It is a set of pure functions: `apply(state, event) -> state`, `aggregate(values, formula)`, `Formula.parse/evaluate`. Because it's pure, it's used identically by **simulate mode** (Layer 2 dry-runs) and **live play** (Layer 3), and it's trivially unit-testable.
-- **`Play` wraps the Engine with OTP:** a `Session` `GenServer` (one per live session) holds the projection, persists each incoming event to the append-only log, calls `Engine.apply/2` to update its in-memory state, and broadcasts via `Phoenix.PubSub`. A `DynamicSupervisor` + `Registry` manage the fleet of session processes (lookup by `session_id`).
+- **`Engine` has no dependencies** on Ecto or processes. Pure functions used identically by the CMS dry-run (Layer 2) and live play (Layer 3): `Sim.new/apply_effect/globals`, `Formula.parse/evaluate`, and (new) `Condition.parse/evaluate` for gates and ending recommendations.
+- **`Play` wraps the Engine with OTP:** a `Session` `GenServer` per live session persists each event to the append-only log, folds it into the in-memory projection via the Engine, and broadcasts via `Phoenix.PubSub`. `DynamicSupervisor` + `Registry` manage the fleet.
 
 ### Runtime shape of one live session
 
 ```
-GM console ─┐                             ┌─→ Live scoreboard (LiveView)
-Group tablet ├─(actions)→ Session GenServer ┼─→ Audience display (LiveView)
-(QR token)  ─┘             │  holds projection │
-                           │  owns game clock  └─→ other group tablets
-                           │  owns timers
-                           ├─ append event → Postgres (log)  ← source of truth
-                           ├─ Engine.apply/2 → new projection ← derived, in-memory
+GM console ─┐                              ┌─→ Live scoreboard (LiveView)
+Group device ├─(actions)→ Session GenServer ┼─→ projected display (LiveView)
+(QR token)  ─┘             │ holds projection │
+                           │ owns game clock  └─→ other group devices
+                           │ owns timers
+                           ├─ append event → Postgres (log)   ← source of truth
+                           ├─ Engine fold  → new projection   ← derived, in-memory
                            └─ PubSub.broadcast → all viewers
-       restart? → replay log on init → projection rebuilt exactly
+        restart? → replay log on init → projection rebuilt exactly
 ```
 
 ---
 
 ## 4. Data model
 
-### Layer 2 — Definition (CRUD, `binary_id` / UUID PKs)
+### Layer 2 — Definition (CRUD, `binary_id` PKs; localized fields are `jsonb` maps)
 
-- **`Game`** — a definition. `source_locale`, `visibility` (`draft / invite_only / published`), timestamps. Owned via memberships.
-- **`GameMembership`** — `(game, user, role: owner|author|viewer)`.
-- **`ValueDefinition`** — belongs to a game. Fields: `key`, **`input_scope` (per_group | per_participant)**, `aggregation_formula` (string), `min`, `max`, `default`, display metadata. **Localized:** `name`, `description`.
-- **`Group`** — belongs to a game (a faction). **Localized:** `name`, `description`.
-- **`GroupInitialValue`** — `(group, value_definition, initial_number)` — upsert by unique key.
-- **`Event`** — belongs to a game; ordered on the timeline (`position`), `trigger` (`manual` by GM for v1), `deadline_seconds` (game-time), default-consequence config. **Localized:** `title`, `narrative`. (Elections & sidequests: **modeled as generic events for v1**; specialized mechanics deferred.)
-- **`Decision`** — belongs to an event; optional `group_id` scope; `escalation_type`. **Localized:** `text`.
-- **`DecisionEffect`** — `(decision, value_definition, delta, target_scope)` — the deltas a decision applies. `target_scope` lets one decision shift **every** group's values differently (per the game's design). Upsert by unique key.
+Built (✓) or planned (＋):
 
-**Localized fields:** implemented as a `jsonb` map per field, `{ "en" => "...", "de" => "...", "pt" => "..." }`, with a small helper `t(field, locale)` doing per-viewer lookup + fallback to `game.source_locale`. (Chosen over a separate translations table for speed and because the field set is small and read-heavy. Revisit only if a translation-management UI needs per-field status — deferred.)
+- ✓ **`Game`** — `handle`, `source_locale`, `visibility` (`draft/invite_only/published`). Localized: `name`, `description`. ＋ `gm_notes`.
+- ✓ **`GameMembership`** — `(game, user, role: owner|author|viewer)`.
+- ✓ **`ValueDefinition`** — `key` (slug, unique per game), `input_scope`, `aggregation` formula, `min`/`max`/`default_value`, `position`. Localized: `name`, `description`. ＋ `gm_notes`.
+- ✓ **`Group`** — `handle` (unique per game), `position`. Localized: `name`, `description`. ＋ `gm_notes`.
+- ✓ **`GroupInitialValue`** — `(group, value_definition, initial)`, upsert by unique key.
+- ✓ **`Event`** — `handle` (unique per game), `position`, **`kind` (`event | election | sidequest`)**, `trigger` (`manual`), `deadline_seconds`. Localized: `title`, `narrative`. ＋ `gm_notes`. Kind determines the mechanics (see below); v1 currently treats kinds identically — **that changes in Phase 2.5**.
+- ✓ **`DecisionOption`** — belongs to event; `handle` (unique per event), `is_default`, `position`. Localized: `text`. ＋ `gm_notes`, ＋ **`condition`** (gate string, nullable). For **event** kind: `group_id` required (the deciding group). For **election** kind: `group_id` nil (options belong to the whole room). For **sidequest** kind: exactly two options — the `success` and `failure` outcome bundles (failure may be effect-less).
+- ✓ **`OptionEffect`** — `(option, value_definition, delta)`, upsert by unique key. ＋ **optional `group_id`**: `nil` = "the deciding group" (event options); set = explicit target group (**the outcome matrix** for election and sidequest options).
+- ✓ **`Label`** + join table — game-scoped, reusable, presentation-only (name, color, icon).
+- ＋ **`Ending`** — belongs to game; `handle`, `priority`, **`condition`** (on globals, nullable). Localized: `title`, `narrative`, `gm_notes`.
+
+**Condition language (Engine.Condition):** one comparison (`>= <= > < == !=`) between two arithmetic expressions over `self(key)`, `global(key)`, and numbers. `self()` is invalid on election options and endings (no single deciding group). Boolean `and/or` deferred.
 
 ### Layer 3 — Session (event-sourced)
 
-- **`Session`** — belongs to a `Game` (definition). `status` (`draft → live → paused → ended`), `clock_state` (accumulated game-time + running/paused + last-started-at), venue/label, timestamps.
-- **`SessionEvent`** — the **append-only log**. `session_id`, `type` (`session_started`, `event_triggered`, `decision_entered`, `deadline_lapsed`, `poll_opened`, `poll_vote`, `poll_closed`, `correction`, …), `payload` (jsonb), `game_time_ms`, `sequence`, `inserted_at`. **Never updated or deleted** (corrections are appended).
-- **`CapabilityToken`** — `session_id`, `scope` (`group:<id>` | `participant`), `role`, `token` (random), `expires_at`. Backs the QR codes.
-- *(Projection is in-memory in the `GenServer`.* An optional `SessionSnapshot` for faster restart is **deferred** — logs are tiny at our scale.)
+- **`Session`** — belongs to a `Game`. `status` (`draft → live → paused → ended`), `clock_state`, venue label, chosen `ending_id` (set at the end).
+- **`SessionEvent`** — the **append-only log**: `session_id`, `type`, `payload` (jsonb), `game_time_ms`, `sequence`. Types include: `session_started`, `event_triggered`, `option_chosen`, `deadline_lapsed` (default applied), `election_opened`, `vote_tally_entered` *(or `vote_cast` for device voting)*, `election_resolved`, `sidequest_assigned`, `sidequest_adjudicated`, `wellbeing_tally_entered`, `correction`, `session_ended`, `ending_selected`. **Never updated or deleted.**
+- **`CapabilityToken`** — `session_id`, `scope` (`group:<id>` | `participant`), `token`, `expires_at`. Backs the QR codes. Group tokens are core; participant tokens (device voting) are an enhancement.
+- *(Projection lives in the `GenServer`; snapshots deferred — logs are tiny at our scale.)*
 
-**Note on game content vs. code:** the still-open *value-set debate* (Stability vs. Legitimacy, 4 vs. 5 values) is **Layer-2 content**, authored in the CMS — it does **not** block the software. The generic value model is exactly why. For testing we seed a provisional example definition; finalizing the value set is a content task for the workshop.
-
----
-
-## 5. i18n approach (concrete)
-
-- `gettext` for all UI strings from commit one (`en` + at least `de`; `pt`, `es`, `it` as content demands).
-- Localized content via the `jsonb`-per-field + `t/2` helper described above; **per-viewer locale** (from account preference or a locale switcher; audience display takes locale from its link), **fallback to `source_locale`**.
-- Number/date formatting via `Cldr` if time allows; otherwise minimal. RTL not required for launch.
+**Game content vs. code:** the value-set debate (which values, 4 vs 5) is **Layer-2 content** and does not block software. A full example definition is seeded from the legacy paper-prototype content for testing and demos.
 
 ---
 
-## 6. Deployment & tooling (concrete)
+## 5. i18n approach *(unchanged, plus notes)*
 
-- **CI (GitHub Actions):** Postgres service container → `mix deps.get` → `mix compile --warnings-as-errors` → `mix format --check-formatted` → `mix test` (≈ our `precommit`); optional `credo`. Runs on push/PR.
-- **CD:** on merge to `main`, build a multi-stage Docker image (compile `mix release` → slim runtime) → push to **GHCR** → deploy step SSHes to the VM, `docker compose pull && up -d`. Migrations run on release boot. (Manual-approval deploy at first if preferred.)
-- **VM compose:** app container on the same Docker network as the existing Postgres container; app DB + user provisioned once.
-- **Edge nginx** (front VM) — required snippet on the app's location:
-  ```nginx
-  proxy_http_version 1.1;
-  proxy_set_header Upgrade $http_upgrade;
-  proxy_set_header Connection "upgrade";
-  proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_set_header X-Forwarded-Host  $host;
-  proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-  ```
-  Phoenix prod endpoint: `url: [scheme: "https", host: "<public-host>", port: 443]`, `Plug.RewriteOn` for proto/host, and `check_origin` set to the public host (else websockets connect-then-close).
-- **De-risk early:** stand up the *full deploy path* (empty Phoenix app → GHCR → VM → through the two-hop proxy, with a working LiveView websocket) on **Day 1–2**, not Day 13. The proxy/websocket/TLS chain is the classic thing that eats a day; find that day now.
+- `gettext` for UI strings (`en` + `de` minimum; `pt`, `es`, `it` as content demands).
+- Localized content via `jsonb`-per-field + the `I18n.t` helper, per-viewer locale, fallback to `source_locale`. **Director's notes are localized like any other content field.**
+- Long-form localized fields are **Markdown** by convention (rendered, not schema-enforced).
 
 ---
 
-## 7. The 13-day build schedule
+## 6. Deployment & tooling *(unchanged)*
 
-Days are indicative, not contractual; the **phase order** is what matters. Highest-risk work (the live event-sourced session engine) is front-loaded behind an early-de-risked deploy and a proven pure Engine.
+- **CI:** Postgres service → `mix deps.get` → compile `--warnings-as-errors` → format check → `mix test`. On push/PR.
+- **CD:** merge to `main` → multi-stage image (`mix release`) → GHCR → SSH deploy, `docker compose pull && up -d`. Migrations on boot.
+- **Edge nginx** needs websocket upgrade headers + `X-Forwarded-Proto/Host/For`; Phoenix prod endpoint gets the public `url:` host and `check_origin`. Details in `docs/deployment.md`.
+- ⚠️ **The full deploy path is still unproven** (blocked on public hostname + push approval from the maintainer). This was meant to be Day-1 de-risking; it is now the **oldest open risk** — do it at the first opportunity, before Phase 3 realtime work depends on it.
 
-### Phase 0 — Foundations + deploy path *(Day 1)*
-- `git init`; `mix phx.new dev/scenex --binary-id` (Phoenix 1.8, LiveView default); base config, `docs/` already present.
-- `phx.gen.auth` (magic-link) + scopes; Gettext initialized.
-- GitHub repo + Actions CI green; Dockerfile + release; **deploy hello-world LiveView to the VM through the edge proxy** and confirm the websocket connects over HTTPS. **Infra de-risked before feature work.**
+---
 
-### Phase 1 — Definition CMS + Engine core *(Days 2–5)*
-- `Authoring` context + schemas (Game, membership, ValueDefinition w/ `input_scope`, Group, GroupInitialValue, Event, Decision, DecisionEffect) with **localized `jsonb` fields** and the `t/2` helper.
-- LiveView CRUD for the whole definition graph (create a game; add values/groups/events/decisions/effects; set initial values). Authorization in the context (`can_edit?/2`, membership roles).
-- **`Engine` (pure):** `Formula` parser/evaluator (crib the proven approach from the `planex` prototype), `aggregate/2`, `apply/2`, effect resolution across groups, clamping to min/max. **Heavy unit tests** — this is the core.
+## 7. Build schedule (revised)
 
-### Phase 2 — Simulate / test mode *(Days 6–7)*
-- A CMS "dry-run" view: load a definition into an in-memory state, feed decisions/events manually, watch group + global values update via the **same `Engine`**. Enormous for workshop content-testing, and it validates the engine end-to-end **before** any realtime wiring. (This is also where authors "balance" a scenario.)
+Progress so far, then the remaining ~11 days. Phase order matters more than day numbers.
 
-### Phase 3 — Live session engine (Layer 3) *(Days 8–11)*
-The hard core. Built on the now-proven Engine + deploy path.
+### ✓ Phase 0 — Foundations *(done)*
+Phoenix 1.8 scaffold (`binary_id`), `phx.gen.auth` (magic link) + scopes, Gettext, landing page. **Deploy de-risk still outstanding — see §6.**
+
+### ✓ Phase 1 — Definition CMS + Engine core *(done)*
+- Pure `Engine`: `Formula` parser/evaluator, `ValueSpec`, `Sim` (seeding, clamping, effects, derived globals). Heavily unit-tested.
+- `Authoring` context + all Layer-2 schemas above (✓ items), localized fields, handles with scoped uniqueness, labels, upsert helpers, context-level authorization.
+- CMS editor LiveViews: game settings, values (scope-aware bounds), groups, initial-values grid, events → options → effects, labels. Working-locale switcher.
+
+### ✓ Phase 2 — Simulate / dry-run *(done)*
+Ephemeral what-if view driving the same pure Engine: pick options per group per event, watch per-group values + derived globals recompute; clamp flags; reset. Validated against seeded example content.
+
+### ＋ Phase 2.5 — Design alignment *(Days 1–3 of the remaining window)*
+Bring the software up to the hardened game design:
+1. **`Engine.Condition`** — parse/evaluate the gate language (pure, test-first; powers gates, ending recommendations, and future GM hints).
+2. **Schema migrations:** `gm_notes` on content entities; `condition` on options; optional `group_id` on `OptionEffect` (outcome matrices); `Ending` entity; election options without group; sidequest success/failure option pairs.
+3. **CMS:** election option editor with the **per-group effect matrix grid**; sidequest editor (outcome bundles); endings editor; director's-notes fields; condition input with validation.
+4. **Dry-run upgrade:** elections (pick a winner → matrix applies), gates (locked options greyed out with reason), sidequest adjudication (choose success/failure + assignee group), ending recommendations at the end. The dry-run becomes a full content-balancing tool for the workshop.
+
+### ＋ Phase 3 — Live session engine (Layer 3) *(Days 4–8)*
+The hard core, built on the proven Engine.
 - `Play` context: `Session`, `SessionEvent` (append-only), `CapabilityToken`.
-- **`Session` `GenServer`** + `DynamicSupervisor` + `Registry`: persist event → `Engine.apply/2` → broadcast via PubSub. **Replay-on-init** crash recovery.
-- **Game clock** (pause/resume) + **server-side timers** (`Process.send_after` on game-time) firing **default consequences** on lapsed deadlines.
-- **GM console** LiveView: start a session from a definition, trigger events, enter decisions, pause/resume, correct mistakes (append correction → recompute).
-- **Live scoreboard** LiveView (group + derived global values, updating sub-second).
-- **Capability tokens + QR generation**; **group-input** LiveView (token-scoped, edits only its own group).
-- **Audience display** LiveView: read-only, projectable, public-link/token, no login.
-- Concurrency check: two sessions of the same definition running isolated in parallel.
+- `Session` `GenServer` + `DynamicSupervisor` + `Registry`: persist event → fold → broadcast. **Replay-on-init** crash recovery.
+- **Game clock** (pause/resume) + server-side timers firing **default consequences** on lapsed deadlines.
+- **GM console:** start session, trigger timeline elements, enter group decisions, **run elections** (open → GM-entered hand-count tally → resolve matrix; tie = GM picks), **assign & adjudicate sidequests**, pause/resume, append corrections, **declare end → see recommended endings → select one**.
+- **Live scoreboard** (groups + globals, sub-second updates) and a read-only **projected display** (public link, no login).
+- **Capability tokens + QR**; group-input LiveView (token-scoped: a group enters its own event decisions).
+- Concurrency check: two isolated sessions of one definition in parallel.
 
-### Phase 4 — Well-being poll + i18n pass + polish *(Days 12–13, morning)*
-- **Well-being** (`per_participant`): open/close a voting window, collect anonymous votes (one per participant token or open window), aggregate, and show the **reality-check comparison** (felt well-being vs. computed globals) on the scoreboard.
-- i18n content pass + fallback verification; German UI; seed a provisional **example** definition for playtesting.
+### ＋ Phase 4 — Well-being + i18n pass + polish *(Days 9–10)*
+- **Well-being** (`per_participant`): collected analog (smiley coins), **GM enters the tally**; the scoreboard shows the reality-check comparison (felt vs. computed). Device-based collection only if time allows.
+- i18n content pass + fallback verification; German UI.
 - UX polish sufficient for **training** (clear GM console, legible displays).
 
-### Phase 5 — Hardening + rehearsal + partner docs *(Day 13, remainder + buffer)*
-- End-to-end rehearsal: author → deploy → run a small live playtest through QR input, live scoreboard, clock pause, a timer firing a consequence, a well-being poll, the audience display.
-- Short partner-facing guides: **"How to author a game"** and **"How to run a show."**
+### ＋ Phase 5 — Hardening + rehearsal + partner docs *(Day 11 + buffer)*
+- End-to-end rehearsal: author → dry-run → live playtest (QR input, election with tally, sidequest, deadline default firing, clock pause, ending selection, projected display).
+- Short partner guides: **"How to author a game"** / **"How to run a show."**
 - Buffer for the inevitable.
 
 ---
 
 ## 8. Definition of Done (workshop beta)
 
-- [ ] Author **and translate** a full game definition in the CMS (values w/ input_scope, groups, initial values, events, decisions, effects).
-- [ ] **Simulate** a scenario in-CMS and see values evolve.
-- [ ] Run a **live playtest end-to-end**: start a session from a definition; GM triggers events; groups/GM enter decisions (incl. via **QR**); **live scoreboard** updates for all viewers; **clock pauses/resumes**; a **deadline timer fires a default consequence**; a **well-being poll** runs and is compared to computed globals; **audience display** works.
-- [ ] **Two sessions run concurrently, isolated.**
-- [ ] A session **survives an app restart** (log replay).
+- [ ] Author **and translate** a full definition in the CMS: values, groups, initial values, **events, elections (with outcome matrices), sidequests, endings, conditions, labels, director's notes**.
+- [ ] **Dry-run** a scenario end-to-end in the CMS: gates lock/unlock, elections apply matrices, sidequests adjudicate, endings get recommended.
+- [ ] Run a **live playtest end-to-end**: GM triggers elements; groups enter decisions via **QR**; an **election** resolves from a GM tally; a **sidequest** is assigned and adjudicated; a **deadline fires a default consequence**; the **clock pauses/resumes**; the **well-being tally** is entered and compared; the GM **ends the session and selects a recommended ending**; scoreboard + projected display update live.
+- [ ] **Two sessions run concurrently, isolated.** A session **survives an app restart** (log replay).
 - [ ] Deployed on the VM, reachable via the edge proxy over **HTTPS**, websockets working.
 - [ ] Polished enough to **train partners** on authoring and running a show.
 
@@ -203,25 +217,25 @@ The hard core. Built on the now-proven Engine + deploy path.
 
 ## 9. Risks & cut-lines
 
-**Top risks (mitigation)**
-1. **Live session engine — timers, clock, crash-recovery, concurrency** (Phase 3). *Mitigation:* front-loaded; built on a pre-proven pure Engine and a Day-1 deploy path; OTP makes the process model native.
-2. **Two-hop proxy / websocket / TLS** breaking realtime. *Mitigation:* de-risked Day 1, not discovered Day 13.
-3. **Scope vs. 13 days.** *Mitigation:* the cut-lines below; the event-sourced core is *never* cut (expensive to retrofit).
+**Top risks**
+1. **Live session engine** (timers, clock, crash-recovery, concurrency) — front-loaded right after design alignment; OTP makes the process model native; Engine already proven by the dry-run.
+2. **Deploy path unproven** (two-hop proxy / websocket / TLS) — the oldest open item; blocked on maintainer input; do it before Phase 3 realtime work.
+3. **Scope vs. 11 days** — mitigated by the cut-lines; the event-sourced core is never cut (expensive to retrofit).
 
-**Cut-lines, in the order they'd be dropped if behind:**
-1. Audience-display *styling* (keep it functional/ugly).
-2. Well-being poll *polish* (keep the mechanic, simplify the UI).
-3. Cross-theatre **analytics UI** — the *data* is captured in the logs from day one; only the analysis views wait.
-4. Translation-status dashboard.
-5. Elections/sidequests as *special* mechanics (stay generic events).
-6. `Cldr` number/date niceties.
+**Cut-lines, in drop order if behind:**
+1. Projected-display and scoreboard *styling* (functional over pretty).
+2. **Device-based individual voting** (elections keep the GM hand-count tally — the design guarantees this fallback anyway).
+3. Well-being *digital collection* (GM tally entry stays).
+4. Cross-venue **analytics UI** (the logs capture the data from day one; views can wait).
+5. **Ending auto-recommendation** (GM picks manually from the list; conditions evaluated later).
+6. Translation-status dashboard; `Cldr` niceties.
 
-**Never cut:** the three-layer split, the pure `Engine`, event-sourcing for Layer 3, i18n-ready schema, the two-tier identity model. These are the load-bearing decisions.
+**Never cut:** the three-layer split, the pure `Engine` (incl. `Condition`), event-sourcing for Layer 3, i18n-ready schema (incl. `gm_notes`), the two-tier identity model, the outcome-matrix model. These are load-bearing.
 
 ---
 
 ## 10. Immediate next action
 
-Scaffold Phase 0: `mix phx.new dev/scenex --binary-id`, `phx.gen.auth`, CI green, and a hello-world LiveView deployed through the VM's edge proxy to prove the websocket path — **before** any feature work.
+**Phase 2.5, step 1:** implement `Engine.Condition` (pure parser/evaluator for the gate language), test-first — it unblocks gates, endings, and the dry-run upgrade. In parallel, when the maintainer supplies the public hostname and push approval: prove the full deploy path (§6).
 
 > **Name decided:** the platform is **Scenex** — OTP app `scenex`, modules `Scenex` / `ScenexWeb`. Individual games are content definitions inside it, not the platform.
