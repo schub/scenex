@@ -88,7 +88,9 @@ value_by_key =
         name: %{"de" => de, "en" => en},
         aggregation: "avg",
         input_scope: :per_group,
-        default_value: 0.0,
+        min: 0.0,
+        max: 10.0,
+        default_value: 5.0,
         position: pos
       })
 
@@ -165,6 +167,9 @@ groups = [
   }
 ]
 
+# Every value starts at 5; a group's modifiers are applied on top.
+base_values = Map.new(Map.keys(value_by_key), &{&1, 5})
+
 group_by_gid =
   Map.new(groups, fn g ->
     {:ok, grp} =
@@ -175,7 +180,12 @@ group_by_gid =
         position: g.pos
       })
 
-    Enum.each(g.inits, fn {k, v} ->
+    starting =
+      Enum.reduce(g.inits, base_values, fn {k, delta}, acc ->
+        Map.update!(acc, k, &(&1 + delta))
+      end)
+
+    Enum.each(starting, fn {k, v} ->
       Authoring.set_group_initial_value(grp, value_by_key[k], v * 1.0)
     end)
 
