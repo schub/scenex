@@ -5,6 +5,8 @@ defmodule ScenexWeb.GameLiveTest do
   import Scenex.AccountsFixtures
   import Scenex.AuthoringFixtures
 
+  alias Scenex.Authoring
+
   setup :register_and_log_in_user
 
   describe "Index" do
@@ -92,6 +94,72 @@ defmodule ScenexWeb.GameLiveTest do
       hidden = game_fixture(other)
 
       assert {:error, {:live_redirect, %{to: "/games"}}} = live(conn, ~p"/games/#{hidden.id}")
+    end
+
+    test "adds an event", %{conn: conn, game: game} do
+      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+      lv |> element("button[phx-value-section=events]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_event"]), %{
+          "event" => %{"title" => %{"en" => "Blackout"}, "kind" => "event", "position" => "0"}
+        })
+        |> render_submit()
+
+      assert html =~ "Blackout"
+    end
+
+    test "adds a label", %{conn: conn, game: game} do
+      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+      lv |> element("button[phx-value-section=labels]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_label"]), %{
+          "label" => %{"name" => %{"en" => "Aggressive"}, "color" => "error", "position" => "0"}
+        })
+        |> render_submit()
+
+      assert html =~ "Aggressive"
+    end
+
+    test "adds a decision option with an effect and a label", %{conn: conn, game: game} do
+      value = value_definition_fixture(game, key: "stability", name: %{"en" => "Stability"})
+      group = group_fixture(game, name: %{"en" => "Government"})
+      event = event_fixture(game, title: %{"en" => "Blackout"})
+      label = label_fixture(game, name: %{"en" => "Aggressive"}, color: :error)
+
+      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+      lv |> element("button[phx-value-section=events]") |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=open_event][phx-value-id="#{event.id}"]})
+      |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=new_option][phx-value-group="#{group.id}"]})
+      |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_option"]), %{
+          "option" => %{
+            "text" => %{"en" => "Ration power"},
+            "position" => "0",
+            "labels" => [label.id]
+          },
+          "effect" => %{value.id => "-5"}
+        })
+        |> render_submit()
+
+      assert html =~ "Ration power"
+      assert html =~ "Aggressive"
+      assert html =~ "Stability -5"
+
+      [option] = Authoring.list_decision_options(event)
+      assert [%{delta: -5.0}] = option.effects
+      assert [%{name: %{"en" => "Aggressive"}}] = option.labels
     end
   end
 end

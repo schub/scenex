@@ -230,7 +230,8 @@ defmodule Scenex.Authoring do
     Repo.all(
       from o in DecisionOption,
         where: o.event_id == ^event.id,
-        order_by: [o.group_id, o.position]
+        order_by: [o.group_id, o.position],
+        preload: [:labels, :effects]
     )
   end
 
@@ -242,7 +243,8 @@ defmodule Scenex.Authoring do
     )
   end
 
-  def get_decision_option!(id), do: Repo.get!(DecisionOption, id)
+  def get_decision_option!(id),
+    do: Repo.get!(DecisionOption, id) |> Repo.preload([:labels, :effects])
 
   def create_decision_option(%Event{} = event, %Group{} = group, attrs) do
     event
