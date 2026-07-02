@@ -58,6 +58,7 @@ defmodule Scenex.Authoring.ValueDefinition do
     |> validate_format(:key, ~r/^[a-z][a-z0-9_]*$/,
       message: "must be a lowercase slug (letters, digits, underscores)"
     )
+    |> clear_bounds_for_participant()
     |> validate_aggregation()
     |> validate_min_max()
     |> assoc_constraint(:game)
@@ -74,6 +75,19 @@ defmodule Scenex.Authoring.ValueDefinition do
         {:error, reason} -> [aggregation: "is not a valid formula (#{inspect(reason)})"]
       end
     end)
+  end
+
+  # min/max/default clamp per-group values; per-participant values are never
+  # clamped by the engine, so bounds are meaningless there — drop them.
+  defp clear_bounds_for_participant(changeset) do
+    if get_field(changeset, :input_scope) == :per_participant do
+      changeset
+      |> put_change(:min, nil)
+      |> put_change(:max, nil)
+      |> put_change(:default_value, nil)
+    else
+      changeset
+    end
   end
 
   defp validate_min_max(changeset) do

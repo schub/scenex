@@ -141,7 +141,12 @@ defmodule ScenexWeb.GameLive.Show do
           <div :if={@can_edit?} class="card bg-base-200">
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_value, do: "Edit value", else: "New value"}</h3>
-              <.form for={@value_form} phx-submit="save_value" class="grid gap-3 sm:grid-cols-2">
+              <.form
+                for={@value_form}
+                phx-change="value_form_changed"
+                phx-submit="save_value"
+                class="grid gap-3 sm:grid-cols-2"
+              >
                 <.input field={@value_form[:key]} label="Key (slug)" />
                 <.input
                   field={@value_form[:input_scope]}
@@ -164,9 +169,34 @@ defmodule ScenexWeb.GameLive.Show do
                     label={"Description (#{@locale}, Markdown)"}
                   />
                 </div>
-                <.input field={@value_form[:min]} type="number" step="any" label="Min" />
-                <.input field={@value_form[:max]} type="number" step="any" label="Max" />
-                <.input field={@value_form[:default_value]} type="number" step="any" label="Default" />
+                <.input
+                  :if={@value_scope != :per_participant}
+                  field={@value_form[:min]}
+                  type="number"
+                  step="any"
+                  label="Min"
+                />
+                <.input
+                  :if={@value_scope != :per_participant}
+                  field={@value_form[:max]}
+                  type="number"
+                  step="any"
+                  label="Max"
+                />
+                <.input
+                  :if={@value_scope != :per_participant}
+                  field={@value_form[:default_value]}
+                  type="number"
+                  step="any"
+                  label="Default"
+                />
+                <p
+                  :if={@value_scope == :per_participant}
+                  class="self-center text-xs opacity-60 sm:col-span-2"
+                >
+                  Per-participant values are collected from individuals and aren't clamped,
+                  so they have no min/max/default.
+                </p>
                 <.input field={@value_form[:position]} type="number" label="Position" />
                 <div class="flex gap-2 sm:col-span-2">
                   <.button variant="primary">Save value</.button>
@@ -744,6 +774,22 @@ defmodule ScenexWeb.GameLive.Show do
     {:noreply, assign_value_form(socket, %ValueDefinition{})}
   end
 
+  # Live-track the selected scope so bounds fields can hide for per-participant.
+  # Rebuild the form from params so typed values survive the re-render.
+  def handle_event("value_form_changed", %{"value_definition" => params}, socket) do
+    data = socket.assigns.editing_value || %ValueDefinition{}
+    attrs = LocalizedForm.merge(params, data, [:name, :description])
+    scope = if params["input_scope"] == "per_participant", do: :per_participant, else: :per_group
+
+    {:noreply,
+     socket
+     |> assign(:value_scope, scope)
+     |> assign(
+       :value_form,
+       to_form(Authoring.change_value_definition(data, attrs), as: :value_definition)
+     )}
+  end
+
   def handle_event("save_value", %{"value_definition" => params}, socket) do
     with_edit(socket, fn ->
       data = socket.assigns.editing_value || %ValueDefinition{}
@@ -987,6 +1033,7 @@ defmodule ScenexWeb.GameLive.Show do
   defp assign_value_form(socket, value) do
     socket
     |> assign(:editing_value, if(value.id, do: value, else: nil))
+    |> assign(:value_scope, value.input_scope || :per_group)
     |> assign(
       :value_form,
       to_form(Authoring.change_value_definition(value), as: :value_definition)

@@ -109,6 +109,23 @@ defmodule Scenex.AuthoringTest do
       assert %{max: [_]} = errors_on(cs)
     end
 
+    test "drops bounds for per-participant values", %{game: game} do
+      assert {:ok, vd} =
+               Authoring.create_value_definition(game, %{
+                 key: "wellbeing",
+                 name: %{"en" => "Well-being"},
+                 aggregation: "avg",
+                 input_scope: :per_participant,
+                 min: 0.0,
+                 max: 100.0,
+                 default_value: 50.0
+               })
+
+      assert vd.min == nil
+      assert vd.max == nil
+      assert vd.default_value == nil
+    end
+
     test "projects into an engine ValueSpec", %{game: game} do
       vd =
         value_definition_fixture(game, key: "stability", aggregation: "avg", min: 0.0, max: 100.0)
