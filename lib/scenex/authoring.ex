@@ -18,6 +18,7 @@ defmodule Scenex.Authoring do
 
   alias Scenex.Authoring.{
     DecisionOption,
+    Ending,
     TimelineElement,
     Scenario,
     ScenarioMembership,
@@ -28,9 +29,9 @@ defmodule Scenex.Authoring do
     ValueDimension
   }
 
-  # ── Games ───────────────────────────────────────────────────────────────
+  # ── Scenarios ───────────────────────────────────────────────────────────
 
-  @doc "Games the user may see: any they're a member of, plus published ones."
+  @doc "Scenarios the user may see: any they're a member of, plus published ones."
   def list_scenarios_for_user(%User{} = user) do
     Repo.all(
       from g in Scenario,
@@ -251,20 +252,45 @@ defmodule Scenex.Authoring do
   def get_decision_option!(id),
     do: Repo.get!(DecisionOption, id) |> Repo.preload([:labels, :effects])
 
-  def create_decision_option(%TimelineElement{} = timeline_element, %Group{} = group, attrs) do
+  @doc """
+  Create an option on a timeline element. `group` is the deciding group for
+  event-kind elements and `nil` for elections and sidequests (validated by the
+  element's kind).
+  """
+  def create_decision_option(%TimelineElement{} = timeline_element, group, attrs) do
     timeline_element
-    |> Ecto.build_assoc(:decision_options, group_id: group.id)
-    |> DecisionOption.changeset(attrs)
+    |> Ecto.build_assoc(:decision_options, group_id: group && group.id)
+    |> DecisionOption.changeset(attrs, option_opts(timeline_element))
     |> Repo.insert()
   end
 
-  def update_decision_option(%DecisionOption{} = option, attrs),
-    do: option |> DecisionOption.changeset(attrs) |> Repo.update()
+  def update_decision_option(%DecisionOption{} = option, attrs) do
+    element =
+      case option.timeline_element do
+        %TimelineElement{} = loaded -> loaded
+        _not_loaded -> Repo.get!(TimelineElement, option.timeline_element_id)
+      end
+
+    option |> DecisionOption.changeset(attrs, option_opts(element)) |> Repo.update()
+  end
 
   def delete_decision_option(%DecisionOption{} = option), do: Repo.delete(option)
 
-  def change_decision_option(%DecisionOption{} = option, attrs \\ %{}),
-    do: DecisionOption.changeset(option, attrs)
+  def change_decision_option(option, attrs \\ %{}, opts \\ [])
+
+  def change_decision_option(%DecisionOption{} = option, attrs, %TimelineElement{} = element),
+    do: DecisionOption.changeset(option, attrs, option_opts(element))
+
+  def change_decision_option(%DecisionOption{} = option, attrs, opts),
+    do: DecisionOption.changeset(option, attrs, opts)
+
+  # Kind + known value keys for the option changeset's validations.
+  defp option_opts(%TimelineElement{} = element),
+    do: [kind: element.kind, value_keys: value_keys(element.scenario_id)]
+
+  defp value_keys(scenario_id) do
+    Repo.all(from v in ValueDimension, where: v.scenario_id == ^scenario_id, select: v.key)
+  end
 
   @doc "Replace an option's labels (many-to-many)."
   def set_option_labels(%DecisionOption{} = option, labels) when is_list(labels) do
@@ -277,18 +303,53 @@ defmodule Scenex.Authoring do
 
   # ── Option effects (upsert) ─────────────────────────────────────────────
 
-  @doc "Create or update the delta an option applies to one value."
-  def set_option_effect(%DecisionOption{} = option, %ValueDimension{} = vd, delta) do
-    %OptionEffect{}
-    |> OptionEffect.changeset(%{
+  @doc """
+  Create or update the delta an option applies to one value.
+
+  `target_group` is the outcome-matrix dimension: `nil` targets the deciding
+  group (event options); a `%Group{}` targets that group explicitly (election
+  and sidequest options).
+  """
+  def set_option_effect(option, vd, target_group \\ nil, delta)
+
+  def set_option_effect(%DecisionOption{} = option, %ValueDimension{} = vd, target_group, delta)
+      when is_struct(target_group, Group) or is_nil(target_group) do
+    group_id = target_group && target_group.id
+
+    attrs = %{
       decision_option_id: option.id,
       value_dimension_id: vd.id,
+      group_id: group_id,
       delta: delta
-    })
-    |> Repo.insert(
-      on_conflict: {:replace, [:delta, :updated_at]},
-      conflict_target: [:decision_option_id, :value_dimension_id]
-    )
+    }
+
+    case Repo.one(effect_cell_query(option.id, vd.id, group_id)) do
+      nil -> %OptionEffect{} |> OptionEffect.changeset(attrs) |> Repo.insert()
+      effect -> effect |> OptionEffect.changeset(%{delta: delta}) |> Repo.update()
+    end
+  end
+
+  defp effect_cell_query(option_id, vd_id, group_id) do
+    query =
+      from oe in OptionEffect,
+        where: oe.decision_option_id == ^option_id and oe.value_dimension_id == ^vd_id
+
+    if group_id,
+      do: where(query, [oe], oe.group_id == ^group_id),
+      else: where(query, [oe], is_nil(oe.group_id))
+  end
+
+  @doc "Remove one effect cell (option × value × target group)."
+  def delete_option_effect(
+        %DecisionOption{} = option,
+        %ValueDimension{} = vd,
+        target_group \\ nil
+      ) do
+    option.id
+    |> effect_cell_query(vd.id, target_group && target_group.id)
+    |> Repo.delete_all()
+
+    :ok
   end
 
   def list_option_effects(%DecisionOption{} = option) do
@@ -316,4 +377,33 @@ defmodule Scenex.Authoring do
   def delete_label(%Label{} = label), do: Repo.delete(label)
 
   def change_label(%Label{} = label, attrs \\ %{}), do: Label.changeset(label, attrs)
+
+  # ── Endings ─────────────────────────────────────────────────────────────
+
+  def list_endings(%Scenario{} = scenario) do
+    Repo.all(
+      from e in Ending,
+        where: e.scenario_id == ^scenario.id,
+        order_by: [desc: e.priority, asc: e.handle]
+    )
+  end
+
+  def get_ending!(id), do: Repo.get!(Ending, id)
+
+  def create_ending(%Scenario{} = scenario, attrs) do
+    scenario
+    |> Ecto.build_assoc(:endings)
+    |> Ending.changeset(attrs, value_keys: value_keys(scenario.id))
+    |> Repo.insert()
+  end
+
+  def update_ending(%Ending{} = ending, attrs) do
+    ending
+    |> Ending.changeset(attrs, value_keys: value_keys(ending.scenario_id))
+    |> Repo.update()
+  end
+
+  def delete_ending(%Ending{} = ending), do: Repo.delete(ending)
+
+  def change_ending(%Ending{} = ending, attrs \\ %{}), do: Ending.changeset(ending, attrs)
 end

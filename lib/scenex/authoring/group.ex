@@ -15,6 +15,7 @@ defmodule Scenex.Authoring.Group do
     field :handle, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
+    field :director_notes, :map, default: %{}
     field :position, :integer, default: 0
 
     belongs_to :scenario, Scenario
@@ -25,7 +26,7 @@ defmodule Scenex.Authoring.Group do
 
   def changeset(group, attrs) do
     group
-    |> cast(attrs, [:scenario_id, :handle, :name, :description, :position])
+    |> cast(attrs, [:scenario_id, :handle, :name, :description, :director_notes, :position])
     |> validate_required([:scenario_id, :handle])
     |> validate_localized_required(:name)
     |> assoc_constraint(:scenario)

@@ -119,16 +119,16 @@ Group device ├─(actions)→ Session GenServer ┼─→ projected display (L
 
 Built (✓) or planned (＋):
 
-- ✓ **`Scenario`** — `handle`, `source_locale`, `visibility` (`draft/invite_only/published`). Localized: `name`, `description`. ＋ `director_notes`.
+- ✓ **`Scenario`** — `handle`, `source_locale`, `visibility` (`draft/invite_only/published`). Localized: `name`, `description`. ✓ `director_notes`.
 - ✓ **`ScenarioMembership`** — `(scenario, user, role: owner|author|viewer)`.
-- ✓ **`ValueDimension`** — `key` (slug, unique per scenario), `input_scope`, `aggregation` formula, `min`/`max`/`default_value`, `position`. Localized: `name`, `description`. ＋ `director_notes`.
-- ✓ **`Group`** — `handle` (unique per scenario), `position`. Localized: `name`, `description`. ＋ `director_notes`.
+- ✓ **`ValueDimension`** — `key` (slug, unique per scenario), `input_scope`, `aggregation` formula, `min`/`max`/`default_value`, `position`. Localized: `name`, `description`. ✓ `director_notes`.
+- ✓ **`Group`** — `handle` (unique per scenario), `position`. Localized: `name`, `description`. ✓ `director_notes`.
 - ✓ **`GroupInitialValue`** — `(group, value_dimension, initial)`, upsert by unique key.
-- ✓ **`TimelineElement`** — `handle` (unique per scenario), `position`, **`kind` (`event | election | sidequest`)**, `trigger` (`manual`), `deadline_seconds`. Localized: `title`, `narrative`. ＋ `director_notes`. Kind determines the mechanics (see below); v1 currently treats kinds identically — **that changes in Phase 2.5**.
-- ✓ **`DecisionOption`** — belongs to timeline element; `handle` (unique per timeline element), `is_default`, `position`. Localized: `text`. ＋ `director_notes`, ＋ **`condition`** (gate string, nullable). For **event** kind: `group_id` required (the deciding group). For **election** kind: `group_id` nil (options belong to the whole room). For **sidequest** kind: exactly two options — the `success` and `failure` outcome bundles (failure may be effect-less).
-- ✓ **`OptionEffect`** — `(option, value_dimension, delta)`, upsert by unique key. ＋ **optional `group_id`**: `nil` = "the deciding group" (event options); set = explicit target group (**the outcome matrix** for election and sidequest options).
+- ✓ **`TimelineElement`** — `handle` (unique per scenario), `position`, **`kind` (`event | election | sidequest`)**, `trigger` (`manual`), `deadline_seconds`. Localized: `title`, `narrative`. ✓ `director_notes`. Kind determines the mechanics; authoring validation is kind-aware (runtime mechanics land with the dry-run upgrade and Layer 3).
+- ✓ **`DecisionOption`** — belongs to timeline element; `handle` (unique per timeline element), `is_default`, `position`. Localized: `text`. ✓ `director_notes`, ✓ **`condition`** (gate string, nullable). For **event** kind: `group_id` required (the deciding group). For **election** kind: `group_id` nil (options belong to the whole room). For **sidequest** kind: exactly two options — the `success` and `failure` outcome bundles (failure may be effect-less).
+- ✓ **`OptionEffect`** — `(option, value_dimension, delta)`, upsert by unique key. ✓ **optional `group_id`**: `nil` = "the deciding group" (event options); set = explicit target group (**the outcome matrix** for election and sidequest options).
 - ✓ **`Label`** + join table — scenario-scoped, reusable, presentation-only (name, color, icon).
-- ＋ **`Ending`** — belongs to scenario; `handle`, `priority`, **`condition`** (on globals, nullable). Localized: `title`, `narrative`, `director_notes`.
+- ✓ **`Ending`** — belongs to scenario; `handle`, `priority`, **`condition`** (on globals, nullable). Localized: `title`, `narrative`, `director_notes`.
 
 **Condition language (Engine.Condition):** one comparison (`>= <= > < == !=`) between two arithmetic expressions over `self(key)`, `global(key)`, and numbers. `self()` is invalid on election options and endings (no single deciding group). Boolean `and/or` deferred.
 

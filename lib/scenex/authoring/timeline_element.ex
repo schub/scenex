@@ -26,6 +26,7 @@ defmodule Scenex.Authoring.TimelineElement do
     field :handle, :string
     field :title, :map, default: %{}
     field :narrative, :map, default: %{}
+    field :director_notes, :map, default: %{}
     field :position, :integer, default: 0
     field :kind, Ecto.Enum, values: @kinds, default: :event
     field :trigger, Ecto.Enum, values: @triggers, default: :manual
@@ -44,6 +45,7 @@ defmodule Scenex.Authoring.TimelineElement do
       :handle,
       :title,
       :narrative,
+      :director_notes,
       :position,
       :kind,
       :trigger,

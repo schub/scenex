@@ -170,6 +170,243 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
+  describe "kind-aware decision options" do
+    setup do
+      user = user_fixture()
+      scenario = scenario_fixture(user)
+      group = group_fixture(scenario)
+      value_dimension_fixture(scenario, key: "resources", name: %{"en" => "Resources"})
+      %{scenario: scenario, group: group}
+    end
+
+    test "election options take no group and no self() gate", %{scenario: scenario, group: group} do
+      {:ok, election} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Emergency law",
+          title: %{"en" => "Emergency law"},
+          kind: :election
+        })
+
+      assert {:ok, option} =
+               Authoring.create_decision_option(election, nil, %{
+                 handle: "Yes",
+                 text: %{"en" => "Pass the law"}
+               })
+
+      assert option.group_id == nil
+
+      assert {:error, cs} =
+               Authoring.create_decision_option(election, group, %{
+                 handle: "No",
+                 text: %{"en" => "Reject"}
+               })
+
+      assert %{group_id: [_]} = errors_on(cs)
+
+      assert {:error, cs2} =
+               Authoring.create_decision_option(election, nil, %{
+                 handle: "Radical",
+                 text: %{"en" => "Radical option"},
+                 condition: "self(resources) >= 3"
+               })
+
+      assert %{condition: ["is not a valid condition (self(...) is not allowed here)"]} =
+               errors_on(cs2)
+
+      assert {:ok, _} =
+               Authoring.create_decision_option(election, nil, %{
+                 handle: "Gated",
+                 text: %{"en" => "Gated option"},
+                 condition: "global(resources) >= 3"
+               })
+    end
+
+    test "sidequest options need an outcome and allow no gate", %{scenario: scenario} do
+      {:ok, sidequest} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Leak the memo",
+          title: %{"en" => "Leak the memo"},
+          kind: :sidequest
+        })
+
+      assert {:error, cs} =
+               Authoring.create_decision_option(sidequest, nil, %{
+                 handle: "Done",
+                 text: %{"en" => "It worked"}
+               })
+
+      assert %{outcome: ["can't be blank"]} = errors_on(cs)
+
+      assert {:ok, success} =
+               Authoring.create_decision_option(sidequest, nil, %{
+                 handle: "Success",
+                 text: %{"en" => "It worked"},
+                 outcome: :success
+               })
+
+      assert success.outcome == :success
+
+      assert {:error, cs2} =
+               Authoring.create_decision_option(sidequest, nil, %{
+                 handle: "Gated",
+                 text: %{"en" => "Nope"},
+                 outcome: :failure,
+                 condition: "global(resources) > 1"
+               })
+
+      assert %{condition: [_]} = errors_on(cs2)
+    end
+
+    test "event options validate gates against known value keys", %{
+      scenario: scenario,
+      group: group
+    } do
+      element = timeline_element_fixture(scenario)
+
+      assert {:ok, _} =
+               Authoring.create_decision_option(element, group, %{
+                 handle: "Bailout",
+                 text: %{"en" => "Bailout"},
+                 condition: "self(resources) >= 3"
+               })
+
+      assert {:error, cs} =
+               Authoring.create_decision_option(element, group, %{
+                 handle: "Bad gate",
+                 text: %{"en" => "Bad gate"},
+                 condition: "self(wealth) >= 3"
+               })
+
+      assert %{condition: ["is not a valid condition (unknown value key \"wealth\")"]} =
+               errors_on(cs)
+
+      assert {:error, cs2} =
+               Authoring.create_decision_option(element, group, %{
+                 handle: "No outcome",
+                 text: %{"en" => "No outcome"},
+                 outcome: :success
+               })
+
+      assert %{outcome: [_]} = errors_on(cs2)
+    end
+  end
+
+  describe "outcome matrix (option effects with target group)" do
+    setup do
+      user = user_fixture()
+      scenario = scenario_fixture(user)
+      gov = group_fixture(scenario, handle: "Gov")
+      media = group_fixture(scenario, handle: "Media")
+      vd = value_dimension_fixture(scenario)
+
+      {:ok, election} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Vote",
+          title: %{"en" => "Vote"},
+          kind: :election
+        })
+
+      {:ok, option} =
+        Authoring.create_decision_option(election, nil, %{handle: "Yes", text: %{"en" => "Yes"}})
+
+      %{option: option, vd: vd, gov: gov, media: media}
+    end
+
+    test "per-group cells are distinct and upsert independently", %{
+      option: option,
+      vd: vd,
+      gov: gov,
+      media: media
+    } do
+      assert {:ok, _} = Authoring.set_option_effect(option, vd, gov, 2.0)
+      assert {:ok, _} = Authoring.set_option_effect(option, vd, media, -1.0)
+      assert {:ok, _} = Authoring.set_option_effect(option, vd, gov, 3.0)
+
+      effects = Authoring.list_option_effects(option)
+      assert length(effects) == 2
+      assert Enum.find(effects, &(&1.group_id == gov.id)).delta == 3.0
+      assert Enum.find(effects, &(&1.group_id == media.id)).delta == -1.0
+    end
+
+    test "a deciding-group cell (nil) coexists with targeted cells", %{
+      option: option,
+      vd: vd,
+      gov: gov
+    } do
+      assert {:ok, _} = Authoring.set_option_effect(option, vd, 1.0)
+      assert {:ok, _} = Authoring.set_option_effect(option, vd, gov, 2.0)
+
+      assert length(Authoring.list_option_effects(option)) == 2
+
+      Authoring.delete_option_effect(option, vd)
+      assert [%{group_id: group_id}] = Authoring.list_option_effects(option)
+      assert group_id == gov.id
+    end
+  end
+
+  describe "endings" do
+    setup do
+      user = user_fixture()
+      scenario = scenario_fixture(user)
+      value_dimension_fixture(scenario, key: "risk", name: %{"en" => "Risk"})
+      %{scenario: scenario}
+    end
+
+    test "creates, updates, and lists by priority", %{scenario: scenario} do
+      assert {:ok, collapse} =
+               Authoring.create_ending(scenario, %{
+                 handle: "Collapse",
+                 title: %{"en" => "Systemic collapse"},
+                 condition: "global(risk) >= 8",
+                 priority: 10
+               })
+
+      assert {:ok, _default} =
+               Authoring.create_ending(scenario, %{
+                 handle: "Muddling through",
+                 title: %{"en" => "Muddling through"}
+               })
+
+      assert [first, second] = Authoring.list_endings(scenario)
+      assert first.id == collapse.id
+      assert second.condition == nil
+
+      assert {:ok, updated} = Authoring.update_ending(collapse, %{priority: 0})
+      assert updated.priority == 0
+    end
+
+    test "validates the condition (globals only, known keys)", %{scenario: scenario} do
+      assert {:error, cs} =
+               Authoring.create_ending(scenario, %{
+                 handle: "Bad",
+                 title: %{"en" => "Bad"},
+                 condition: "self(risk) >= 8"
+               })
+
+      assert %{condition: ["is not a valid condition (self(...) is not allowed here)"]} =
+               errors_on(cs)
+
+      assert {:error, cs2} =
+               Authoring.create_ending(scenario, %{
+                 handle: "Bad key",
+                 title: %{"en" => "Bad key"},
+                 condition: "global(chaos) >= 8"
+               })
+
+      assert %{condition: [_]} = errors_on(cs2)
+    end
+
+    test "handles are unique per scenario", %{scenario: scenario} do
+      assert {:ok, _} =
+               Authoring.create_ending(scenario, %{handle: "End", title: %{"en" => "End"}})
+
+      assert {:error, cs} =
+               Authoring.create_ending(scenario, %{handle: "End", title: %{"en" => "Other"}})
+
+      assert %{handle: [_]} = errors_on(cs)
+    end
+  end
+
   describe "group initial values (upsert)" do
     test "creates then updates by (group, value_dimension)" do
       user = user_fixture()

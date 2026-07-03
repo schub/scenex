@@ -18,10 +18,12 @@ defmodule Scenex.Authoring.Scenario do
     field :handle, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
+    field :director_notes, :map, default: %{}
     field :source_locale, :string, default: "en"
     field :visibility, Ecto.Enum, values: @visibilities, default: :draft
 
     has_many :memberships, ScenarioMembership
+    has_many :endings, Scenex.Authoring.Ending
     has_many :value_dimensions, ValueDimension
     has_many :groups, Group
     has_many :timeline_elements, TimelineElement
@@ -32,7 +34,7 @@ defmodule Scenex.Authoring.Scenario do
 
   def changeset(scenario, attrs) do
     scenario
-    |> cast(attrs, [:handle, :name, :description, :source_locale, :visibility])
+    |> cast(attrs, [:handle, :name, :description, :director_notes, :source_locale, :visibility])
     |> validate_required([:handle, :source_locale])
     |> validate_localized_required(:name)
     |> validate_format(:source_locale, ~r/^[a-z]{2}(-[A-Za-z]{2,})?$/,

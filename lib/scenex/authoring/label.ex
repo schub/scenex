@@ -23,6 +23,7 @@ defmodule Scenex.Authoring.Label do
   schema "labels" do
     field :handle, :string
     field :name, :map, default: %{}
+    field :director_notes, :map, default: %{}
     field :color, Ecto.Enum, values: @colors, default: :neutral
     field :icon, :string
     field :position, :integer, default: 0
@@ -34,7 +35,7 @@ defmodule Scenex.Authoring.Label do
 
   def changeset(label, attrs) do
     label
-    |> cast(attrs, [:scenario_id, :handle, :name, :color, :icon, :position])
+    |> cast(attrs, [:scenario_id, :handle, :name, :director_notes, :color, :icon, :position])
     |> validate_required([:scenario_id, :handle, :color])
     |> validate_localized_required(:name)
     |> assoc_constraint(:scenario)

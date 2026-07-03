@@ -26,6 +26,7 @@ defmodule Scenex.Authoring.ValueDimension do
     field :key, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
+    field :director_notes, :map, default: %{}
     field :input_scope, Ecto.Enum, values: @input_scopes, default: :per_group
     field :aggregation, :string, default: "avg"
     field :min, :float
@@ -46,6 +47,7 @@ defmodule Scenex.Authoring.ValueDimension do
       :key,
       :name,
       :description,
+      :director_notes,
       :input_scope,
       :aggregation,
       :min,
