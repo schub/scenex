@@ -1,4 +1,4 @@
-defmodule ScenexWeb.GameLiveTest do
+defmodule ScenexWeb.ScenarioLiveTest do
   use ScenexWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
@@ -10,40 +10,42 @@ defmodule ScenexWeb.GameLiveTest do
   setup :register_and_log_in_user
 
   describe "Index" do
-    test "creating a game redirects into the editor", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/games")
+    test "creating a scenario redirects into the editor", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios")
 
       assert {:ok, _show_lv, html} =
                lv
-               |> form("#new-game", %{"game" => %{"handle" => "My Game", "source_locale" => "en"}})
+               |> form("#new-scenario", %{
+                 "scenario" => %{"handle" => "My Scenario", "source_locale" => "en"}
+               })
                |> render_submit()
                |> follow_redirect(conn)
 
-      assert html =~ "My Game"
+      assert html =~ "My Scenario"
     end
 
-    test "lists games the user can see", %{conn: conn, user: user} do
-      game = game_fixture(user, handle: "Listed Game")
-      {:ok, _lv, html} = live(conn, ~p"/games")
-      assert html =~ "Listed Game"
-      assert html =~ "/games/#{game.id}"
+    test "lists scenarios the user can see", %{conn: conn, user: user} do
+      scenario = scenario_fixture(user, handle: "Listed Scenario")
+      {:ok, _lv, html} = live(conn, ~p"/scenarios")
+      assert html =~ "Listed Scenario"
+      assert html =~ "/scenarios/#{scenario.id}"
     end
   end
 
   describe "Show editor" do
     setup %{user: user} do
-      %{game: game_fixture(user)}
+      %{scenario: scenario_fixture(user)}
     end
 
-    test "adds a value definition", %{conn: conn, game: game} do
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+    test "adds a value definition", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
 
       lv |> element("button[phx-value-section=values]") |> render_click()
 
       html =
         lv
         |> form(~s(form[phx-submit="save_value"]), %{
-          "value_definition" => %{
+          "value_dimension" => %{
             "key" => "stability",
             "aggregation" => "avg",
             "input_scope" => "per_group",
@@ -56,14 +58,14 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "Stability"
     end
 
-    test "rejects an invalid aggregation formula", %{conn: conn, game: game} do
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+    test "rejects an invalid aggregation formula", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=values]") |> render_click()
 
       html =
         lv
         |> form(~s(form[phx-submit="save_value"]), %{
-          "value_definition" => %{
+          "value_dimension" => %{
             "key" => "risk",
             "aggregation" => "bogus(",
             "input_scope" => "per_group",
@@ -75,8 +77,8 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "not a valid formula"
     end
 
-    test "adds a group", %{conn: conn, game: game} do
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+    test "adds a group", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=groups]") |> render_click()
 
       html =
@@ -89,21 +91,22 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "Government"
     end
 
-    test "redirects when the game is not accessible", %{conn: conn} do
+    test "redirects when the scenario is not accessible", %{conn: conn} do
       other = user_fixture()
-      hidden = game_fixture(other)
+      hidden = scenario_fixture(other)
 
-      assert {:error, {:live_redirect, %{to: "/games"}}} = live(conn, ~p"/games/#{hidden.id}")
+      assert {:error, {:live_redirect, %{to: "/scenarios"}}} =
+               live(conn, ~p"/scenarios/#{hidden.id}")
     end
 
-    test "adds an event", %{conn: conn, game: game} do
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
-      lv |> element("button[phx-value-section=events]") |> render_click()
+    test "adds a timeline element", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=timeline]") |> render_click()
 
       html =
         lv
         |> form(~s(form[phx-submit="save_event"]), %{
-          "event" => %{
+          "timeline_element" => %{
             "handle" => "Blackout",
             "title" => %{"en" => "Blackout"},
             "kind" => "event",
@@ -115,8 +118,8 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "Blackout"
     end
 
-    test "adds a label", %{conn: conn, game: game} do
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
+    test "adds a label", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=labels]") |> render_click()
 
       html =
@@ -134,17 +137,17 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "Aggressive"
     end
 
-    test "adds a decision option with an effect and a label", %{conn: conn, game: game} do
-      value = value_definition_fixture(game, key: "stability", name: %{"en" => "Stability"})
-      group = group_fixture(game, name: %{"en" => "Government"})
-      event = event_fixture(game, title: %{"en" => "Blackout"})
-      label = label_fixture(game, name: %{"en" => "Aggressive"}, color: :error)
+    test "adds a decision option with an effect and a label", %{conn: conn, scenario: scenario} do
+      value = value_dimension_fixture(scenario, key: "stability", name: %{"en" => "Stability"})
+      group = group_fixture(scenario, name: %{"en" => "Government"})
+      timeline_element = timeline_element_fixture(scenario, title: %{"en" => "Blackout"})
+      label = label_fixture(scenario, name: %{"en" => "Aggressive"}, color: :error)
 
-      {:ok, lv, _html} = live(conn, ~p"/games/#{game.id}")
-      lv |> element("button[phx-value-section=events]") |> render_click()
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=timeline]") |> render_click()
 
       lv
-      |> element(~s{button[phx-click=open_event][phx-value-id="#{event.id}"]})
+      |> element(~s{button[phx-click=open_event][phx-value-id="#{timeline_element.id}"]})
       |> render_click()
 
       lv
@@ -168,7 +171,7 @@ defmodule ScenexWeb.GameLiveTest do
       assert html =~ "Aggressive"
       assert html =~ "Stability -5"
 
-      [option] = Authoring.list_decision_options(event)
+      [option] = Authoring.list_decision_options(timeline_element)
       assert [%{delta: -5.0}] = option.effects
       assert [%{name: %{"en" => "Aggressive"}}] = option.labels
     end

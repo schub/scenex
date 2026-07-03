@@ -42,7 +42,7 @@ Settled in discussion and treated as fixed. Changing one is an architecture deci
 
 - **Conditional options ("gates").** Any option may carry a condition on game state — `self(key)` (deciding group's value; event options only) and `global(key)`, one comparison, arithmetic allowed. Unmet options are **shown greyed-out with the reason, never hidden**.
 - **Endings.** Authored final scenes with optional conditions on the final globals + priority. At game end the system **recommends** matching endings; **the GM picks and may override**. Endings apply no effects.
-- **Director's notes (`gm_notes`).** A localized, GM-/performer-facing text field on nearly every content entity. Never shown to players.
+- **Director's notes (`director_notes`).** A localized, GM-/performer-facing text field on nearly every content entity. Never shown to players.
 - **The system proposes, the GM disposes.** Nothing fires automatically in a live show: the GM triggers every timeline element, adjudicates sidequests, breaks ties, declares the end. Conditions, defaults, and ending matches are *recommendations*. No dice, no hidden randomness.
 - **Manual before automatic.** Election votes can always be entered as a GM hand-count tally; device-based individual voting is an enhancement, not a dependency. Well-being is collected analog (smiley coins) and entered by the GM.
 - **One person, one vote.** Vote weight is never derived from game state (mechanics must never depend on content).
@@ -85,7 +85,7 @@ Settled in discussion and treated as fixed. Changing one is an architecture deci
 
 ```
 Scenex.Accounts     # auth (phx.gen.auth), scopes — Layer 2 identity
-Scenex.Authoring    # game definitions: games, values, groups, events,
+Scenex.Authoring    # game definitions: scenarios, values, groups, timeline elements,
                     #   options, effects, labels, endings — Layer 2 (CRUD)
 Scenex.Engine       # PURE: Sim (state + effects + clamping), Formula
                     #   (aggregation), Condition (gates/endings evaluation)
@@ -119,22 +119,22 @@ Group device ├─(actions)→ Session GenServer ┼─→ projected display (L
 
 Built (✓) or planned (＋):
 
-- ✓ **`Game`** — `handle`, `source_locale`, `visibility` (`draft/invite_only/published`). Localized: `name`, `description`. ＋ `gm_notes`.
-- ✓ **`GameMembership`** — `(game, user, role: owner|author|viewer)`.
-- ✓ **`ValueDefinition`** — `key` (slug, unique per game), `input_scope`, `aggregation` formula, `min`/`max`/`default_value`, `position`. Localized: `name`, `description`. ＋ `gm_notes`.
-- ✓ **`Group`** — `handle` (unique per game), `position`. Localized: `name`, `description`. ＋ `gm_notes`.
-- ✓ **`GroupInitialValue`** — `(group, value_definition, initial)`, upsert by unique key.
-- ✓ **`Event`** — `handle` (unique per game), `position`, **`kind` (`event | election | sidequest`)**, `trigger` (`manual`), `deadline_seconds`. Localized: `title`, `narrative`. ＋ `gm_notes`. Kind determines the mechanics (see below); v1 currently treats kinds identically — **that changes in Phase 2.5**.
-- ✓ **`DecisionOption`** — belongs to event; `handle` (unique per event), `is_default`, `position`. Localized: `text`. ＋ `gm_notes`, ＋ **`condition`** (gate string, nullable). For **event** kind: `group_id` required (the deciding group). For **election** kind: `group_id` nil (options belong to the whole room). For **sidequest** kind: exactly two options — the `success` and `failure` outcome bundles (failure may be effect-less).
-- ✓ **`OptionEffect`** — `(option, value_definition, delta)`, upsert by unique key. ＋ **optional `group_id`**: `nil` = "the deciding group" (event options); set = explicit target group (**the outcome matrix** for election and sidequest options).
-- ✓ **`Label`** + join table — game-scoped, reusable, presentation-only (name, color, icon).
-- ＋ **`Ending`** — belongs to game; `handle`, `priority`, **`condition`** (on globals, nullable). Localized: `title`, `narrative`, `gm_notes`.
+- ✓ **`Scenario`** — `handle`, `source_locale`, `visibility` (`draft/invite_only/published`). Localized: `name`, `description`. ＋ `director_notes`.
+- ✓ **`ScenarioMembership`** — `(scenario, user, role: owner|author|viewer)`.
+- ✓ **`ValueDimension`** — `key` (slug, unique per scenario), `input_scope`, `aggregation` formula, `min`/`max`/`default_value`, `position`. Localized: `name`, `description`. ＋ `director_notes`.
+- ✓ **`Group`** — `handle` (unique per scenario), `position`. Localized: `name`, `description`. ＋ `director_notes`.
+- ✓ **`GroupInitialValue`** — `(group, value_dimension, initial)`, upsert by unique key.
+- ✓ **`TimelineElement`** — `handle` (unique per scenario), `position`, **`kind` (`event | election | sidequest`)**, `trigger` (`manual`), `deadline_seconds`. Localized: `title`, `narrative`. ＋ `director_notes`. Kind determines the mechanics (see below); v1 currently treats kinds identically — **that changes in Phase 2.5**.
+- ✓ **`DecisionOption`** — belongs to timeline element; `handle` (unique per timeline element), `is_default`, `position`. Localized: `text`. ＋ `director_notes`, ＋ **`condition`** (gate string, nullable). For **event** kind: `group_id` required (the deciding group). For **election** kind: `group_id` nil (options belong to the whole room). For **sidequest** kind: exactly two options — the `success` and `failure` outcome bundles (failure may be effect-less).
+- ✓ **`OptionEffect`** — `(option, value_dimension, delta)`, upsert by unique key. ＋ **optional `group_id`**: `nil` = "the deciding group" (event options); set = explicit target group (**the outcome matrix** for election and sidequest options).
+- ✓ **`Label`** + join table — scenario-scoped, reusable, presentation-only (name, color, icon).
+- ＋ **`Ending`** — belongs to scenario; `handle`, `priority`, **`condition`** (on globals, nullable). Localized: `title`, `narrative`, `director_notes`.
 
 **Condition language (Engine.Condition):** one comparison (`>= <= > < == !=`) between two arithmetic expressions over `self(key)`, `global(key)`, and numbers. `self()` is invalid on election options and endings (no single deciding group). Boolean `and/or` deferred.
 
 ### Layer 3 — Session (event-sourced)
 
-- **`Session`** — belongs to a `Game`. `status` (`draft → live → paused → ended`), `clock_state`, venue label, chosen `ending_id` (set at the end).
+- **`Session`** — belongs to a `Scenario`. `status` (`draft → live → paused → ended`), `clock_state`, venue label, chosen `ending_id` (set at the end).
 - **`SessionEvent`** — the **append-only log**: `session_id`, `type`, `payload` (jsonb), `game_time_ms`, `sequence`. Types include: `session_started`, `event_triggered`, `option_chosen`, `deadline_lapsed` (default applied), `election_opened`, `vote_tally_entered` *(or `vote_cast` for device voting)*, `election_resolved`, `sidequest_assigned`, `sidequest_adjudicated`, `wellbeing_tally_entered`, `correction`, `session_ended`, `ending_selected`. **Never updated or deleted.**
 - **`CapabilityToken`** — `session_id`, `scope` (`group:<id>` | `participant`), `token`, `expires_at`. Backs the QR codes. Group tokens are core; participant tokens (device voting) are an enhancement.
 - *(Projection lives in the `GenServer`; snapshots deferred — logs are tiny at our scale.)*
@@ -178,7 +178,7 @@ Ephemeral what-if view driving the same pure Engine: pick options per group per 
 ### ＋ Phase 2.5 — Design alignment *(Days 1–3 of the remaining window)*
 Bring the software up to the hardened game design:
 1. **`Engine.Condition`** — parse/evaluate the gate language (pure, test-first; powers gates, ending recommendations, and future GM hints).
-2. **Schema migrations:** `gm_notes` on content entities; `condition` on options; optional `group_id` on `OptionEffect` (outcome matrices); `Ending` entity; election options without group; sidequest success/failure option pairs.
+2. **Schema migrations:** `director_notes` on content entities; `condition` on options; optional `group_id` on `OptionEffect` (outcome matrices); `Ending` entity; election options without group; sidequest success/failure option pairs.
 3. **CMS:** election option editor with the **per-group effect matrix grid**; sidequest editor (outcome bundles); endings editor; director's-notes fields; condition input with validation.
 4. **Dry-run upgrade:** elections (pick a winner → matrix applies), gates (locked options greyed out with reason), sidequest adjudication (choose success/failure + assignee group), ending recommendations at the end. The dry-run becomes a full content-balancing tool for the workshop.
 
@@ -230,7 +230,7 @@ The hard core, built on the proven Engine.
 5. **Ending auto-recommendation** (GM picks manually from the list; conditions evaluated later).
 6. Translation-status dashboard; `Cldr` niceties.
 
-**Never cut:** the three-layer split, the pure `Engine` (incl. `Condition`), event-sourcing for Layer 3, i18n-ready schema (incl. `gm_notes`), the two-tier identity model, the outcome-matrix model. These are load-bearing.
+**Never cut:** the three-layer split, the pure `Engine` (incl. `Condition`), event-sourcing for Layer 3, i18n-ready schema (incl. `director_notes`), the two-tier identity model, the outcome-matrix model. These are load-bearing.
 
 ---
 

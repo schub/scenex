@@ -2,20 +2,20 @@
 #
 # Loads the paper-prototype content from
 # docs/legacy-docu/Mini-Megagame-Toolkit/designs into the database as a real
-# game owned by the account below. Re-runnable: it deletes any existing
-# game with handle "CIVITAS" first (children cascade).
+# scenario owned by the account below. Re-runnable: it deletes any existing
+# scenario with handle "CIVITAS" first (children cascade).
 #
 #     mix run priv/repo/seeds_civitas.exs
 
 import Ecto.Query
 
 alias Scenex.{Accounts, Authoring, Repo}
-alias Scenex.Authoring.Game
+alias Scenex.Authoring.Scenario
 
 owner_email = System.get_env("CIVITAS_OWNER_EMAIL", "schub@example.com")
 owner = Repo.get_by!(Accounts.User, email: owner_email)
 
-Repo.all(from g in Game, where: g.handle == "CIVITAS") |> Enum.each(&Repo.delete/1)
+Repo.all(from g in Scenario, where: g.handle == "CIVITAS") |> Enum.each(&Repo.delete/1)
 
 # ── Markdown helpers ────────────────────────────────────────────────────────
 bullets = fn items -> Enum.map_join(items, "\n", &("- " <> &1)) end
@@ -56,9 +56,9 @@ opt_text = fn context, pros, cons ->
   """
 end
 
-# ── Game ────────────────────────────────────────────────────────────────────
-{:ok, game} =
-  Authoring.create_game(owner, %{
+# ── Scenario ────────────────────────────────────────────────────────────────────
+{:ok, scenario} =
+  Authoring.create_scenario(owner, %{
     handle: "CIVITAS",
     name: %{"de" => "CIVITAS", "en" => "CIVITAS"},
     description: %{
@@ -83,7 +83,7 @@ value_by_key =
   |> Enum.with_index(1)
   |> Map.new(fn {{key, de, en}, pos} ->
     {:ok, vd} =
-      Authoring.create_value_definition(game, %{
+      Authoring.create_value_dimension(scenario, %{
         key: key,
         name: %{"de" => de, "en" => en},
         aggregation: "avg",
@@ -173,7 +173,7 @@ base_values = Map.new(Map.keys(value_by_key), &{&1, 5})
 group_by_gid =
   Map.new(groups, fn g ->
     {:ok, grp} =
-      Authoring.create_group(game, %{
+      Authoring.create_group(scenario, %{
         handle: g.handle,
         name: %{"de" => g.name},
         description: %{"de" => g.desc},
@@ -202,7 +202,7 @@ labels = [
 label_by_name =
   Map.new(labels, fn {handle, de, en, color, icon, pos} ->
     {:ok, l} =
-      Authoring.create_label(game, %{
+      Authoring.create_label(scenario, %{
         handle: handle,
         name: %{"de" => de, "en" => en},
         color: color,
@@ -222,7 +222,7 @@ marker_label = fn marker ->
 end
 
 # ── Events ──────────────────────────────────────────────────────────────────
-events = [
+timeline_elements = [
   %{
     eid: "E-01",
     title: "Massive Proteste",
@@ -283,9 +283,9 @@ events = [
 ]
 
 event_by_eid =
-  Map.new(events, fn e ->
+  Map.new(timeline_elements, fn e ->
     {:ok, ev} =
-      Authoring.create_event(game, %{
+      Authoring.create_timeline_element(scenario, %{
         handle: e.title,
         title: %{"de" => e.title},
         narrative: %{"de" => e.narrative},
@@ -296,10 +296,10 @@ event_by_eid =
     {e.eid, ev}
   end)
 
-# ── Decision options (3 events × 3 groups × 3 options) ──────────────────────
+# ── Decision options (3 timeline_elements × 3 groups × 3 options) ──────────────────────
 # {eid, gid, pos, name, marker, context, pros, cons, effects}
 options = [
-  # Event 1 — Massive Proteste
+  # TimelineElement 1 — Massive Proteste
   {"E-01", "G-REG", 1, "Polizei massiv einsetzen", "🔺 Eskalation",
    "Schnelle Kontrolle der Straße – mit Kosten für Vertrauen.",
    ["Ordnung schnell wiederherstellen", "Signalisiert Handlungsfähigkeit", "Kurzfristig stabilisierend"],
@@ -346,7 +346,7 @@ options = [
    ["Wirtschaftliche Verluste", "Versorgung/Services leiden", "Signalisiert Krise"],
    ["−2 Ressourcen", "−1 Risiko"]},
 
-  # Event 2 — Ökonomische Instabilität
+  # TimelineElement 2 — Ökonomische Instabilität
   {"E-02", "G-REG", 1, "Rettungspaket", "🔻 Deeskalation",
    "Staat greift ein – Stabilität kaufen mit Ressourcen.",
    ["Stabilisiert Wirtschaft", "Verhindert Massenarbeitslosigkeit", "Stärkt Vertrauen in Staat"],
@@ -393,7 +393,7 @@ options = [
    ["Kurzfristig Image-Risiko", "Weniger Kontrolle", "Weniger Einfluss"],
    ["+1 Solidarität", "−1 Einfluss"]},
 
-  # Event 3 — Informationschaos
+  # TimelineElement 3 — Informationschaos
   {"E-03", "G-REG", 1, "Faktencheck-Kampagne", "⚪ Neutral",
    "Glaubwürdigkeit kaufen – kostet Ressourcen.",
    ["Stärkt Glaubwürdigkeit", "Keine Repression", "Klare Linie"],
@@ -466,10 +466,10 @@ end)
 IO.puts("""
 Seeded CIVITAS:
   owner:   #{owner.email}
-  game:    #{game.id}
+  scenario:    #{scenario.id}
   values:  #{map_size(value_by_key)}
   groups:  #{map_size(group_by_gid)}
   labels:  #{map_size(label_by_name)}
-  events:  #{map_size(event_by_eid)}
+  timeline_elements:  #{map_size(event_by_eid)}
   options: #{length(options)}
 """)

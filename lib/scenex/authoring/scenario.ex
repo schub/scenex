@@ -1,11 +1,11 @@
-defmodule Scenex.Authoring.Game do
-  @moduledoc "A game definition — the editable, reusable content of one game."
+defmodule Scenex.Authoring.Scenario do
+  @moduledoc "A scenario definition — the editable, reusable content of one scenario."
   use Ecto.Schema
 
   import Ecto.Changeset
   import Scenex.Authoring.Validators
 
-  alias Scenex.Authoring.{Event, Group, GameMembership, Label, ValueDefinition}
+  alias Scenex.Authoring.{TimelineElement, Group, ScenarioMembership, Label, ValueDimension}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -14,24 +14,24 @@ defmodule Scenex.Authoring.Game do
   @visibilities [:draft, :invite_only, :published]
   def visibilities, do: @visibilities
 
-  schema "games" do
+  schema "scenarios" do
     field :handle, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
     field :source_locale, :string, default: "en"
     field :visibility, Ecto.Enum, values: @visibilities, default: :draft
 
-    has_many :memberships, GameMembership
-    has_many :value_definitions, ValueDefinition
+    has_many :memberships, ScenarioMembership
+    has_many :value_dimensions, ValueDimension
     has_many :groups, Group
-    has_many :events, Event
+    has_many :timeline_elements, TimelineElement
     has_many :labels, Label
 
     timestamps()
   end
 
-  def changeset(game, attrs) do
-    game
+  def changeset(scenario, attrs) do
+    scenario
     |> cast(attrs, [:handle, :name, :description, :source_locale, :visibility])
     |> validate_required([:handle, :source_locale])
     |> validate_localized_required(:name)

@@ -1,9 +1,9 @@
-defmodule ScenexWeb.GameLive.Simulate do
+defmodule ScenexWeb.ScenarioLive.Simulate do
   @moduledoc """
-  Ephemeral dry-run / what-if sandbox for a game definition (Phase 2).
+  Ephemeral dry-run / what-if sandbox for a scenario definition (Phase 2).
 
-  Builds a pure `Scenex.Engine.Sim` from the game's values, groups and initial
-  values, then lets you pick one decision option per group per event and watch
+  Builds a pure `Scenex.Engine.Sim` from the scenario's values, groups and initial
+  values, then lets you pick one decision option per group per timeline element and watch
   the per-group values and derived globals recompute. Nothing is persisted —
   this is a keyboard sanity-check of the same engine the live sessions use.
   """
@@ -20,14 +20,16 @@ defmodule ScenexWeb.GameLive.Simulate do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        {I18n.t!(@game.name, @locale, default: "Untitled game")}
+        {I18n.t!(@scenario.name, @locale, default: "Untitled scenario")}
         <:subtitle>
           <span class="badge badge-sm badge-accent">Dry run</span>
           {@decided}/{@total_slots} decisions made
         </:subtitle>
         <:actions>
           <button type="button" phx-click="reset" class="btn btn-sm btn-ghost">Reset</button>
-          <.link navigate={~p"/games/#{@game.id}"} class="btn btn-sm btn-ghost">← Editor</.link>
+          <.link navigate={~p"/scenarios/#{@scenario.id}"} class="btn btn-sm btn-ghost">
+            ← Editor
+          </.link>
         </:actions>
       </.header>
 
@@ -47,7 +49,7 @@ defmodule ScenexWeb.GameLive.Simulate do
       </div>
 
       <p :if={@value_defs == [] or @groups == []} class="mt-6 opacity-70">
-        This game needs at least one value and one group to simulate.
+        This scenario needs at least one value and one group to simulate.
       </p>
 
       <%!-- Live board --%>
@@ -86,7 +88,7 @@ defmodule ScenexWeb.GameLive.Simulate do
 
       <%!-- Events & decisions --%>
       <div class="mt-8 space-y-8">
-        <section :for={%{event: e, options: opts} <- @events} class="space-y-3">
+        <section :for={%{timeline_element: e, options: opts} <- @timeline_elements} class="space-y-3">
           <h3 class="text-lg font-semibold">
             <span class="opacity-50">{e.position}.</span>
             {I18n.t!(e.title, @locale, default: e.handle)}
@@ -101,7 +103,7 @@ defmodule ScenexWeb.GameLive.Simulate do
                 :for={o <- options_for_group(opts, g.id)}
                 type="button"
                 phx-click="toggle_option"
-                phx-value-event={e.id}
+                phx-value-timeline_element={e.id}
                 phx-value-group={g.id}
                 phx-value-option={o.id}
                 class={[
@@ -132,20 +134,22 @@ defmodule ScenexWeb.GameLive.Simulate do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    case Authoring.get_game_for_user(id, socket.assigns.current_scope.user) do
+    case Authoring.get_scenario_for_user(id, socket.assigns.current_scope.user) do
       nil ->
-        {:ok, socket |> put_flash(:error, "Game not found.") |> push_navigate(to: ~p"/games")}
+        {:ok,
+         socket |> put_flash(:error, "Scenario not found.") |> push_navigate(to: ~p"/scenarios")}
 
-      {game, role} ->
+      {scenario, role} ->
         {:ok,
          socket
          |> assign(
-           game: game,
+           scenario: scenario,
            role: role,
-           locale: game.source_locale,
-           locales: Enum.uniq([game.source_locale | @locale_choices]),
+           locale: scenario.source_locale,
+           locales: Enum.uniq([scenario.source_locale | @locale_choices]),
            selections: %{},
-           page_title: "Dry run — #{I18n.t!(game.name, game.source_locale, default: "Game")}"
+           page_title:
+             "Dry run — #{I18n.t!(scenario.name, scenario.source_locale, default: "Scenario")}"
          )
          |> load_definition()
          |> recompute()}
@@ -161,7 +165,11 @@ defmodule ScenexWeb.GameLive.Simulate do
     {:noreply, socket |> assign(:selections, %{}) |> recompute()}
   end
 
-  def handle_event("toggle_option", %{"event" => eid, "group" => gid, "option" => oid}, socket) do
+  def handle_event(
+        "toggle_option",
+        %{"timeline_element" => eid, "group" => gid, "option" => oid},
+        socket
+      ) do
     key = {eid, gid}
 
     selections =
@@ -175,9 +183,9 @@ defmodule ScenexWeb.GameLive.Simulate do
   # ── Building the simulation ───────────────────────────────────────────
 
   defp load_definition(socket) do
-    game = socket.assigns.game
-    value_defs = Authoring.list_value_definitions(game)
-    groups = Authoring.list_groups(game)
+    scenario = socket.assigns.scenario
+    value_defs = Authoring.list_value_dimensions(scenario)
+    groups = Authoring.list_groups(scenario)
 
     specs = Enum.map(value_defs, &Authoring.to_value_spec/1)
     group_ids = Enum.map(groups, & &1.id)
@@ -187,15 +195,15 @@ defmodule ScenexWeb.GameLive.Simulate do
         acc ->
           Map.update(
             acc,
-            iv.value_definition_id,
+            iv.value_dimension_id,
             %{g.id => iv.initial},
             &Map.put(&1, g.id, iv.initial)
           )
       end
 
-    events =
-      Authoring.list_events(game)
-      |> Enum.map(fn e -> %{event: e, options: Authoring.list_decision_options(e)} end)
+    timeline_elements =
+      Authoring.list_timeline_elements(scenario)
+      |> Enum.map(fn e -> %{timeline_element: e, options: Authoring.list_decision_options(e)} end)
 
     per_group_ids =
       for vd <- value_defs, vd.input_scope == :per_group, into: MapSet.new(), do: vd.id
@@ -204,29 +212,29 @@ defmodule ScenexWeb.GameLive.Simulate do
       value_defs: value_defs,
       value_index: Map.new(value_defs, &{&1.id, &1}),
       groups: groups,
-      events: events,
+      timeline_elements: timeline_elements,
       per_group_ids: per_group_ids,
       initial_sim: Sim.new(specs, group_ids, initial),
-      total_slots: length(events) * length(groups)
+      total_slots: length(timeline_elements) * length(groups)
     )
   end
 
-  # Fold the current selections onto the fresh sim, in a stable order (events by
+  # Fold the current selections onto the fresh sim, in a stable order (elements by
   # position, then groups by position) so results don't depend on click order.
   defp recompute(socket) do
     %{
       initial_sim: sim0,
       selections: selections,
-      events: events,
+      timeline_elements: timeline_elements,
       groups: groups,
       per_group_ids: per_group_ids
     } = socket.assigns
 
     options_by_id =
-      for %{options: opts} <- events, o <- opts, into: %{}, do: {o.id, o}
+      for %{options: opts} <- timeline_elements, o <- opts, into: %{}, do: {o.id, o}
 
     sim =
-      for %{event: e} <- events, g <- groups, reduce: sim0 do
+      for %{timeline_element: e} <- timeline_elements, g <- groups, reduce: sim0 do
         acc ->
           case selections[{e.id, g.id}] do
             nil -> acc
@@ -239,8 +247,8 @@ defmodule ScenexWeb.GameLive.Simulate do
 
   defp apply_option(sim, %{group_id: gid, effects: effects}, per_group_ids) do
     Enum.reduce(effects, sim, fn eff, acc ->
-      if MapSet.member?(per_group_ids, eff.value_definition_id),
-        do: Sim.apply_effect(acc, eff.value_definition_id, gid, eff.delta),
+      if MapSet.member?(per_group_ids, eff.value_dimension_id),
+        do: Sim.apply_effect(acc, eff.value_dimension_id, gid, eff.delta),
         else: acc
     end)
   end
@@ -250,8 +258,8 @@ defmodule ScenexWeb.GameLive.Simulate do
   defp options_for_group(options, group_id),
     do: Enum.filter(options, &(&1.group_id == group_id))
 
-  defp selected?(selections, event_id, group_id, option_id),
-    do: selections[{event_id, group_id}] == option_id
+  defp selected?(selections, timeline_element_id, group_id, option_id),
+    do: selections[{timeline_element_id, group_id}] == option_id
 
   defp cell_class(sim, vd, group_id) do
     value = Sim.get(sim, vd.id, group_id)
@@ -277,7 +285,7 @@ defmodule ScenexWeb.GameLive.Simulate do
   defp fmt_effects(effects, index, locale) do
     Enum.map_join(effects, ", ", fn e ->
       name =
-        case index[e.value_definition_id] do
+        case index[e.value_dimension_id] do
           nil -> "?"
           vd -> I18n.t!(vd.name, locale, default: vd.key)
         end

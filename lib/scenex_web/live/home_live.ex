@@ -15,8 +15,8 @@ defmodule ScenexWeb.HomeLive do
         </.header>
 
         <div class="flex justify-center gap-3">
-          <.link :if={@current_scope} navigate={~p"/games"} class="btn btn-primary">
-            Go to your games <span aria-hidden="true">→</span>
+          <.link :if={@current_scope} navigate={~p"/scenarios"} class="btn btn-primary">
+            Go to your scenarios <span aria-hidden="true">→</span>
           </.link>
 
           <.link :if={!@current_scope} navigate={~p"/users/register"} class="btn btn-primary">

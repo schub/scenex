@@ -1,17 +1,17 @@
-defmodule ScenexWeb.GameLive.Show do
+defmodule ScenexWeb.ScenarioLive.Show do
   @moduledoc """
-  The game-definition editor. Sections: Settings, Values, Groups, Initial values,
-  Events, Labels. Content is edited one working locale at a time; authorization
+  The scenario-definition editor. Sections: Settings, Values, Groups, Initial values,
+  Timeline, Labels. Content is edited one working locale at a time; authorization
   comes from the Authoring context (owners/authors edit, else read-only).
   """
   use ScenexWeb, :live_view
 
   alias Scenex.Authoring
-  alias Scenex.Authoring.{DecisionOption, Event, Group, Label, ValueDefinition}
+  alias Scenex.Authoring.{DecisionOption, TimelineElement, Group, Label, ValueDimension}
   alias Scenex.I18n
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values groups initial events labels)a
+  @sections ~w(settings values groups initial timeline labels)a
   @locale_choices ~w(en de pt es it)
 
   @impl true
@@ -19,16 +19,19 @@ defmodule ScenexWeb.GameLive.Show do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        {I18n.t!(@game.name, @locale, default: "Untitled game")}
+        {I18n.t!(@scenario.name, @locale, default: "Untitled scenario")}
         <:subtitle>
-          <span class="badge badge-sm">{@game.visibility}</span>
+          <span class="badge badge-sm">{@scenario.visibility}</span>
           <span :if={not @can_edit?} class="badge badge-sm badge-warning">read-only ({@role})</span>
         </:subtitle>
         <:actions>
-          <.link navigate={~p"/games/#{@game.id}/simulate"} class="btn btn-sm btn-accent btn-soft">
+          <.link
+            navigate={~p"/scenarios/#{@scenario.id}/simulate"}
+            class="btn btn-sm btn-accent btn-soft"
+          >
             Dry run
           </.link>
-          <.link navigate={~p"/games"} class="btn btn-sm btn-ghost">← All games</.link>
+          <.link navigate={~p"/scenarios"} class="btn btn-sm btn-ghost">← All scenarios</.link>
         </:actions>
       </.header>
 
@@ -70,13 +73,13 @@ defmodule ScenexWeb.GameLive.Show do
             />
             <.input
               type="text"
-              name={"game[name][#{@locale}]"}
+              name={"scenario[name][#{@locale}]"}
               value={LocalizedForm.value(@settings_form, :name, @locale)}
               label={"Name (#{@locale})"}
             />
             <.input
               type="textarea"
-              name={"game[description][#{@locale}]"}
+              name={"scenario[description][#{@locale}]"}
               value={LocalizedForm.value(@settings_form, :description, @locale)}
               label={"Description (#{@locale}, Markdown)"}
             />
@@ -106,7 +109,7 @@ defmodule ScenexWeb.GameLive.Show do
                 </tr>
               </thead>
               <tbody>
-                <tr :for={v <- @value_definitions}>
+                <tr :for={v <- @value_dimensions}>
                   <td class="font-mono text-xs">{v.key}</td>
                   <td>{I18n.t!(v.name, @locale, default: "—")}</td>
                   <td>{v.input_scope}</td>
@@ -134,7 +137,7 @@ defmodule ScenexWeb.GameLive.Show do
                     </button>
                   </td>
                 </tr>
-                <tr :if={@value_definitions == []}>
+                <tr :if={@value_dimensions == []}>
                   <td colspan="6" class="opacity-70">No values yet.</td>
                 </tr>
               </tbody>
@@ -159,7 +162,7 @@ defmodule ScenexWeb.GameLive.Show do
                 />
                 <.input
                   type="text"
-                  name={"value_definition[name][#{@locale}]"}
+                  name={"value_dimension[name][#{@locale}]"}
                   value={LocalizedForm.value(@value_form, :name, @locale)}
                   label={"Name (#{@locale})"}
                 />
@@ -167,7 +170,7 @@ defmodule ScenexWeb.GameLive.Show do
                 <div class="sm:col-span-2">
                   <.input
                     type="textarea"
-                    name={"value_definition[description][#{@locale}]"}
+                    name={"value_dimension[description][#{@locale}]"}
                     value={LocalizedForm.value(@value_form, :description, @locale)}
                     label={"Description (#{@locale}, Markdown)"}
                   />
@@ -305,7 +308,7 @@ defmodule ScenexWeb.GameLive.Show do
 
         <%!-- Initial values --%>
         <div :if={@section == :initial} class="space-y-4">
-          <% pg = per_group_values(@value_definitions) %>
+          <% pg = per_group_values(@value_dimensions) %>
           <p :if={pg == [] or @groups == []} class="opacity-70">
             Add at least one per-group value and one group first.
           </p>
@@ -345,7 +348,7 @@ defmodule ScenexWeb.GameLive.Show do
         </div>
 
         <%!-- Events --%>
-        <div :if={@section == :events} class="space-y-6">
+        <div :if={@section == :timeline} class="space-y-6">
           <div class="overflow-x-auto">
             <table class="table">
               <thead>
@@ -359,7 +362,10 @@ defmodule ScenexWeb.GameLive.Show do
                 </tr>
               </thead>
               <tbody>
-                <tr :for={e <- @events} class={e.id == @selected_event_id && "bg-base-200"}>
+                <tr
+                  :for={e <- @timeline_elements}
+                  class={e.id == @selected_timeline_element_id && "bg-base-200"}
+                >
                   <td>{e.position}</td>
                   <td class="font-medium">{e.handle}</td>
                   <td>{I18n.t!(e.title, @locale, default: "—")}</td>
@@ -386,17 +392,17 @@ defmodule ScenexWeb.GameLive.Show do
                     <button
                       :if={@can_edit?}
                       type="button"
-                      phx-click="delete_event"
+                      phx-click="delete_timeline_element"
                       phx-value-id={e.id}
-                      data-confirm="Delete this event and all its options?"
+                      data-confirm="Delete this timeline element and all its options?"
                       class="btn btn-xs btn-error btn-soft"
                     >
                       Delete
                     </button>
                   </td>
                 </tr>
-                <tr :if={@events == []}>
-                  <td colspan="6" class="opacity-70">No events yet.</td>
+                <tr :if={@timeline_elements == []}>
+                  <td colspan="6" class="opacity-70">No timeline elements yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -404,12 +410,14 @@ defmodule ScenexWeb.GameLive.Show do
 
           <div :if={@can_edit?} class="card bg-base-200">
             <div class="card-body">
-              <h3 class="font-semibold">{if @editing_event, do: "Edit event", else: "New event"}</h3>
+              <h3 class="font-semibold">
+                {if @editing_event, do: "Edit element", else: "New element"}
+              </h3>
               <.form for={@event_form} phx-submit="save_event" class="grid gap-3 sm:grid-cols-2">
                 <.input field={@event_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
-                  name={"event[title][#{@locale}]"}
+                  name={"timeline_element[title][#{@locale}]"}
                   value={LocalizedForm.value(@event_form, :title, @locale)}
                   label={"Title (#{@locale})"}
                 />
@@ -417,7 +425,7 @@ defmodule ScenexWeb.GameLive.Show do
                 <div class="sm:col-span-2">
                   <.input
                     type="textarea"
-                    name={"event[narrative][#{@locale}]"}
+                    name={"timeline_element[narrative][#{@locale}]"}
                     value={LocalizedForm.value(@event_form, :narrative, @locale)}
                     label={"Narrative (#{@locale}, Markdown)"}
                   />
@@ -426,7 +434,7 @@ defmodule ScenexWeb.GameLive.Show do
                   field={@event_form[:kind]}
                   type="select"
                   label="Kind"
-                  options={Enum.map(Event.kinds(), &{Phoenix.Naming.humanize(&1), &1})}
+                  options={Enum.map(TimelineElement.kinds(), &{Phoenix.Naming.humanize(&1), &1})}
                 />
                 <.input
                   field={@event_form[:deadline_seconds]}
@@ -434,7 +442,7 @@ defmodule ScenexWeb.GameLive.Show do
                   label="Deadline (seconds, optional)"
                 />
                 <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save event</.button>
+                  <.button variant="primary">Save element</.button>
                   <button
                     :if={@editing_event}
                     type="button"
@@ -448,11 +456,14 @@ defmodule ScenexWeb.GameLive.Show do
             </div>
           </div>
 
-          <%!-- Options for the opened event --%>
-          <div :if={@selected_event} class="rounded-box border border-base-300 p-4 space-y-6">
+          <%!-- Options for the opened timeline_element --%>
+          <div
+            :if={@selected_timeline_element}
+            class="rounded-box border border-base-300 p-4 space-y-6"
+          >
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-semibold">
-                Options — {I18n.t!(@selected_event.title, @locale, default: "event")}
+                Options — {I18n.t!(@selected_timeline_element.title, @locale, default: "element")}
               </h3>
               <button type="button" phx-click="close_event" class="btn btn-xs btn-ghost">
                 Close
@@ -570,12 +581,12 @@ defmodule ScenexWeb.GameLive.Show do
                     <legend class="fieldset-legend">
                       Effects on {I18n.t!(@selected_group_name, @locale, default: "this group")}'s values
                     </legend>
-                    <p :if={per_group_values(@value_definitions) == []} class="text-xs opacity-60">
+                    <p :if={per_group_values(@value_dimensions) == []} class="text-xs opacity-60">
                       Add per-group values first.
                     </p>
                     <div class="grid gap-2 sm:grid-cols-2">
                       <label
-                        :for={v <- per_group_values(@value_definitions)}
+                        :for={v <- per_group_values(@value_dimensions)}
                         class="flex items-center gap-2 text-sm"
                       >
                         <span class="w-32 truncate">{I18n.t!(v.name, @locale, default: v.key)}</span>
@@ -698,28 +709,28 @@ defmodule ScenexWeb.GameLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    case Authoring.get_game_for_user(id, socket.assigns.current_scope.user) do
+    case Authoring.get_scenario_for_user(id, socket.assigns.current_scope.user) do
       nil ->
         {:ok,
          socket
-         |> put_flash(:error, "Game not found.")
-         |> push_navigate(to: ~p"/games")}
+         |> put_flash(:error, "Scenario not found.")
+         |> push_navigate(to: ~p"/scenarios")}
 
-      {game, role} ->
+      {scenario, role} ->
         {:ok,
          socket
          |> assign(
-           game: game,
+           scenario: scenario,
            role: role,
            can_edit?: role in [:owner, :author],
            section: :settings,
-           locale: game.source_locale,
-           locales: Enum.uniq([game.source_locale | @locale_choices]),
-           page_title: I18n.t!(game.name, game.source_locale, default: "Game")
+           locale: scenario.source_locale,
+           locales: Enum.uniq([scenario.source_locale | @locale_choices]),
+           page_title: I18n.t!(scenario.name, scenario.source_locale, default: "Scenario")
          )
          |> assign(
-           selected_event: nil,
-           selected_event_id: nil,
+           selected_timeline_element: nil,
+           selected_timeline_element_id: nil,
            options: [],
            option_group_id: nil,
            editing_option: nil,
@@ -727,10 +738,10 @@ defmodule ScenexWeb.GameLive.Show do
            option_label_ids: [],
            selected_group_name: %{}
          )
-         |> assign_settings_form(game)
-         |> assign_value_form(%ValueDefinition{})
+         |> assign_settings_form(scenario)
+         |> assign_value_form(%ValueDimension{})
          |> assign_group_form(%Group{})
-         |> assign_event_form(%Event{})
+         |> assign_event_form(%TimelineElement{})
          |> assign_label_form(%Label{})
          |> reload()}
     end
@@ -749,20 +760,20 @@ defmodule ScenexWeb.GameLive.Show do
 
   # ── Settings ──────────────────────────────────────────────────────────
 
-  def handle_event("save_settings", %{"game" => params}, socket) do
+  def handle_event("save_settings", %{"scenario" => params}, socket) do
     with_edit(socket, fn ->
-      attrs = LocalizedForm.merge(params, socket.assigns.game, [:name, :description])
+      attrs = LocalizedForm.merge(params, socket.assigns.scenario, [:name, :description])
 
-      case Authoring.update_game(socket.assigns.game, attrs) do
-        {:ok, game} ->
+      case Authoring.update_scenario(socket.assigns.scenario, attrs) do
+        {:ok, scenario} ->
           {:noreply,
            socket
-           |> assign(:game, game)
-           |> assign_settings_form(game)
+           |> assign(:scenario, scenario)
+           |> assign_settings_form(scenario)
            |> put_flash(:info, "Settings saved.")}
 
         {:error, changeset} ->
-          {:noreply, assign(socket, :settings_form, to_form(changeset, as: :game))}
+          {:noreply, assign(socket, :settings_form, to_form(changeset, as: :scenario))}
       end
     end)
   end
@@ -770,17 +781,17 @@ defmodule ScenexWeb.GameLive.Show do
   # ── Values ────────────────────────────────────────────────────────────
 
   def handle_event("edit_value", %{"id" => id}, socket) do
-    {:noreply, assign_value_form(socket, Authoring.get_value_definition!(id))}
+    {:noreply, assign_value_form(socket, Authoring.get_value_dimension!(id))}
   end
 
   def handle_event("new_value", _params, socket) do
-    {:noreply, assign_value_form(socket, %ValueDefinition{})}
+    {:noreply, assign_value_form(socket, %ValueDimension{})}
   end
 
   # Live-track the selected scope so bounds fields can hide for per-participant.
   # Rebuild the form from params so typed values survive the re-render.
-  def handle_event("value_form_changed", %{"value_definition" => params}, socket) do
-    data = socket.assigns.editing_value || %ValueDefinition{}
+  def handle_event("value_form_changed", %{"value_dimension" => params}, socket) do
+    data = socket.assigns.editing_value || %ValueDimension{}
     attrs = LocalizedForm.merge(params, data, [:name, :description])
     scope = if params["input_scope"] == "per_participant", do: :per_participant, else: :per_group
 
@@ -789,38 +800,38 @@ defmodule ScenexWeb.GameLive.Show do
      |> assign(:value_scope, scope)
      |> assign(
        :value_form,
-       to_form(Authoring.change_value_definition(data, attrs), as: :value_definition)
+       to_form(Authoring.change_value_dimension(data, attrs), as: :value_dimension)
      )}
   end
 
-  def handle_event("save_value", %{"value_definition" => params}, socket) do
+  def handle_event("save_value", %{"value_dimension" => params}, socket) do
     with_edit(socket, fn ->
-      data = socket.assigns.editing_value || %ValueDefinition{}
+      data = socket.assigns.editing_value || %ValueDimension{}
       attrs = LocalizedForm.merge(params, data, [:name, :description])
 
       result =
         if socket.assigns.editing_value,
-          do: Authoring.update_value_definition(data, attrs),
-          else: Authoring.create_value_definition(socket.assigns.game, attrs)
+          do: Authoring.update_value_dimension(data, attrs),
+          else: Authoring.create_value_dimension(socket.assigns.scenario, attrs)
 
       case result do
         {:ok, _vd} ->
           {:noreply,
            socket
-           |> assign_value_form(%ValueDefinition{})
+           |> assign_value_form(%ValueDimension{})
            |> reload()
            |> put_flash(:info, "Value saved.")}
 
         {:error, changeset} ->
-          {:noreply, assign(socket, :value_form, to_form(changeset, as: :value_definition))}
+          {:noreply, assign(socket, :value_form, to_form(changeset, as: :value_dimension))}
       end
     end)
   end
 
   def handle_event("delete_value", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_value_definition!() |> Authoring.delete_value_definition()
-      {:noreply, socket |> assign_value_form(%ValueDefinition{}) |> reload()}
+      id |> Authoring.get_value_dimension!() |> Authoring.delete_value_dimension()
+      {:noreply, socket |> assign_value_form(%ValueDimension{}) |> reload()}
     end)
   end
 
@@ -842,7 +853,7 @@ defmodule ScenexWeb.GameLive.Show do
       result =
         if socket.assigns.editing_group,
           do: Authoring.update_group(data, attrs),
-          else: Authoring.create_group(socket.assigns.game, attrs)
+          else: Authoring.create_group(socket.assigns.scenario, attrs)
 
       case result do
         {:ok, _group} ->
@@ -870,7 +881,7 @@ defmodule ScenexWeb.GameLive.Show do
   def handle_event("save_initials", %{"initial" => grid}, socket) do
     with_edit(socket, fn ->
       groups = Map.new(socket.assigns.groups, &{&1.id, &1})
-      values = Map.new(socket.assigns.value_definitions, &{&1.id, &1})
+      values = Map.new(socket.assigns.value_dimensions, &{&1.id, &1})
 
       for {group_id, cells} <- grid,
           {value_id, raw} <- cells,
@@ -887,56 +898,62 @@ defmodule ScenexWeb.GameLive.Show do
   # ── Events ────────────────────────────────────────────────────────────
 
   def handle_event("edit_event", %{"id" => id}, socket) do
-    {:noreply, assign_event_form(socket, Authoring.get_event!(id))}
+    {:noreply, assign_event_form(socket, Authoring.get_timeline_element!(id))}
   end
 
   def handle_event("new_event", _params, socket) do
-    {:noreply, assign_event_form(socket, %Event{})}
+    {:noreply, assign_event_form(socket, %TimelineElement{})}
   end
 
-  def handle_event("save_event", %{"event" => params}, socket) do
+  def handle_event("save_event", %{"timeline_element" => params}, socket) do
     with_edit(socket, fn ->
-      data = socket.assigns.editing_event || %Event{}
+      data = socket.assigns.editing_event || %TimelineElement{}
       attrs = LocalizedForm.merge(params, data, [:title, :narrative])
 
       result =
         if socket.assigns.editing_event,
-          do: Authoring.update_event(data, attrs),
-          else: Authoring.create_event(socket.assigns.game, attrs)
+          do: Authoring.update_timeline_element(data, attrs),
+          else: Authoring.create_timeline_element(socket.assigns.scenario, attrs)
 
       case result do
         {:ok, _event} ->
           {:noreply,
-           socket |> assign_event_form(%Event{}) |> reload() |> put_flash(:info, "Event saved.")}
+           socket
+           |> assign_event_form(%TimelineElement{})
+           |> reload()
+           |> put_flash(:info, "TimelineElement saved.")}
 
         {:error, changeset} ->
-          {:noreply, assign(socket, :event_form, to_form(changeset, as: :event))}
+          {:noreply, assign(socket, :event_form, to_form(changeset, as: :timeline_element))}
       end
     end)
   end
 
-  def handle_event("delete_event", %{"id" => id}, socket) do
+  def handle_event("delete_timeline_element", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      event = Authoring.get_event!(id)
-      Authoring.delete_event(event)
+      timeline_element = Authoring.get_timeline_element!(id)
+      Authoring.delete_timeline_element(timeline_element)
 
       socket =
-        if socket.assigns.selected_event_id == id,
+        if socket.assigns.selected_timeline_element_id == id,
           do: close_event(socket),
           else: socket
 
-      {:noreply, socket |> assign_event_form(%Event{}) |> reload()}
+      {:noreply, socket |> assign_event_form(%TimelineElement{}) |> reload()}
     end)
   end
 
   def handle_event("open_event", %{"id" => id}, socket) do
-    event = Authoring.get_event!(id)
+    timeline_element = Authoring.get_timeline_element!(id)
 
     {:noreply,
      socket
-     |> assign(selected_event: event, selected_event_id: event.id)
+     |> assign(
+       selected_timeline_element: timeline_element,
+       selected_timeline_element_id: timeline_element.id
+     )
      |> cancel_option()
-     |> reload_options(event)}
+     |> reload_options(timeline_element)}
   end
 
   def handle_event("close_event", _params, socket) do
@@ -960,7 +977,7 @@ defmodule ScenexWeb.GameLive.Show do
 
   def handle_event("save_option", %{"option" => params} = raw, socket) do
     with_edit(socket, fn ->
-      event = socket.assigns.selected_event
+      timeline_element = socket.assigns.selected_timeline_element
       group = Enum.find(socket.assigns.groups, &(&1.id == socket.assigns.option_group_id))
       data = socket.assigns.editing_option || %DecisionOption{}
       attrs = LocalizedForm.merge(params, data, [:text])
@@ -968,7 +985,7 @@ defmodule ScenexWeb.GameLive.Show do
       result =
         if socket.assigns.editing_option,
           do: Authoring.update_decision_option(data, attrs),
-          else: Authoring.create_decision_option(event, group, attrs)
+          else: Authoring.create_decision_option(timeline_element, group, attrs)
 
       case result do
         {:ok, option} ->
@@ -1008,7 +1025,7 @@ defmodule ScenexWeb.GameLive.Show do
       result =
         if socket.assigns.editing_label,
           do: Authoring.update_label(data, attrs),
-          else: Authoring.create_label(socket.assigns.game, attrs)
+          else: Authoring.create_label(socket.assigns.scenario, attrs)
 
       case result do
         {:ok, _label} ->
@@ -1030,8 +1047,9 @@ defmodule ScenexWeb.GameLive.Show do
 
   # ── Assigns helpers ───────────────────────────────────────────────────
 
-  defp assign_settings_form(socket, game),
-    do: assign(socket, :settings_form, to_form(Authoring.change_game(game), as: :game))
+  defp assign_settings_form(socket, scenario),
+    do:
+      assign(socket, :settings_form, to_form(Authoring.change_scenario(scenario), as: :scenario))
 
   defp assign_value_form(socket, value) do
     socket
@@ -1039,7 +1057,7 @@ defmodule ScenexWeb.GameLive.Show do
     |> assign(:value_scope, value.input_scope || :per_group)
     |> assign(
       :value_form,
-      to_form(Authoring.change_value_definition(value), as: :value_definition)
+      to_form(Authoring.change_value_dimension(value), as: :value_dimension)
     )
   end
 
@@ -1049,10 +1067,13 @@ defmodule ScenexWeb.GameLive.Show do
     |> assign(:group_form, to_form(Authoring.change_group(group), as: :group))
   end
 
-  defp assign_event_form(socket, event) do
+  defp assign_event_form(socket, timeline_element) do
     socket
-    |> assign(:editing_event, if(event.id, do: event, else: nil))
-    |> assign(:event_form, to_form(Authoring.change_event(event), as: :event))
+    |> assign(:editing_event, if(timeline_element.id, do: timeline_element, else: nil))
+    |> assign(
+      :event_form,
+      to_form(Authoring.change_timeline_element(timeline_element), as: :timeline_element)
+    )
   end
 
   defp assign_label_form(socket, label) do
@@ -1070,7 +1091,7 @@ defmodule ScenexWeb.GameLive.Show do
     |> assign(:editing_option, if(option.id, do: option, else: nil))
     |> assign(:option_group_id, group_id)
     |> assign(:selected_group_name, (group && group.name) || %{})
-    |> assign(:option_effects, Map.new(effects, &{&1.value_definition_id, &1.delta}))
+    |> assign(:option_effects, Map.new(effects, &{&1.value_dimension_id, &1.delta}))
     |> assign(:option_label_ids, Enum.map(labels, & &1.id))
     |> assign(:option_form, to_form(Authoring.change_decision_option(option), as: :option))
   end
@@ -1089,7 +1110,7 @@ defmodule ScenexWeb.GameLive.Show do
 
   defp close_event(socket) do
     socket
-    |> assign(selected_event: nil, selected_event_id: nil, options: [])
+    |> assign(selected_timeline_element: nil, selected_timeline_element_id: nil, options: [])
     |> cancel_option()
   end
 
@@ -1111,41 +1132,41 @@ defmodule ScenexWeb.GameLive.Show do
   end
 
   defp reload(socket) do
-    game = socket.assigns.game
-    groups = Authoring.list_groups(game)
-    value_definitions = Authoring.list_value_definitions(game)
+    scenario = socket.assigns.scenario
+    groups = Authoring.list_groups(scenario)
+    value_dimensions = Authoring.list_value_dimensions(scenario)
 
     initials =
       for group <- groups, giv <- Authoring.list_group_initial_values(group), into: %{} do
-        {{giv.group_id, giv.value_definition_id}, giv.initial}
+        {{giv.group_id, giv.value_dimension_id}, giv.initial}
       end
 
     socket =
       assign(socket,
-        value_definitions: value_definitions,
-        value_index: Map.new(value_definitions, &{&1.id, &1}),
+        value_dimensions: value_dimensions,
+        value_index: Map.new(value_dimensions, &{&1.id, &1}),
         groups: groups,
         initials: initials,
-        events: Authoring.list_events(game),
-        labels: Authoring.list_labels(game)
+        timeline_elements: Authoring.list_timeline_elements(scenario),
+        labels: Authoring.list_labels(scenario)
       )
 
-    # Keep an opened event's options in sync after edits.
-    if socket.assigns.selected_event do
-      reload_options(socket, socket.assigns.selected_event)
+    # Keep an opened timeline_element's options in sync after edits.
+    if socket.assigns.selected_timeline_element do
+      reload_options(socket, socket.assigns.selected_timeline_element)
     else
       socket
     end
   end
 
-  defp reload_options(socket, event) do
-    assign(socket, options: Authoring.list_decision_options(event))
+  defp reload_options(socket, timeline_element) do
+    assign(socket, options: Authoring.list_decision_options(timeline_element))
   end
 
   defp with_edit(socket, fun) do
     if socket.assigns.can_edit?,
       do: fun.(),
-      else: {:noreply, put_flash(socket, :error, "This game is read-only for you.")}
+      else: {:noreply, put_flash(socket, :error, "This scenario is read-only for you.")}
   end
 
   defp to_number(raw) when is_binary(raw) do
@@ -1157,8 +1178,8 @@ defmodule ScenexWeb.GameLive.Show do
 
   defp to_number(_), do: 0.0
 
-  defp per_group_values(value_definitions),
-    do: Enum.filter(value_definitions, &(&1.input_scope == :per_group))
+  defp per_group_values(value_dimensions),
+    do: Enum.filter(value_dimensions, &(&1.input_scope == :per_group))
 
   defp fmt_range(%{min: min, max: max}) do
     if is_nil(min) and is_nil(max), do: "—", else: "#{fmt_num(min)}–#{fmt_num(max)}"
@@ -1179,7 +1200,7 @@ defmodule ScenexWeb.GameLive.Show do
     effects
     |> Enum.map(fn e ->
       name =
-        case index[e.value_definition_id] do
+        case index[e.value_dimension_id] do
           nil -> "?"
           vd -> I18n.t!(vd.name, locale, default: vd.key)
         end

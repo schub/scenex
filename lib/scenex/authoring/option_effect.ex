@@ -7,7 +7,7 @@ defmodule Scenex.Authoring.OptionEffect do
 
   import Ecto.Changeset
 
-  alias Scenex.Authoring.{DecisionOption, ValueDefinition}
+  alias Scenex.Authoring.{DecisionOption, ValueDimension}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -17,17 +17,17 @@ defmodule Scenex.Authoring.OptionEffect do
     field :delta, :float, default: 0.0
 
     belongs_to :decision_option, DecisionOption
-    belongs_to :value_definition, ValueDefinition
+    belongs_to :value_dimension, ValueDimension
 
     timestamps()
   end
 
   def changeset(option_effect, attrs) do
     option_effect
-    |> cast(attrs, [:decision_option_id, :value_definition_id, :delta])
-    |> validate_required([:decision_option_id, :value_definition_id, :delta])
+    |> cast(attrs, [:decision_option_id, :value_dimension_id, :delta])
+    |> validate_required([:decision_option_id, :value_dimension_id, :delta])
     |> assoc_constraint(:decision_option)
-    |> assoc_constraint(:value_definition)
-    |> unique_constraint([:decision_option_id, :value_definition_id])
+    |> assoc_constraint(:value_dimension)
+    |> unique_constraint([:decision_option_id, :value_dimension_id])
   end
 end

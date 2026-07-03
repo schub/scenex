@@ -1,16 +1,17 @@
-defmodule Scenex.Authoring.Event do
+defmodule Scenex.Authoring.TimelineElement do
   @moduledoc """
-  An ordered beat on the game timeline. Fired by the GM during a session
+  An ordered beat on the scenario timeline. Fired by the GM during a session
   (`trigger: :manual` in v1); a `deadline_seconds` measured against the session's
-  game clock drives the default consequence. `kind` (event/election/sidequest) is
-  an inert label in v1 — all kinds behave identically.
+  game clock drives the default consequence. `kind` (event/election/sidequest)
+  determines the mechanics; v1 still treats kinds identically (changes in
+  Phase 2.5).
   """
   use Ecto.Schema
 
   import Ecto.Changeset
   import Scenex.Authoring.Validators
 
-  alias Scenex.Authoring.{DecisionOption, Game}
+  alias Scenex.Authoring.{DecisionOption, Scenario}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -21,7 +22,7 @@ defmodule Scenex.Authoring.Event do
   def kinds, do: @kinds
   def triggers, do: @triggers
 
-  schema "events" do
+  schema "timeline_elements" do
     field :handle, :string
     field :title, :map, default: %{}
     field :narrative, :map, default: %{}
@@ -30,16 +31,16 @@ defmodule Scenex.Authoring.Event do
     field :trigger, Ecto.Enum, values: @triggers, default: :manual
     field :deadline_seconds, :integer
 
-    belongs_to :game, Game
+    belongs_to :scenario, Scenario
     has_many :decision_options, DecisionOption
 
     timestamps()
   end
 
-  def changeset(event, attrs) do
-    event
+  def changeset(timeline_element, attrs) do
+    timeline_element
     |> cast(attrs, [
-      :game_id,
+      :scenario_id,
       :handle,
       :title,
       :narrative,
@@ -48,13 +49,13 @@ defmodule Scenex.Authoring.Event do
       :trigger,
       :deadline_seconds
     ])
-    |> validate_required([:game_id, :handle, :kind, :trigger])
+    |> validate_required([:scenario_id, :handle, :kind, :trigger])
     |> validate_localized_required(:title)
     |> validate_number(:deadline_seconds, greater_than: 0)
-    |> assoc_constraint(:game)
+    |> assoc_constraint(:scenario)
     |> unique_constraint(:handle,
-      name: :events_game_id_handle_index,
-      message: "is already used in this game"
+      name: :timeline_elements_scenario_id_handle_index,
+      message: "is already used in this scenario"
     )
   end
 end

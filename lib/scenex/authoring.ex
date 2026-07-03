@@ -1,13 +1,13 @@
 defmodule Scenex.Authoring do
   @moduledoc """
-  The Authoring context (Layer 2) — creating and maintaining game *definitions*.
+  The Authoring context (Layer 2) — creating and maintaining scenarios — the authored game definitions.
 
-  Plain CRUD over the definition graph (games, values, groups, events, options,
+  Plain CRUD over the definition graph (scenarios, values, groups, timeline elements, options,
   effects, labels), plus authorization. Authorization lives here, not in
-  LiveViews: `get_game_for_user/2`, `can_edit?/2`, `is_owner?/2`, `get_user_role/2`.
+  LiveViews: `get_scenario_for_user/2`, `can_edit?/2`, `is_owner?/2`, `get_user_role/2`.
 
-  `owner`/`author` may edit; `viewer` (and anyone, for a `:published` game) may
-  read. These roles are unrelated to *playing* a game (Layer 3).
+  `owner`/`author` may edit; `viewer` (and anyone, for a `:published` scenario) may
+  read. These roles are unrelated to *playing* (Layer 3).
   """
 
   import Ecto.Query, warn: false
@@ -18,139 +18,140 @@ defmodule Scenex.Authoring do
 
   alias Scenex.Authoring.{
     DecisionOption,
-    Event,
-    Game,
-    GameMembership,
+    TimelineElement,
+    Scenario,
+    ScenarioMembership,
     Group,
     GroupInitialValue,
     Label,
     OptionEffect,
-    ValueDefinition
+    ValueDimension
   }
 
   # ── Games ───────────────────────────────────────────────────────────────
 
   @doc "Games the user may see: any they're a member of, plus published ones."
-  def list_games_for_user(%User{} = user) do
+  def list_scenarios_for_user(%User{} = user) do
     Repo.all(
-      from g in Game,
-        left_join: m in GameMembership,
-        on: m.game_id == g.id and m.user_id == ^user.id,
+      from g in Scenario,
+        left_join: m in ScenarioMembership,
+        on: m.scenario_id == g.id and m.user_id == ^user.id,
         where: not is_nil(m.id) or g.visibility == :published,
         distinct: true,
         order_by: [desc: g.updated_at]
     )
   end
 
-  def get_game!(id), do: Repo.get!(Game, id)
+  def get_scenario!(id), do: Repo.get!(Scenario, id)
 
   @doc """
-  Fetch a game the user may access, returning `{game, role}` or `nil`.
-  Route request reads through this rather than `get_game!/1`.
+  Fetch a scenario the user may access, returning `{scenario, role}` or `nil`.
+  Route request reads through this rather than `get_scenario!/1`.
   """
-  def get_game_for_user(id, user) do
-    case Repo.get(Game, id) do
+  def get_scenario_for_user(id, user) do
+    case Repo.get(Scenario, id) do
       nil ->
         nil
 
-      game ->
-        case get_user_role(game, user) do
+      scenario ->
+        case get_user_role(scenario, user) do
           nil -> nil
-          role -> {game, role}
+          role -> {scenario, role}
         end
     end
   end
 
-  @doc "Create a game and make its creator the owner, atomically."
-  def create_game(%User{} = user, attrs) do
+  @doc "Create a scenario and make its creator the owner, atomically."
+  def create_scenario(%User{} = user, attrs) do
     Ecto.Multi.new()
-    |> Ecto.Multi.insert(:game, Game.changeset(%Game{}, attrs))
-    |> Ecto.Multi.insert(:membership, fn %{game: game} ->
-      GameMembership.changeset(%GameMembership{}, %{
-        game_id: game.id,
+    |> Ecto.Multi.insert(:scenario, Scenario.changeset(%Scenario{}, attrs))
+    |> Ecto.Multi.insert(:membership, fn %{scenario: scenario} ->
+      ScenarioMembership.changeset(%ScenarioMembership{}, %{
+        scenario_id: scenario.id,
         user_id: user.id,
         role: :owner
       })
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{game: game}} -> {:ok, game}
-      {:error, :game, changeset, _} -> {:error, changeset}
+      {:ok, %{scenario: scenario}} -> {:ok, scenario}
+      {:error, :scenario, changeset, _} -> {:error, changeset}
       {:error, _step, changeset, _} -> {:error, changeset}
     end
   end
 
-  def update_game(%Game{} = game, attrs),
-    do: game |> Game.changeset(attrs) |> Repo.update()
+  def update_scenario(%Scenario{} = scenario, attrs),
+    do: scenario |> Scenario.changeset(attrs) |> Repo.update()
 
-  def delete_game(%Game{} = game), do: Repo.delete(game)
+  def delete_scenario(%Scenario{} = scenario), do: Repo.delete(scenario)
 
-  def change_game(%Game{} = game, attrs \\ %{}), do: Game.changeset(game, attrs)
+  def change_scenario(%Scenario{} = scenario, attrs \\ %{}),
+    do: Scenario.changeset(scenario, attrs)
 
   # ── Authorization ───────────────────────────────────────────────────────
 
-  @doc "The user's role on a game: `:owner | :author | :viewer | nil`."
-  def get_user_role(game, user)
+  @doc "The user's role on a scenario: `:owner | :author | :viewer | nil`."
+  def get_user_role(scenario, user)
 
-  def get_user_role(%Game{} = game, %User{} = user) do
+  def get_user_role(%Scenario{} = scenario, %User{} = user) do
     membership_role =
       Repo.one(
-        from m in GameMembership,
-          where: m.game_id == ^game.id and m.user_id == ^user.id,
+        from m in ScenarioMembership,
+          where: m.scenario_id == ^scenario.id and m.user_id == ^user.id,
           select: m.role
       )
 
-    membership_role || public_role(game)
+    membership_role || public_role(scenario)
   end
 
-  def get_user_role(%Game{} = game, nil), do: public_role(game)
+  def get_user_role(%Scenario{} = scenario, nil), do: public_role(scenario)
 
-  defp public_role(%Game{visibility: :published}), do: :viewer
+  defp public_role(%Scenario{visibility: :published}), do: :viewer
   defp public_role(_game), do: nil
 
-  def can_edit?(game, user), do: get_user_role(game, user) in [:owner, :author]
+  def can_edit?(scenario, user), do: get_user_role(scenario, user) in [:owner, :author]
 
-  def is_owner?(game, user), do: get_user_role(game, user) == :owner
+  def is_owner?(scenario, user), do: get_user_role(scenario, user) == :owner
 
   # ── Membership ──────────────────────────────────────────────────────────
 
-  def list_members(%Game{} = game) do
-    Repo.all(from m in GameMembership, where: m.game_id == ^game.id, preload: [:user])
+  def list_members(%Scenario{} = scenario) do
+    Repo.all(from m in ScenarioMembership, where: m.scenario_id == ^scenario.id, preload: [:user])
   end
 
-  def add_member(%Game{} = game, %User{} = user, role) do
-    %GameMembership{}
-    |> GameMembership.changeset(%{game_id: game.id, user_id: user.id, role: role})
+  def add_member(%Scenario{} = scenario, %User{} = user, role) do
+    %ScenarioMembership{}
+    |> ScenarioMembership.changeset(%{scenario_id: scenario.id, user_id: user.id, role: role})
     |> Repo.insert()
   end
 
-  def remove_member(%GameMembership{} = membership), do: Repo.delete(membership)
+  def remove_member(%ScenarioMembership{} = membership), do: Repo.delete(membership)
 
-  # ── Value definitions ───────────────────────────────────────────────────
+  # ── Value dimensions ────────────────────────────────────────────────────
 
-  def list_value_definitions(%Game{} = game) do
-    Repo.all(from v in ValueDefinition, where: v.game_id == ^game.id, order_by: v.position)
+  def list_value_dimensions(%Scenario{} = scenario) do
+    Repo.all(from v in ValueDimension, where: v.scenario_id == ^scenario.id, order_by: v.position)
   end
 
-  def get_value_definition!(id), do: Repo.get!(ValueDefinition, id)
+  def get_value_dimension!(id), do: Repo.get!(ValueDimension, id)
 
-  def create_value_definition(%Game{} = game, attrs) do
-    game
-    |> Ecto.build_assoc(:value_definitions)
-    |> ValueDefinition.changeset(attrs)
+  def create_value_dimension(%Scenario{} = scenario, attrs) do
+    scenario
+    |> Ecto.build_assoc(:value_dimensions)
+    |> ValueDimension.changeset(attrs)
     |> Repo.insert()
   end
 
-  def update_value_definition(%ValueDefinition{} = vd, attrs),
-    do: vd |> ValueDefinition.changeset(attrs) |> Repo.update()
+  def update_value_dimension(%ValueDimension{} = vd, attrs),
+    do: vd |> ValueDimension.changeset(attrs) |> Repo.update()
 
-  def delete_value_definition(%ValueDefinition{} = vd), do: Repo.delete(vd)
+  def delete_value_dimension(%ValueDimension{} = vd), do: Repo.delete(vd)
 
-  def change_value_definition(%ValueDefinition{} = vd, attrs \\ %{}),
-    do: ValueDefinition.changeset(vd, attrs)
+  def change_value_dimension(%ValueDimension{} = vd, attrs \\ %{}),
+    do: ValueDimension.changeset(vd, attrs)
 
   @doc "Project a value definition into the pure engine's `ValueSpec` (id as key)."
-  def to_value_spec(%ValueDefinition{} = vd) do
+  def to_value_spec(%ValueDimension{} = vd) do
     %ValueSpec{
       key: vd.id,
       aggregation: vd.aggregation,
@@ -162,14 +163,14 @@ defmodule Scenex.Authoring do
 
   # ── Groups ──────────────────────────────────────────────────────────────
 
-  def list_groups(%Game{} = game) do
-    Repo.all(from g in Group, where: g.game_id == ^game.id, order_by: g.position)
+  def list_groups(%Scenario{} = scenario) do
+    Repo.all(from g in Group, where: g.scenario_id == ^scenario.id, order_by: g.position)
   end
 
   def get_group!(id), do: Repo.get!(Group, id)
 
-  def create_group(%Game{} = game, attrs) do
-    game
+  def create_group(%Scenario{} = scenario, attrs) do
+    scenario
     |> Ecto.build_assoc(:groups)
     |> Group.changeset(attrs)
     |> Repo.insert()
@@ -185,16 +186,16 @@ defmodule Scenex.Authoring do
   # ── Group initial values (upsert) ───────────────────────────────────────
 
   @doc "Create or update a group's starting value for one value definition."
-  def set_group_initial_value(%Group{} = group, %ValueDefinition{} = vd, initial) do
+  def set_group_initial_value(%Group{} = group, %ValueDimension{} = vd, initial) do
     %GroupInitialValue{}
     |> GroupInitialValue.changeset(%{
       group_id: group.id,
-      value_definition_id: vd.id,
+      value_dimension_id: vd.id,
       initial: initial
     })
     |> Repo.insert(
       on_conflict: {:replace, [:initial, :updated_at]},
-      conflict_target: [:group_id, :value_definition_id]
+      conflict_target: [:group_id, :value_dimension_id]
     )
   end
 
@@ -204,41 +205,45 @@ defmodule Scenex.Authoring do
 
   # ── Events ──────────────────────────────────────────────────────────────
 
-  def list_events(%Game{} = game) do
-    Repo.all(from e in Event, where: e.game_id == ^game.id, order_by: e.position)
+  def list_timeline_elements(%Scenario{} = scenario) do
+    Repo.all(
+      from e in TimelineElement, where: e.scenario_id == ^scenario.id, order_by: e.position
+    )
   end
 
-  def get_event!(id), do: Repo.get!(Event, id)
+  def get_timeline_element!(id), do: Repo.get!(TimelineElement, id)
 
-  def create_event(%Game{} = game, attrs) do
-    game
-    |> Ecto.build_assoc(:events)
-    |> Event.changeset(attrs)
+  def create_timeline_element(%Scenario{} = scenario, attrs) do
+    scenario
+    |> Ecto.build_assoc(:timeline_elements)
+    |> TimelineElement.changeset(attrs)
     |> Repo.insert()
   end
 
-  def update_event(%Event{} = event, attrs),
-    do: event |> Event.changeset(attrs) |> Repo.update()
+  def update_timeline_element(%TimelineElement{} = timeline_element, attrs),
+    do: timeline_element |> TimelineElement.changeset(attrs) |> Repo.update()
 
-  def delete_event(%Event{} = event), do: Repo.delete(event)
+  def delete_timeline_element(%TimelineElement{} = timeline_element),
+    do: Repo.delete(timeline_element)
 
-  def change_event(%Event{} = event, attrs \\ %{}), do: Event.changeset(event, attrs)
+  def change_timeline_element(%TimelineElement{} = timeline_element, attrs \\ %{}),
+    do: TimelineElement.changeset(timeline_element, attrs)
 
   # ── Decision options ────────────────────────────────────────────────────
 
-  def list_decision_options(%Event{} = event) do
+  def list_decision_options(%TimelineElement{} = timeline_element) do
     Repo.all(
       from o in DecisionOption,
-        where: o.event_id == ^event.id,
+        where: o.timeline_element_id == ^timeline_element.id,
         order_by: [o.group_id, o.position],
         preload: [:labels, :effects]
     )
   end
 
-  def list_decision_options_for_group(%Event{} = event, %Group{} = group) do
+  def list_decision_options_for_group(%TimelineElement{} = timeline_element, %Group{} = group) do
     Repo.all(
       from o in DecisionOption,
-        where: o.event_id == ^event.id and o.group_id == ^group.id,
+        where: o.timeline_element_id == ^timeline_element.id and o.group_id == ^group.id,
         order_by: o.position
     )
   end
@@ -246,8 +251,8 @@ defmodule Scenex.Authoring do
   def get_decision_option!(id),
     do: Repo.get!(DecisionOption, id) |> Repo.preload([:labels, :effects])
 
-  def create_decision_option(%Event{} = event, %Group{} = group, attrs) do
-    event
+  def create_decision_option(%TimelineElement{} = timeline_element, %Group{} = group, attrs) do
+    timeline_element
     |> Ecto.build_assoc(:decision_options, group_id: group.id)
     |> DecisionOption.changeset(attrs)
     |> Repo.insert()
@@ -273,16 +278,16 @@ defmodule Scenex.Authoring do
   # ── Option effects (upsert) ─────────────────────────────────────────────
 
   @doc "Create or update the delta an option applies to one value."
-  def set_option_effect(%DecisionOption{} = option, %ValueDefinition{} = vd, delta) do
+  def set_option_effect(%DecisionOption{} = option, %ValueDimension{} = vd, delta) do
     %OptionEffect{}
     |> OptionEffect.changeset(%{
       decision_option_id: option.id,
-      value_definition_id: vd.id,
+      value_dimension_id: vd.id,
       delta: delta
     })
     |> Repo.insert(
       on_conflict: {:replace, [:delta, :updated_at]},
-      conflict_target: [:decision_option_id, :value_definition_id]
+      conflict_target: [:decision_option_id, :value_dimension_id]
     )
   end
 
@@ -292,14 +297,14 @@ defmodule Scenex.Authoring do
 
   # ── Labels ──────────────────────────────────────────────────────────────
 
-  def list_labels(%Game{} = game) do
-    Repo.all(from l in Label, where: l.game_id == ^game.id, order_by: l.position)
+  def list_labels(%Scenario{} = scenario) do
+    Repo.all(from l in Label, where: l.scenario_id == ^scenario.id, order_by: l.position)
   end
 
   def get_label!(id), do: Repo.get!(Label, id)
 
-  def create_label(%Game{} = game, attrs) do
-    game
+  def create_label(%Scenario{} = scenario, attrs) do
+    scenario
     |> Ecto.build_assoc(:labels)
     |> Label.changeset(attrs)
     |> Repo.insert()

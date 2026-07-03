@@ -58,9 +58,9 @@ defmodule ScenexWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
 
-      live "/games", GameLive.Index, :index
-      live "/games/:id", GameLive.Show, :show
-      live "/games/:id/simulate", GameLive.Simulate, :show
+      live "/scenarios", ScenarioLive.Index, :index
+      live "/scenarios/:id", ScenarioLive.Show, :show
+      live "/scenarios/:id/simulate", ScenarioLive.Simulate, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password

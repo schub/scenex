@@ -1,6 +1,6 @@
-defmodule Scenex.Authoring.ValueDefinition do
+defmodule Scenex.Authoring.ValueDimension do
   @moduledoc """
-  An abstract metric the game tracks (e.g. Stability, Solidarity).
+  An abstract metric the scenario tracks (e.g. Stability, Solidarity).
 
   Projects into the pure engine as a `Scenex.Engine.ValueSpec`: its `aggregation`
   formula derives the global value from per-group values, and `min`/`max` clamp
@@ -12,7 +12,7 @@ defmodule Scenex.Authoring.ValueDefinition do
   import Ecto.Changeset
   import Scenex.Authoring.Validators
 
-  alias Scenex.Authoring.{Game, GroupInitialValue}
+  alias Scenex.Authoring.{Scenario, GroupInitialValue}
   alias Scenex.Engine
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -22,7 +22,7 @@ defmodule Scenex.Authoring.ValueDefinition do
   @input_scopes [:per_group, :per_participant]
   def input_scopes, do: @input_scopes
 
-  schema "value_definitions" do
+  schema "value_dimensions" do
     field :key, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
@@ -33,16 +33,16 @@ defmodule Scenex.Authoring.ValueDefinition do
     field :default_value, :float
     field :position, :integer, default: 0
 
-    belongs_to :game, Game
+    belongs_to :scenario, Scenario
     has_many :group_initial_values, GroupInitialValue
 
     timestamps()
   end
 
-  def changeset(value_definition, attrs) do
-    value_definition
+  def changeset(value_dimension, attrs) do
+    value_dimension
     |> cast(attrs, [
-      :game_id,
+      :scenario_id,
       :key,
       :name,
       :description,
@@ -53,7 +53,7 @@ defmodule Scenex.Authoring.ValueDefinition do
       :default_value,
       :position
     ])
-    |> validate_required([:game_id, :key, :aggregation, :input_scope])
+    |> validate_required([:scenario_id, :key, :aggregation, :input_scope])
     |> validate_localized_required(:name)
     |> validate_format(:key, ~r/^[a-z][a-z0-9_]*$/,
       message: "must be a lowercase slug (letters, digits, underscores)"
@@ -61,10 +61,10 @@ defmodule Scenex.Authoring.ValueDefinition do
     |> clear_bounds_for_participant()
     |> validate_aggregation()
     |> validate_min_max()
-    |> assoc_constraint(:game)
+    |> assoc_constraint(:scenario)
     |> unique_constraint(:key,
-      name: :value_definitions_game_id_key_index,
-      message: "is already used in this game"
+      name: :value_dimensions_scenario_id_key_index,
+      message: "is already used in this scenario"
     )
   end
 

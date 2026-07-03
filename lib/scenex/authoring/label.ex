@@ -4,14 +4,14 @@ defmodule Scenex.Authoring.Label do
 
   Labels are presentation-only metadata — they carry a `color` (and optional
   `icon`) for rendering, but **no deltas** and never touch the simulation. Each
-  game defines its own set; another game defines different ones.
+  scenario defines its own set; another scenario defines different ones.
   """
   use Ecto.Schema
 
   import Ecto.Changeset
   import Scenex.Authoring.Validators
 
-  alias Scenex.Authoring.Game
+  alias Scenex.Authoring.Scenario
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -27,20 +27,20 @@ defmodule Scenex.Authoring.Label do
     field :icon, :string
     field :position, :integer, default: 0
 
-    belongs_to :game, Game
+    belongs_to :scenario, Scenario
 
     timestamps()
   end
 
   def changeset(label, attrs) do
     label
-    |> cast(attrs, [:game_id, :handle, :name, :color, :icon, :position])
-    |> validate_required([:game_id, :handle, :color])
+    |> cast(attrs, [:scenario_id, :handle, :name, :color, :icon, :position])
+    |> validate_required([:scenario_id, :handle, :color])
     |> validate_localized_required(:name)
-    |> assoc_constraint(:game)
+    |> assoc_constraint(:scenario)
     |> unique_constraint(:handle,
-      name: :labels_game_id_handle_index,
-      message: "is already used in this game"
+      name: :labels_scenario_id_handle_index,
+      message: "is already used in this scenario"
     )
   end
 end

@@ -11,10 +11,10 @@ defmodule ScenexWeb.HomeLiveTest do
     assert html =~ ~p"/users/log-in"
   end
 
-  test "shows a games link to a logged-in user", %{conn: conn} do
+  test "shows a scenarios link to a logged-in user", %{conn: conn} do
     conn = register_and_log_in_user(%{conn: conn}).conn
     {:ok, _lv, html} = live(conn, ~p"/")
 
-    assert html =~ ~p"/games"
+    assert html =~ ~p"/scenarios"
   end
 end
