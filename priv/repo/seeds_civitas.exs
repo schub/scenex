@@ -463,13 +463,205 @@ Enum.each(options, fn {eid, gid, pos, name, marker, context, pros, cons, effects
   end)
 end)
 
+# ── Gates on existing event options ─────────────────────────────────────────
+# Spendable values get their meaning: you can only buy what you can afford.
+gates = [
+  {"E-02", "Rettungspaket", "self(resources) >= 4"},
+  {"E-03", "Faktencheck-Kampagne", "self(resources) >= 3"}
+]
+
+Enum.each(gates, fn {eid, handle, condition} ->
+  opt =
+    event_by_eid[eid]
+    |> Authoring.list_decision_options()
+    |> Enum.find(&(&1.handle == handle))
+
+  {:ok, _} = Authoring.update_decision_option(opt, %{condition: condition})
+end)
+
+# Matrix helper: rows of {group gid, [{value_key, delta}]}
+set_matrix = fn option, rows ->
+  Enum.each(rows, fn {gid, cells} ->
+    Enum.each(cells, fn {key, delta} ->
+      {:ok, _} =
+        Authoring.set_option_effect(option, value_by_key[key], group_by_gid[gid], delta * 1.0)
+    end)
+  end)
+end
+
+# ── Sidequest: the dossier (individual scale) ───────────────────────────────
+{:ok, sidequest} =
+  Authoring.create_timeline_element(scenario, %{
+    handle: "Recherche: Das Dossier",
+    title: %{"de" => "Recherche: Das Dossier"},
+    narrative: %{
+      "de" => """
+      Ein anonymer Hinweis: Im Krisenstab sollen Entscheidungen an den
+      offiziellen Gremien vorbei getroffen worden sein. Es existiert angeblich
+      ein internes Dossier.
+
+      **Auftrag:** Beschaffe belastbare Belege und bringe das Dossier an die
+      Öffentlichkeit — oder entscheide dich bewusst dagegen.
+      """
+    },
+    director_notes: %{
+      "de" => """
+      Verdeckt an eine:n einzelne:n Spieler:in der Gruppe Wirtschaft/Medien
+      übergeben (Zettel oder Flüstern, nicht öffentlich). Die Person entscheidet
+      selbst, wen sie einweiht. Erfolg = das Dossier wird öffentlich gemacht UND
+      mindestens eine andere Gruppe bestätigt die Geschichte öffentlich.
+      Bei Erfolg ggf. als Folge eine Pressekonferenz der Regierung inszenieren.
+      """
+    },
+    kind: :sidequest,
+    position: 4
+  })
+
+{:ok, sq_success} =
+  Authoring.create_decision_option(sidequest, nil, %{
+    handle: "Dossier veröffentlicht",
+    text: %{"de" => "Die Recherche gelingt: Das Dossier wird öffentlich und bestätigt."},
+    outcome: :success,
+    position: 1
+  })
+
+set_matrix.(sq_success, [
+  {"G-ECO", [{"influence", 2}, {"solidarity", 1}]},
+  {"G-REG", [{"stability", -1}, {"influence", -1}]}
+])
+
+{:ok, sq_failure} =
+  Authoring.create_decision_option(sidequest, nil, %{
+    handle: "Recherche aufgeflogen",
+    text: %{"de" => "Die Quelle platzt, der Vorwurf wirkt haltlos — der Schuss geht nach hinten los."},
+    outcome: :failure,
+    position: 2
+  })
+
+set_matrix.(sq_failure, [
+  {"G-ECO", [{"influence", -1}, {"risk", 1}]}
+])
+
+# ── Election: emergency-powers referendum (collective scale, finale) ────────
+{:ok, election} =
+  Authoring.create_timeline_element(scenario, %{
+    handle: "Referendum: Notstandsgesetze",
+    title: %{"de" => "Referendum: Notstandsgesetze"},
+    narrative: %{
+      "de" => """
+      Die Krisen häufen sich. Die Regierung legt der Stadt ein Paket von
+      Notstandsgesetzen zur Abstimmung vor: schnellere Entscheidungen,
+      erweiterte Befugnisse, weniger Mitsprache — befristet, versteht sich.
+
+      **Die zentrale Frage:** Kann die Gemeinschaft auf die Krise antworten,
+      ohne ihre eigenen demokratischen Werte auszuhöhlen?
+
+      Alle Spieler:innen stimmen einzeln ab. Die Mehrheit entscheidet.
+      """
+    },
+    director_notes: %{
+      "de" => """
+      Kampagnenphase von ca. 10 Minuten vor der Abstimmung: Gruppen dürfen
+      Reden halten, verhandeln, Zusagen machen. Abstimmung per Handzeichen
+      oder Stimmzettel; das Ergebnis öffentlich und feierlich verkünden.
+      Bei Gleichstand entscheidet die Spielleitung.
+      """
+    },
+    kind: :election,
+    position: 5,
+    deadline_seconds: 600
+  })
+
+{:ok, el_yes} =
+  Authoring.create_decision_option(election, nil, %{
+    handle: "Ja — Notstandsgesetze",
+    text: %{
+      "de" =>
+        "Das Paket wird angenommen: Ordnung und Tempo zuerst, Kontrolle und Mitsprache später."
+    },
+    condition: "global(risk) >= 6",
+    position: 1
+  })
+
+Authoring.set_option_labels(el_yes, [label_by_name["Eskalation"]])
+
+set_matrix.(el_yes, [
+  {"G-REG", [{"stability", 2}, {"influence", 2}, {"risk", 1}]},
+  {"G-BAS", [{"influence", -2}, {"solidarity", -1}, {"risk", 1}]},
+  {"G-ECO", [{"influence", -1}, {"risk", 1}]}
+])
+
+{:ok, el_no} =
+  Authoring.create_decision_option(election, nil, %{
+    handle: "Nein — demokratische Mittel",
+    text: %{
+      "de" =>
+        "Das Paket wird abgelehnt: Die Krise wird mit den normalen demokratischen Verfahren bewältigt — langsamer, aber legitim."
+    },
+    position: 2
+  })
+
+Authoring.set_option_labels(el_no, [label_by_name["Deeskalation"]])
+
+set_matrix.(el_no, [
+  {"G-REG", [{"stability", -1}, {"influence", -1}]},
+  {"G-BAS", [{"solidarity", 2}, {"influence", 1}, {"risk", -1}]},
+  {"G-ECO", [{"solidarity", 1}]}
+])
+
+# ── Endings: what became of the community? ──────────────────────────────────
+endings = [
+  {"Zusammenbruch", "Systemischer Zusammenbruch", "global(risk) >= 8", 40,
+   """
+   Die Eskalation ist nicht mehr einzufangen. Institutionen funktionieren nur
+   noch auf dem Papier, niemand traut niemandem. Die Stadt ist keine
+   Gemeinschaft mehr, sondern ein Nebeneinander von Lagern.
+   """,
+   "Düster inszenieren: Licht runter, Gruppen räumlich trennen, keine gemeinsame Schlussrunde im Spiel — erst im Debriefing wieder zusammenführen."},
+  {"Autoritäre Stabilisierung", "Autoritäre Stabilisierung", "global(stability) >= 7", 30,
+   """
+   Es herrscht Ordnung — aber zu welchem Preis? Entscheidungen fallen schnell,
+   Widerspruch ist leiser geworden. Die Stadt funktioniert. Ob sie noch eine
+   Demokratie ist, traut sich niemand laut zu fragen.
+   """,
+   "Ambivalent spielen: kein Triumph, keine Katastrophe. Die Frage 'War es das wert?' offen ins Debriefing tragen."},
+  {"Erneuerte Solidarität", "Erneuerte Solidarität", "global(solidarity) >= 6.5", 20,
+   """
+   Die Krisen haben Spuren hinterlassen — und etwas freigelegt: Die Gruppen
+   haben gelernt, einander zuzuhören. Nicht alle Probleme sind gelöst, aber
+   die Stadt entscheidet wieder gemeinsam.
+   """,
+   "Warm inszenieren: alle Gruppen in die Mitte, letzte Entscheidung gemeinsam verlesen."},
+  {"Zerbrechliche Normalität", "Zerbrechliche Normalität", nil, 0,
+   """
+   Die Stadt hat die Krisen überstanden — irgendwie. Nichts ist zusammengebrochen,
+   nichts ist geheilt. Der Alltag kehrt zurück und mit ihm die Frage, ob beim
+   nächsten Mal mehr nötig sein wird als Durchwursteln.
+   """,
+   "Der Standard-Ausgang, wenn kein anderes Ende empfohlen wird. Nüchtern und offen enden."}
+]
+
+Enum.each(endings, fn {handle, title, condition, priority, narrative, notes} ->
+  {:ok, _} =
+    Authoring.create_ending(scenario, %{
+      handle: handle,
+      title: %{"de" => title},
+      narrative: %{"de" => narrative},
+      director_notes: %{"de" => notes},
+      condition: condition,
+      priority: priority
+    })
+end)
+
 IO.puts("""
 Seeded CIVITAS:
-  owner:   #{owner.email}
-  scenario:    #{scenario.id}
-  values:  #{map_size(value_by_key)}
-  groups:  #{map_size(group_by_gid)}
-  labels:  #{map_size(label_by_name)}
-  timeline_elements:  #{map_size(event_by_eid)}
-  options: #{length(options)}
+  owner:      #{owner.email}
+  scenario:   #{scenario.id}
+  values:     #{map_size(value_by_key)}
+  groups:     #{map_size(group_by_gid)}
+  labels:     #{map_size(label_by_name)}
+  events:     #{map_size(event_by_eid)} (+ 1 sidequest, + 1 election)
+  options:    #{length(options)} event options (+ 2 outcomes, + 2 ballot options)
+  gates:      #{length(gates)} on event options, 1 on the election
+  endings:    #{length(endings)}
 """)
