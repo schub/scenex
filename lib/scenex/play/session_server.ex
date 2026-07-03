@@ -55,7 +55,15 @@ defmodule Scenex.Play.SessionServer do
     projection = Enum.reduce(events, Projection.new(definition), &Projection.apply_event(&2, &1))
     sequence = events |> List.last() |> then(&((&1 && &1.sequence) || 0))
 
-    {:ok, %{session: session, definition: definition, projection: projection, seq: sequence}}
+    state = %{
+      session: session,
+      definition: definition,
+      projection: projection,
+      seq: sequence,
+      timers: %{}
+    }
+
+    {:ok, schedule_deadlines(state)}
   end
 
   @impl true
@@ -68,6 +76,7 @@ defmodule Scenex.Play.SessionServer do
       {:ok, type, payload, row_changes} ->
         case persist(state, type, payload, row_changes) do
           {:ok, state} ->
+            state = schedule_deadlines(state)
             broadcast(state)
             {:reply, {:ok, build_snapshot(state)}, state}
 
@@ -77,6 +86,99 @@ defmodule Scenex.Play.SessionServer do
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_info({:deadline, element_id}, state) do
+    {:noreply, fire_deadline(state, element_id)}
+  end
+
+  # ── Deadline timers ───────────────────────────────────────────────────
+  # Timers run against the game clock: scheduled only while :live, cancelled
+  # on pause, rescheduled with the remaining game time on resume/restart.
+  # A lapsed deadline appends the authored default option for every still-
+  # undecided slot (event kind: per group; election: the default ballot
+  # option). Sidequests have no defaults — the GM adjudicates.
+
+  defp schedule_deadlines(state) do
+    state = cancel_timers(state)
+
+    if state.projection.status == :live do
+      timers =
+        for {element_id, remaining_ms} <- pending_deadlines(state), into: %{} do
+          {element_id, Process.send_after(self(), {:deadline, element_id}, max(remaining_ms, 0))}
+        end
+
+      %{state | timers: timers}
+    else
+      state
+    end
+  end
+
+  defp cancel_timers(state) do
+    Enum.each(state.timers, fn {_id, ref} -> Process.cancel_timer(ref) end)
+    %{state | timers: %{}}
+  end
+
+  defp pending_deadlines(state) do
+    game_time = current_game_time(state.session)
+
+    for element_id <- state.projection.triggered,
+        element = state.definition.elements[element_id],
+        is_integer(element.deadline_seconds),
+        missing_defaults(state, element) != [],
+        deadline_at = state.projection.triggered_at[element_id] + element.deadline_seconds * 1000,
+        do: {element_id, deadline_at - game_time}
+  end
+
+  # The default decisions a lapsed deadline would apply right now.
+  defp missing_defaults(state, element) do
+    options = state.definition.options_by_element[element.id] || []
+    decided = Map.get(state.projection.decisions, element.id, %{})
+
+    case element.kind do
+      :event ->
+        for option <- options,
+            option.is_default,
+            not Map.has_key?(decided, option.group_id),
+            do: {option.group_id, option.id}
+
+      :election ->
+        with false <- Map.has_key?(decided, :winner),
+             %{id: option_id} <- Enum.find(options, & &1.is_default) do
+          [{:winner, option_id}]
+        else
+          _ -> []
+        end
+
+      :sidequest ->
+        []
+    end
+  end
+
+  defp fire_deadline(state, element_id) do
+    element = state.definition.elements[element_id]
+
+    if state.projection.status == :live and element do
+      state =
+        Enum.reduce(missing_defaults(state, element), state, fn {slot, option_id}, acc ->
+          payload =
+            case slot do
+              :winner -> %{element_id: element_id, option_id: option_id}
+              group_id -> %{element_id: element_id, group_id: group_id, option_id: option_id}
+            end
+
+          case persist(acc, "deadline_lapsed", payload, %{}) do
+            {:ok, acc2} -> acc2
+            {:error, _reason} -> acc
+          end
+        end)
+
+      broadcast(state)
+      schedule_deadlines(state)
+    else
+      state
     end
   end
 
@@ -231,7 +333,8 @@ defmodule Scenex.Play.SessionServer do
   defp normalize(%SessionEvent{} = event) do
     %{
       type: event.type,
-      payload: Map.new(event.payload, fn {k, v} -> {to_string(k), v} end)
+      payload: Map.new(event.payload, fn {k, v} -> {to_string(k), v} end),
+      game_time_ms: event.game_time_ms
     }
   end
 
@@ -254,6 +357,7 @@ defmodule Scenex.Play.SessionServer do
       sim: state.projection.sim,
       globals: Projection.globals(state.projection),
       triggered: state.projection.triggered,
+      triggered_at: state.projection.triggered_at,
       decisions: state.projection.decisions,
       ending_id: state.projection.ending_id,
       game_time_ms: current_game_time(state.session),

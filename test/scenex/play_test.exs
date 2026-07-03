@@ -259,6 +259,64 @@ defmodule Scenex.PlayTest do
     assert {:error, :unknown_ending} = Play.select_ending(session.id, ctx.crack.id)
   end
 
+  test "a lapsed deadline applies default options to undecided slots", ctx do
+    %{session: session, scenario: scenario, stability: stability, gov: gov, media: media} = ctx
+
+    # An event element with a deadline; gov and media each have a default.
+    {:ok, timed} =
+      Authoring.create_timeline_element(scenario, %{
+        handle: "Timed",
+        title: %{"en" => "Timed"},
+        position: 4,
+        deadline_seconds: 3600
+      })
+
+    {:ok, gov_default} =
+      Authoring.create_decision_option(timed, gov, %{
+        handle: "Gov default",
+        text: %{"en" => "Gov default"},
+        is_default: true
+      })
+
+    Authoring.set_option_effect(gov_default, stability, -2.0)
+
+    {:ok, media_default} =
+      Authoring.create_decision_option(timed, media, %{
+        handle: "Media default",
+        text: %{"en" => "Media default"},
+        is_default: true
+      })
+
+    {:ok, media_active} =
+      Authoring.create_decision_option(timed, media, %{
+        handle: "Media active",
+        text: %{"en" => "Media active"}
+      })
+
+    Authoring.set_option_effect(media_active, stability, 1.0)
+
+    {:ok, _} = Play.start_session(session.id)
+    {:ok, _} = Play.trigger_element(session.id, timed.id)
+
+    # Media decides in time; gov does not.
+    {:ok, _} = Play.choose_option(session.id, timed.id, media.id, media_active.id)
+
+    # Fire the deadline directly (deterministic — no sleeping on real timers).
+    pid = Scenex.Play.SessionServer.whereis(session.id)
+    send(pid, {:deadline, timed.id})
+
+    snap = Play.snapshot(session.id)
+
+    # Gov got its default (5 - 2 = 3); media's real decision survived (5 + 1 = 6).
+    assert stab(snap, ctx, ctx.gov) == 3.0
+    assert stab(snap, ctx, ctx.media) == 6.0
+    assert snap.decisions[timed.id][gov.id] == gov_default.id
+    assert snap.decisions[timed.id][media.id] == media_active.id
+
+    types = session |> Play.list_session_events() |> Enum.map(& &1.type)
+    assert Enum.count(types, &(&1 == "deadline_lapsed")) == 1
+  end
+
   test "session updates are broadcast", ctx do
     %{session: session} = ctx
     Play.subscribe(session.id)

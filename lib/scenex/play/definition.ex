@@ -12,6 +12,7 @@ defmodule Scenex.Play.Definition do
 
   defstruct scenario_id: nil,
             specs: [],
+            value_dimensions: [],
             group_ids: [],
             groups: %{},
             initial: %{},
@@ -48,6 +49,7 @@ defmodule Scenex.Play.Definition do
     %__MODULE__{
       scenario_id: scenario.id,
       specs: Enum.map(value_dimensions, &Authoring.to_value_spec/1),
+      value_dimensions: value_dimensions,
       group_ids: Enum.map(groups, & &1.id),
       groups: Map.new(groups, &{&1.id, &1}),
       initial: initial,

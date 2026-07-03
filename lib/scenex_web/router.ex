@@ -61,6 +61,8 @@ defmodule ScenexWeb.Router do
       live "/scenarios", ScenarioLive.Index, :index
       live "/scenarios/:id", ScenarioLive.Show, :show
       live "/scenarios/:id/simulate", ScenarioLive.Simulate, :show
+      live "/scenarios/:id/sessions", SessionLive.Index, :index
+      live "/sessions/:id/console", SessionLive.Console, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password

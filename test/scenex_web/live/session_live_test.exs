@@ -1,0 +1,193 @@
+defmodule ScenexWeb.SessionLiveTest do
+  # async: false — session processes access the DB (shared sandbox).
+  use ScenexWeb.ConnCase, async: false
+
+  import Phoenix.LiveViewTest
+  import Scenex.AccountsFixtures
+  import Scenex.AuthoringFixtures
+
+  alias Scenex.{Authoring, Play}
+
+  setup :register_and_log_in_user
+
+  defp definition_fixture(user) do
+    scenario = scenario_fixture(user)
+
+    stability =
+      value_dimension_fixture(scenario,
+        key: "stability",
+        name: %{"en" => "Stability"},
+        min: 0.0,
+        max: 10.0
+      )
+
+    gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+    Authoring.set_group_initial_value(gov, stability, 5.0)
+
+    event = timeline_element_fixture(scenario, handle: "Blackout", position: 1)
+
+    {:ok, crack} =
+      Authoring.create_decision_option(event, gov, %{handle: "Crack", text: %{"en" => "Crack"}})
+
+    Authoring.set_option_effect(crack, stability, 2.0)
+
+    {:ok, election} =
+      Authoring.create_timeline_element(scenario, %{
+        handle: "Referendum",
+        title: %{"en" => "Referendum"},
+        kind: :election,
+        position: 2
+      })
+
+    {:ok, yes} =
+      Authoring.create_decision_option(election, nil, %{handle: "Yes", text: %{"en" => "Yes"}})
+
+    Authoring.set_option_effect(yes, stability, gov, 2.0)
+
+    {:ok, sidequest} =
+      Authoring.create_timeline_element(scenario, %{
+        handle: "Leak",
+        title: %{"en" => "Leak"},
+        kind: :sidequest,
+        position: 3
+      })
+
+    {:ok, success} =
+      Authoring.create_decision_option(sidequest, nil, %{
+        handle: "Published",
+        text: %{"en" => "Published"},
+        outcome: :success
+      })
+
+    {:ok, ending} =
+      Authoring.create_ending(scenario, %{
+        handle: "Stabilized",
+        title: %{"en" => "Stabilized"},
+        condition: "global(stability) >= 6"
+      })
+
+    %{
+      scenario: scenario,
+      stability: stability,
+      gov: gov,
+      event: event,
+      crack: crack,
+      election: election,
+      yes: yes,
+      sidequest: sidequest,
+      success: success,
+      ending: ending
+    }
+  end
+
+  setup %{user: user} do
+    fixtures = definition_fixture(user)
+    {:ok, session} = Play.create_session(user, fixtures.scenario, %{label: "Premiere"})
+    on_exit(fn -> Play.stop_running(session.id) end)
+    Map.put(fixtures, :session, session)
+  end
+
+  test "creating a session from the index opens the console", %{conn: conn, scenario: scenario} do
+    {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/sessions")
+    assert html =~ "Premiere"
+
+    assert {:ok, _console, html} =
+             lv
+             |> form("#new-session", %{"session" => %{"label" => "Second night"}})
+             |> render_submit()
+             |> follow_redirect(conn)
+
+    assert html =~ "Second night"
+    assert html =~ "GM console"
+  end
+
+  test "running a full session through the console", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "Premiere"
+    assert html =~ "draft"
+
+    # Start
+    html = lv |> element("button[phx-click=start]") |> render_click()
+    assert html =~ "live"
+
+    # Trigger the event and enter gov's decision -> stability 7
+    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
+
+    html =
+      lv
+      |> element(
+        ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+          ~s{[phx-value-option="#{ctx.crack.id}"]}
+      )
+      |> render_click()
+
+    assert html =~ "7"
+
+    # Election: tally + winner -> gov 9
+    lv
+    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
+    |> render_click()
+
+    html =
+      lv
+      |> form(~s{form[phx-submit=resolve_election]}, %{
+        "winner" => ctx.yes.id,
+        "tally" => %{ctx.yes.id => "23"}
+      })
+      |> render_submit()
+
+    assert html =~ "9"
+
+    # Sidequest adjudication
+    lv
+    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.sidequest.id}"]})
+    |> render_click()
+
+    lv
+    |> element(
+      ~s{button[phx-click=adjudicate][phx-value-element="#{ctx.sidequest.id}"]} <>
+        ~s{[phx-value-option="#{ctx.success.id}"]}
+    )
+    |> render_click()
+
+    # End: endings panel appears; stability global 9 >= 6 -> recommended
+    html = lv |> element("button[phx-click=end_session]") |> render_click()
+    assert html =~ "Choose the ending"
+    assert html =~ "recommended"
+
+    html =
+      lv
+      |> element(~s{button[phx-click=select_ending][phx-value-id="#{ctx.ending.id}"]})
+      |> render_click()
+
+    assert html =~ "Selected"
+    assert Play.get_session!(session.id).ending_id == ctx.ending.id
+
+    # The tally landed in the log.
+    tally_event =
+      session |> Play.list_session_events() |> Enum.find(&(&1.type == "election_resolved"))
+
+    assert tally_event.payload["tally"][ctx.yes.id] == 23
+  end
+
+  test "a viewer cannot open the console", %{session: session} do
+    other = user_fixture()
+    conn = build_conn() |> log_in_user(other)
+
+    assert {:error, {:live_redirect, %{to: "/scenarios"}}} =
+             live(conn, ~p"/sessions/#{session.id}/console")
+  end
+
+  test "invalid commands surface as flash, not crashes", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    # The button is disabled in draft, but a stale client could still send the
+    # event — the session process rejects it and the console flashes.
+    html = render_click(lv, "trigger", %{"id" => ctx.event.id})
+
+    assert html =~ "Rejected"
+  end
+end

@@ -16,7 +16,15 @@ defmodule Scenex.Play.Projection do
   alias Scenex.Engine.Sim
   alias Scenex.Play.Definition
 
-  defstruct [:definition, :sim, status: :draft, triggered: [], decisions: %{}, ending_id: nil]
+  defstruct [
+    :definition,
+    :sim,
+    status: :draft,
+    triggered: [],
+    triggered_at: %{},
+    decisions: %{},
+    ending_id: nil
+  ]
 
   @type slot :: String.t() | :winner | :outcome
   @type t :: %__MODULE__{}
@@ -25,52 +33,65 @@ defmodule Scenex.Play.Projection do
     %__MODULE__{definition: definition, sim: Definition.initial_sim(definition)}
   end
 
-  @doc "Fold one session event (struct or map with `type`/`payload`)."
-  def apply_event(%__MODULE__{} = projection, %{type: type, payload: payload}) do
-    projection |> handle(type, payload) |> recompute()
+  @doc "Fold one session event (struct or map with `type`/`payload`/`game_time_ms`)."
+  def apply_event(%__MODULE__{} = projection, %{type: type, payload: payload} = event) do
+    game_time_ms = Map.get(event, :game_time_ms, 0)
+    projection |> handle(type, payload, game_time_ms) |> recompute()
   end
 
   def globals(%__MODULE__{sim: sim}), do: Sim.globals(sim)
 
   # ── Event handlers ────────────────────────────────────────────────────
 
-  defp handle(p, "session_started", _), do: %{p | status: :live}
-  defp handle(p, "session_paused", _), do: %{p | status: :paused}
-  defp handle(p, "session_resumed", _), do: %{p | status: :live}
-  defp handle(p, "session_ended", _), do: %{p | status: :ended}
+  defp handle(p, "session_started", _, _), do: %{p | status: :live}
+  defp handle(p, "session_paused", _, _), do: %{p | status: :paused}
+  defp handle(p, "session_resumed", _, _), do: %{p | status: :live}
+  defp handle(p, "session_ended", _, _), do: %{p | status: :ended}
 
-  defp handle(p, "ending_selected", %{"ending_id" => ending_id}),
+  defp handle(p, "ending_selected", %{"ending_id" => ending_id}, _),
     do: %{p | ending_id: ending_id}
 
-  defp handle(p, "element_triggered", %{"element_id" => element_id}) do
-    if element_id in p.triggered,
-      do: p,
-      else: %{p | triggered: p.triggered ++ [element_id]}
+  defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
+    if element_id in p.triggered do
+      p
+    else
+      %{
+        p
+        | triggered: p.triggered ++ [element_id],
+          triggered_at: Map.put(p.triggered_at, element_id, game_time_ms)
+      }
+    end
   end
 
-  defp handle(p, "option_chosen", %{
-         "element_id" => eid,
-         "group_id" => gid,
-         "option_id" => oid
-       }),
+  defp handle(
+         p,
+         "option_chosen",
+         %{"element_id" => eid, "group_id" => gid, "option_id" => oid},
+         _
+       ),
        do: put_decision(p, eid, gid, oid)
 
-  defp handle(p, "deadline_lapsed", %{
-         "element_id" => eid,
-         "group_id" => gid,
-         "option_id" => oid
-       }),
+  defp handle(
+         p,
+         "deadline_lapsed",
+         %{"element_id" => eid, "group_id" => gid, "option_id" => oid},
+         _
+       ),
        do: put_decision(p, eid, gid, oid)
 
-  defp handle(p, "election_resolved", %{"element_id" => eid, "option_id" => oid}),
+  # A lapsed election deadline resolves to the default ballot option.
+  defp handle(p, "deadline_lapsed", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :winner, oid)
 
-  defp handle(p, "sidequest_adjudicated", %{"element_id" => eid, "option_id" => oid}),
+  defp handle(p, "election_resolved", %{"element_id" => eid, "option_id" => oid}, _),
+    do: put_decision(p, eid, :winner, oid)
+
+  defp handle(p, "sidequest_adjudicated", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :outcome, oid)
 
   # Unknown event types are ignored — old logs stay replayable as the
   # vocabulary grows.
-  defp handle(p, _type, _payload), do: p
+  defp handle(p, _type, _payload, _game_time_ms), do: p
 
   defp put_decision(p, element_id, slot, option_id) do
     decisions =

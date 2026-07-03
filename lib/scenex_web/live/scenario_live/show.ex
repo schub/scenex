@@ -34,6 +34,13 @@ defmodule ScenexWeb.ScenarioLive.Show do
           >
             Dry run
           </.link>
+          <.link
+            :if={@can_edit?}
+            navigate={~p"/scenarios/#{@scenario.id}/sessions"}
+            class="btn btn-sm btn-primary btn-soft"
+          >
+            Sessions
+          </.link>
           <.link navigate={~p"/scenarios"} class="btn btn-sm btn-ghost">← All scenarios</.link>
         </:actions>
       </.header>
