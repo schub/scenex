@@ -12,8 +12,9 @@ defmodule Scenex.Application do
       Scenex.Repo,
       {DNSCluster, query: Application.get_env(:scenex, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Scenex.PubSub},
-      # Start a worker by calling: Scenex.Worker.start_link(arg)
-      # {Scenex.Worker, arg},
+      # Layer 3: one supervised process per running session, found by id.
+      {Registry, keys: :unique, name: Scenex.Play.Registry},
+      {DynamicSupervisor, name: Scenex.Play.SessionSupervisor, strategy: :one_for_one},
       # Start to serve requests, typically the last entry
       ScenexWeb.Endpoint
     ]
