@@ -175,5 +175,162 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert [%{delta: -5.0}] = option.effects
       assert [%{name: %{"en" => "Aggressive"}}] = option.labels
     end
+
+    test "edits an election option with an outcome matrix", %{conn: conn, scenario: scenario} do
+      value = value_dimension_fixture(scenario, key: "stability", name: %{"en" => "Stability"})
+      gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+      media = group_fixture(scenario, handle: "Media", name: %{"en" => "Media"})
+
+      {:ok, election} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Emergency law",
+          title: %{"en" => "Emergency law"},
+          kind: :election
+        })
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=timeline]") |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=open_event][phx-value-id="#{election.id}"]})
+      |> render_click()
+
+      # Election panel shows the room-wide ballot, not per-group blocks
+      assert render(lv) =~ "Ballot options"
+
+      lv |> element(~s{button[phx-click=new_option]:not([phx-value-group])}) |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_option"]), %{
+          "option" => %{
+            "handle" => "Yes",
+            "text" => %{"en" => "Pass the law"},
+            "position" => "0",
+            "condition" => "global(stability) < 8"
+          },
+          "matrix" => %{
+            gov.id => %{value.id => "2"},
+            media.id => %{value.id => "-1"}
+          }
+        })
+        |> render_submit()
+
+      assert html =~ "Yes"
+      assert html =~ "Government: Stability +2"
+      assert html =~ "Media: Stability -1"
+
+      [option] = Authoring.list_decision_options(election)
+      assert option.group_id == nil
+      assert option.condition == "global(stability) < 8"
+      assert length(option.effects) == 2
+    end
+
+    test "defines sidequest success and failure outcomes", %{conn: conn, scenario: scenario} do
+      value = value_dimension_fixture(scenario, key: "solidarity", name: %{"en" => "Solidarity"})
+      gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+
+      {:ok, sidequest} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Leak the memo",
+          title: %{"en" => "Leak the memo"},
+          kind: :sidequest
+        })
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=timeline]") |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=open_event][phx-value-id="#{sidequest.id}"]})
+      |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=new_outcome][phx-value-outcome="success"]})
+      |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_option"]), %{
+          "option" => %{
+            "handle" => "Memo published",
+            "text" => %{"en" => "The memo goes public"},
+            "position" => "0",
+            "outcome" => "success"
+          },
+          "matrix" => %{gov.id => %{value.id => "1"}}
+        })
+        |> render_submit()
+
+      assert html =~ "Memo published"
+
+      [option] = Authoring.list_decision_options(sidequest)
+      assert option.outcome == :success
+      assert [%{delta: 1.0, group_id: group_id}] = option.effects
+      assert group_id == gov.id
+
+      # The success slot is filled; only failure can still be defined
+      refute has_element?(lv, ~s{button[phx-click=new_outcome][phx-value-outcome="success"]})
+      assert has_element?(lv, ~s{button[phx-click=new_outcome][phx-value-outcome="failure"]})
+    end
+
+    test "adds an ending with a condition", %{conn: conn, scenario: scenario} do
+      value_dimension_fixture(scenario, key: "risk", name: %{"en" => "Risk"})
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=endings]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_ending"]), %{
+          "ending" => %{
+            "handle" => "Collapse",
+            "title" => %{"en" => "Systemic collapse"},
+            "condition" => "global(risk) >= 8",
+            "priority" => "10"
+          }
+        })
+        |> render_submit()
+
+      assert html =~ "Collapse"
+      assert html =~ "global(risk) &gt;= 8"
+
+      # invalid condition is rejected with a readable error
+      html2 =
+        lv
+        |> form(~s(form[phx-submit="save_ending"]), %{
+          "ending" => %{
+            "handle" => "Bad",
+            "title" => %{"en" => "Bad"},
+            "condition" => "self(risk) >= 8"
+          }
+        })
+        |> render_submit()
+
+      assert html2 =~ "self(...) is not allowed here"
+    end
+
+    test "saves director's notes on a group", %{conn: conn, scenario: scenario} do
+      group = group_fixture(scenario, name: %{"en" => "Government"})
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=groups]") |> render_click()
+
+      lv
+      |> element(~s{button[phx-click=edit_group][phx-value-id="#{group.id}"]})
+      |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_group"]), %{
+        "group" => %{
+          "handle" => group.handle,
+          "name" => %{"en" => "Government"},
+          "director_notes" => %{"en" => "Seat them near the stage."},
+          "position" => "0"
+        }
+      })
+      |> render_submit()
+
+      assert Authoring.get_group!(group.id).director_notes["en"] == "Seat them near the stage."
+    end
   end
 end

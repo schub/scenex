@@ -1,17 +1,20 @@
 defmodule ScenexWeb.ScenarioLive.Show do
   @moduledoc """
   The scenario-definition editor. Sections: Settings, Values, Groups, Initial values,
-  Timeline, Labels. Content is edited one working locale at a time; authorization
-  comes from the Authoring context (owners/authors edit, else read-only).
+  Timeline, Labels, Endings. Content is edited one working locale at a time;
+  authorization comes from the Authoring context (owners/authors edit, else
+  read-only). The options panel is kind-aware: events edit per-group options
+  with own-value effects; elections and sidequests edit options with an
+  outcome matrix (per-group deltas).
   """
   use ScenexWeb, :live_view
 
   alias Scenex.Authoring
-  alias Scenex.Authoring.{DecisionOption, TimelineElement, Group, Label, ValueDimension}
+  alias Scenex.Authoring.{DecisionOption, Ending, TimelineElement, Group, Label, ValueDimension}
   alias Scenex.I18n
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values groups initial timeline labels)a
+  @sections ~w(settings values groups initial timeline labels endings)a
   @locale_choices ~w(en de pt es it)
 
   @impl true
@@ -82,6 +85,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
               name={"scenario[description][#{@locale}]"}
               value={LocalizedForm.value(@settings_form, :description, @locale)}
               label={"Description (#{@locale}, Markdown)"}
+            />
+            <.input
+              type="textarea"
+              name={"scenario[director_notes][#{@locale}]"}
+              value={LocalizedForm.value(@settings_form, :director_notes, @locale)}
+              label={"Director's notes (#{@locale}, GM/performers only)"}
             />
             <.input
               field={@settings_form[:visibility]}
@@ -173,6 +182,14 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     name={"value_dimension[description][#{@locale}]"}
                     value={LocalizedForm.value(@value_form, :description, @locale)}
                     label={"Description (#{@locale}, Markdown)"}
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"value_dimension[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@value_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
                   />
                 </div>
                 <.input
@@ -288,6 +305,14 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     name={"group[description][#{@locale}]"}
                     value={LocalizedForm.value(@group_form, :description, @locale)}
                     label={"Description (#{@locale}, Markdown)"}
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"group[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@group_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
                   />
                 </div>
                 <div class="flex gap-2 sm:col-span-2">
@@ -430,6 +455,14 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     label={"Narrative (#{@locale}, Markdown)"}
                   />
                 </div>
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"timeline_element[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@event_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
+                  />
+                </div>
                 <.input
                   field={@event_form[:kind]}
                   type="select"
@@ -464,79 +497,116 @@ defmodule ScenexWeb.ScenarioLive.Show do
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-semibold">
                 Options — {I18n.t!(@selected_timeline_element.title, @locale, default: "element")}
+                <span class="badge badge-sm ml-2">{@selected_timeline_element.kind}</span>
               </h3>
               <button type="button" phx-click="close_event" class="btn btn-xs btn-ghost">
                 Close
               </button>
             </div>
 
-            <p :if={@groups == []} class="opacity-70">Add at least one group first.</p>
+            <%!-- Event: one option set per group --%>
+            <div :if={@selected_timeline_element.kind == :event} class="space-y-6">
+              <p :if={@groups == []} class="opacity-70">Add at least one group first.</p>
 
-            <div :for={group <- @groups} class="space-y-2">
+              <div :for={group <- @groups} class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">{I18n.t!(group.name, @locale, default: group.handle)}</h4>
+                  <button
+                    :if={@can_edit?}
+                    type="button"
+                    phx-click="new_option"
+                    phx-value-group={group.id}
+                    class="btn btn-xs"
+                  >
+                    + Option
+                  </button>
+                </div>
+
+                <ul class="space-y-1">
+                  <.option_row
+                    :for={o <- options_for_group(@options, group.id)}
+                    option={o}
+                    locale={@locale}
+                    value_index={@value_index}
+                    groups_index={@groups_index}
+                    can_edit?={@can_edit?}
+                  />
+                  <li :if={options_for_group(@options, group.id) == []} class="text-xs opacity-60">
+                    No options for this group yet.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <%!-- Election: one ballot for the whole room --%>
+            <div :if={@selected_timeline_element.kind == :election} class="space-y-2">
               <div class="flex items-center justify-between">
-                <h4 class="font-medium">{I18n.t!(group.name, @locale, default: "—")}</h4>
-                <button
-                  :if={@can_edit?}
-                  type="button"
-                  phx-click="new_option"
-                  phx-value-group={group.id}
-                  class="btn btn-xs"
-                >
+                <h4 class="font-medium">Ballot options (all players vote; majority wins)</h4>
+                <button :if={@can_edit?} type="button" phx-click="new_option" class="btn btn-xs">
                   + Option
                 </button>
               </div>
 
               <ul class="space-y-1">
-                <li
-                  :for={o <- options_for_group(@options, group.id)}
-                  class="flex items-center justify-between gap-2 rounded bg-base-200 px-3 py-2"
-                >
-                  <div class="min-w-0">
-                    <span class="text-sm font-medium">{o.handle}</span>
-                    <span class="text-sm opacity-70">— {I18n.t!(o.text, @locale, default: "—")}</span>
-                    <span :if={o.is_default} class="badge badge-xs badge-info ml-1">default</span>
-                    <span :for={l <- o.labels} class={["badge badge-xs ml-1", label_class(l.color)]}>
-                      {I18n.t!(l.name, @locale, default: "?")}
-                    </span>
-                    <span class="ml-1 text-xs opacity-60">
-                      {fmt_effects(o.effects, @value_index, @locale)}
-                    </span>
-                  </div>
-                  <div class="whitespace-nowrap">
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_option"
-                      phx-value-id={o.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_option"
-                      phx-value-id={o.id}
-                      data-confirm="Delete this option?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-                <li :if={options_for_group(@options, group.id) == []} class="text-xs opacity-60">
-                  No options for this group yet.
-                </li>
+                <.option_row
+                  :for={o <- @options}
+                  option={o}
+                  locale={@locale}
+                  value_index={@value_index}
+                  groups_index={@groups_index}
+                  can_edit?={@can_edit?}
+                />
+                <li :if={@options == []} class="text-xs opacity-60">No ballot options yet.</li>
               </ul>
             </div>
 
+            <%!-- Sidequest: success / failure outcome bundles --%>
+            <div :if={@selected_timeline_element.kind == :sidequest} class="space-y-4">
+              <div :for={outcome <- [:success, :failure]} class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">{Phoenix.Naming.humanize(outcome)}</h4>
+                  <button
+                    :if={@can_edit? and outcome_option(@options, outcome) == nil}
+                    type="button"
+                    phx-click="new_outcome"
+                    phx-value-outcome={outcome}
+                    class="btn btn-xs"
+                  >
+                    + Define {outcome}
+                  </button>
+                </div>
+
+                <ul class="space-y-1">
+                  <.option_row
+                    :if={outcome_option(@options, outcome)}
+                    option={outcome_option(@options, outcome)}
+                    locale={@locale}
+                    value_index={@value_index}
+                    groups_index={@groups_index}
+                    can_edit?={@can_edit?}
+                  />
+                  <li :if={outcome_option(@options, outcome) == nil} class="text-xs opacity-60">
+                    Not defined yet{if outcome == :failure,
+                      do: " (optional — failing may simply cost the opportunity)"}.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <%!-- Option editor --%>
-            <div :if={@can_edit? and @option_group_id} class="card bg-base-100 border border-base-300">
+            <div :if={@can_edit? and @option_editor?} class="card bg-base-100 border border-base-300">
               <div class="card-body">
                 <h4 class="font-semibold">
                   {if @editing_option, do: "Edit option", else: "New option"}
+                  <span :if={@option_outcome} class="badge badge-sm ml-1">{@option_outcome}</span>
                 </h4>
                 <.form for={@option_form} phx-submit="save_option" class="space-y-3">
+                  <input
+                    :if={@option_outcome}
+                    type="hidden"
+                    name="option[outcome]"
+                    value={@option_outcome}
+                  />
                   <.input field={@option_form[:handle]} label="Handle (internal)" />
                   <.input
                     type="text"
@@ -544,9 +614,18 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     value={LocalizedForm.value(@option_form, :text, @locale)}
                     label={"Option text (#{@locale})"}
                   />
+                  <.input
+                    type="textarea"
+                    name={"option[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@option_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
+                  />
                   <div class="grid gap-3 sm:grid-cols-2">
                     <.input field={@option_form[:position]} type="number" label="Position" />
-                    <label class="flex items-center gap-2 self-end pb-2">
+                    <label
+                      :if={@selected_timeline_element.kind != :sidequest}
+                      class="flex items-center gap-2 self-end pb-2"
+                    >
                       <input type="hidden" name="option[is_default]" value="false" />
                       <input
                         type="checkbox"
@@ -559,7 +638,17 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     </label>
                   </div>
 
-                  <fieldset :if={@labels != []} class="fieldset">
+                  <.input
+                    :if={@selected_timeline_element.kind != :sidequest}
+                    field={@option_form[:condition]}
+                    label={condition_label(@selected_timeline_element.kind)}
+                    placeholder={condition_placeholder(@selected_timeline_element.kind)}
+                  />
+
+                  <fieldset
+                    :if={@selected_timeline_element.kind != :sidequest and @labels != []}
+                    class="fieldset"
+                  >
                     <legend class="fieldset-legend">Labels</legend>
                     <div class="flex flex-wrap gap-3">
                       <label :for={l <- @labels} class="flex items-center gap-1">
@@ -577,7 +666,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     </div>
                   </fieldset>
 
-                  <fieldset class="fieldset">
+                  <%!-- Event: effects on the deciding group's own values --%>
+                  <fieldset :if={@selected_timeline_element.kind == :event} class="fieldset">
                     <legend class="fieldset-legend">
                       Effects on {I18n.t!(@selected_group_name, @locale, default: "this group")}'s values
                     </legend>
@@ -600,6 +690,46 @@ defmodule ScenexWeb.ScenarioLive.Show do
                         />
                       </label>
                     </div>
+                    <p class="text-xs opacity-60">Blank = no effect.</p>
+                  </fieldset>
+
+                  <%!-- Election/sidequest: the outcome matrix --%>
+                  <fieldset :if={@selected_timeline_element.kind != :event} class="fieldset">
+                    <legend class="fieldset-legend">Outcome matrix (per-group deltas)</legend>
+                    <p
+                      :if={per_group_values(@value_dimensions) == [] or @groups == []}
+                      class="text-xs opacity-60"
+                    >
+                      Add per-group values and groups first.
+                    </p>
+                    <div class="overflow-x-auto">
+                      <table class="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Group \ Value</th>
+                            <th :for={v <- per_group_values(@value_dimensions)}>
+                              {I18n.t!(v.name, @locale, default: v.key)}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr :for={g <- @groups}>
+                            <td class="font-medium">{I18n.t!(g.name, @locale, default: g.handle)}</td>
+                            <td :for={v <- per_group_values(@value_dimensions)}>
+                              <input
+                                type="number"
+                                step="any"
+                                name={"matrix[#{g.id}][#{v.id}]"}
+                                value={Map.get(@option_matrix, {g.id, v.id}, "")}
+                                placeholder="0"
+                                class="input input-bordered input-sm w-20"
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p class="text-xs opacity-60">Blank = no effect on that group.</p>
                   </fieldset>
 
                   <div class="flex gap-2">
@@ -687,12 +817,122 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 />
                 <.input field={@label_form[:icon]} label="Icon (optional)" />
                 <.input field={@label_form[:position]} type="number" label="Position" />
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"label[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@label_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
+                  />
+                </div>
                 <div class="flex gap-2 sm:col-span-2">
                   <.button variant="primary">Save label</.button>
                   <button
                     :if={@editing_label}
                     type="button"
                     phx-click="new_label"
+                    class="btn btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </.form>
+            </div>
+          </div>
+        </div>
+
+        <%!-- Endings --%>
+        <div :if={@section == :endings} class="space-y-6">
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Handle</th>
+                  <th>Title ({@locale})</th>
+                  <th>Condition</th>
+                  <th>Priority</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={e <- @endings}>
+                  <td class="font-medium">{e.handle}</td>
+                  <td>{I18n.t!(e.title, @locale, default: "—")}</td>
+                  <td class="font-mono text-xs">{e.condition || "—"}</td>
+                  <td>{e.priority}</td>
+                  <td class="text-right whitespace-nowrap">
+                    <button
+                      :if={@can_edit?}
+                      type="button"
+                      phx-click="edit_ending"
+                      phx-value-id={e.id}
+                      class="btn btn-xs"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      :if={@can_edit?}
+                      type="button"
+                      phx-click="delete_ending"
+                      phx-value-id={e.id}
+                      data-confirm="Delete this ending?"
+                      class="btn btn-xs btn-error btn-soft"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+                <tr :if={@endings == []}>
+                  <td colspan="5" class="opacity-70">
+                    No endings yet. Endings are the authored final scenes — the final global
+                    values recommend which ones fit, and the GM picks.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div :if={@can_edit?} class="card bg-base-200">
+            <div class="card-body">
+              <h3 class="font-semibold">
+                {if @editing_ending, do: "Edit ending", else: "New ending"}
+              </h3>
+              <.form for={@ending_form} phx-submit="save_ending" class="grid gap-3 sm:grid-cols-2">
+                <.input field={@ending_form[:handle]} label="Handle (internal)" />
+                <.input
+                  type="text"
+                  name={"ending[title][#{@locale}]"}
+                  value={LocalizedForm.value(@ending_form, :title, @locale)}
+                  label={"Title (#{@locale})"}
+                />
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"ending[narrative][#{@locale}]"}
+                    value={LocalizedForm.value(@ending_form, :narrative, @locale)}
+                    label={"Narrative (#{@locale}, Markdown)"}
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <.input
+                    type="textarea"
+                    name={"ending[director_notes][#{@locale}]"}
+                    value={LocalizedForm.value(@ending_form, :director_notes, @locale)}
+                    label={"Director's notes (#{@locale}, GM only)"}
+                  />
+                </div>
+                <.input
+                  field={@ending_form[:condition]}
+                  label="Condition (optional — global(key) only)"
+                  placeholder="e.g. global(risk) >= 8"
+                />
+                <.input field={@ending_form[:priority]} type="number" label="Priority (higher first)" />
+                <div class="flex gap-2 sm:col-span-2">
+                  <.button variant="primary">Save ending</.button>
+                  <button
+                    :if={@editing_ending}
+                    type="button"
+                    phx-click="new_ending"
                     class="btn btn-ghost"
                   >
                     Cancel
@@ -732,9 +972,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
            selected_timeline_element: nil,
            selected_timeline_element_id: nil,
            options: [],
+           option_editor?: false,
            option_group_id: nil,
+           option_outcome: nil,
            editing_option: nil,
            option_effects: %{},
+           option_matrix: %{},
            option_label_ids: [],
            selected_group_name: %{}
          )
@@ -743,6 +986,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
          |> assign_group_form(%Group{})
          |> assign_event_form(%TimelineElement{})
          |> assign_label_form(%Label{})
+         |> assign_ending_form(%Ending{})
          |> reload()}
     end
   end
@@ -762,7 +1006,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_settings", %{"scenario" => params}, socket) do
     with_edit(socket, fn ->
-      attrs = LocalizedForm.merge(params, socket.assigns.scenario, [:name, :description])
+      attrs =
+        LocalizedForm.merge(params, socket.assigns.scenario, [
+          :name,
+          :description,
+          :director_notes
+        ])
 
       case Authoring.update_scenario(socket.assigns.scenario, attrs) do
         {:ok, scenario} ->
@@ -792,7 +1041,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # Rebuild the form from params so typed values survive the re-render.
   def handle_event("value_form_changed", %{"value_dimension" => params}, socket) do
     data = socket.assigns.editing_value || %ValueDimension{}
-    attrs = LocalizedForm.merge(params, data, [:name, :description])
+    attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
     scope = if params["input_scope"] == "per_participant", do: :per_participant, else: :per_group
 
     {:noreply,
@@ -807,7 +1056,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   def handle_event("save_value", %{"value_dimension" => params}, socket) do
     with_edit(socket, fn ->
       data = socket.assigns.editing_value || %ValueDimension{}
-      attrs = LocalizedForm.merge(params, data, [:name, :description])
+      attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
 
       result =
         if socket.assigns.editing_value,
@@ -848,7 +1097,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   def handle_event("save_group", %{"group" => params}, socket) do
     with_edit(socket, fn ->
       data = socket.assigns.editing_group || %Group{}
-      attrs = LocalizedForm.merge(params, data, [:name, :description])
+      attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
 
       result =
         if socket.assigns.editing_group,
@@ -908,7 +1157,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   def handle_event("save_event", %{"timeline_element" => params}, socket) do
     with_edit(socket, fn ->
       data = socket.assigns.editing_event || %TimelineElement{}
-      attrs = LocalizedForm.merge(params, data, [:title, :narrative])
+      attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
 
       result =
         if socket.assigns.editing_event,
@@ -966,6 +1215,17 @@ defmodule ScenexWeb.ScenarioLive.Show do
     {:noreply, assign_option_form(socket, %DecisionOption{group_id: group_id}, group_id)}
   end
 
+  # Election options belong to the whole room — no group.
+  def handle_event("new_option", _params, socket) do
+    {:noreply, assign_option_form(socket, %DecisionOption{}, nil)}
+  end
+
+  # Sidequest outcome bundles: success or failure, group bound at adjudication.
+  def handle_event("new_outcome", %{"outcome" => outcome}, socket) do
+    outcome = String.to_existing_atom(outcome)
+    {:noreply, assign_option_form(socket, %DecisionOption{outcome: outcome}, nil)}
+  end
+
   def handle_event("edit_option", %{"id" => id}, socket) do
     option = Authoring.get_decision_option!(id)
     {:noreply, assign_option_form(socket, option, option.group_id)}
@@ -980,7 +1240,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
       timeline_element = socket.assigns.selected_timeline_element
       group = Enum.find(socket.assigns.groups, &(&1.id == socket.assigns.option_group_id))
       data = socket.assigns.editing_option || %DecisionOption{}
-      attrs = LocalizedForm.merge(params, data, [:text])
+      attrs = LocalizedForm.merge(params, data, [:text, :director_notes])
 
       result =
         if socket.assigns.editing_option,
@@ -989,8 +1249,22 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
       case result do
         {:ok, option} ->
-          persist_labels(option, params, socket.assigns.labels)
-          persist_effects(option, Map.get(raw, "effect", %{}), socket.assigns.value_index)
+          if timeline_element.kind != :sidequest do
+            persist_labels(option, params, socket.assigns.labels)
+          end
+
+          case timeline_element.kind do
+            :event ->
+              persist_effects(option, Map.get(raw, "effect", %{}), socket.assigns.value_index)
+
+            _matrix_kind ->
+              persist_matrix(
+                option,
+                Map.get(raw, "matrix", %{}),
+                socket.assigns.value_index,
+                socket.assigns.groups_index
+              )
+          end
 
           {:noreply, socket |> cancel_option() |> reload() |> put_flash(:info, "Option saved.")}
 
@@ -1020,7 +1294,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   def handle_event("save_label", %{"label" => params}, socket) do
     with_edit(socket, fn ->
       data = socket.assigns.editing_label || %Label{}
-      attrs = LocalizedForm.merge(params, data, [:name])
+      attrs = LocalizedForm.merge(params, data, [:name, :director_notes])
 
       result =
         if socket.assigns.editing_label,
@@ -1042,6 +1316,47 @@ defmodule ScenexWeb.ScenarioLive.Show do
     with_edit(socket, fn ->
       id |> Authoring.get_label!() |> Authoring.delete_label()
       {:noreply, socket |> assign_label_form(%Label{}) |> reload()}
+    end)
+  end
+
+  # ── Endings ───────────────────────────────────────────────────────────
+
+  def handle_event("edit_ending", %{"id" => id}, socket) do
+    {:noreply, assign_ending_form(socket, Authoring.get_ending!(id))}
+  end
+
+  def handle_event("new_ending", _params, socket) do
+    {:noreply, assign_ending_form(socket, %Ending{})}
+  end
+
+  def handle_event("save_ending", %{"ending" => params}, socket) do
+    with_edit(socket, fn ->
+      data = socket.assigns.editing_ending || %Ending{}
+      attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
+
+      result =
+        if socket.assigns.editing_ending,
+          do: Authoring.update_ending(data, attrs),
+          else: Authoring.create_ending(socket.assigns.scenario, attrs)
+
+      case result do
+        {:ok, _ending} ->
+          {:noreply,
+           socket
+           |> assign_ending_form(%Ending{})
+           |> reload()
+           |> put_flash(:info, "Ending saved.")}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, :ending_form, to_form(changeset, as: :ending))}
+      end
+    end)
+  end
+
+  def handle_event("delete_ending", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      id |> Authoring.get_ending!() |> Authoring.delete_ending()
+      {:noreply, socket |> assign_ending_form(%Ending{}) |> reload()}
     end)
   end
 
@@ -1086,26 +1401,48 @@ defmodule ScenexWeb.ScenarioLive.Show do
     group = Enum.find(socket.assigns.groups, &(&1.id == group_id))
     effects = if option.id, do: option.effects, else: []
     labels = if option.id, do: option.labels, else: []
+    {matrix_cells, own_cells} = Enum.split_with(effects, & &1.group_id)
 
     socket
     |> assign(:editing_option, if(option.id, do: option, else: nil))
+    |> assign(:option_editor?, true)
     |> assign(:option_group_id, group_id)
+    |> assign(:option_outcome, option.outcome)
     |> assign(:selected_group_name, (group && group.name) || %{})
-    |> assign(:option_effects, Map.new(effects, &{&1.value_dimension_id, &1.delta}))
+    |> assign(:option_effects, Map.new(own_cells, &{&1.value_dimension_id, &1.delta}))
+    |> assign(
+      :option_matrix,
+      Map.new(matrix_cells, &{{&1.group_id, &1.value_dimension_id}, &1.delta})
+    )
     |> assign(:option_label_ids, Enum.map(labels, & &1.id))
-    |> assign(:option_form, to_form(Authoring.change_decision_option(option), as: :option))
+    |> assign(
+      :option_form,
+      to_form(
+        Authoring.change_decision_option(option, %{}, socket.assigns.selected_timeline_element),
+        as: :option
+      )
+    )
   end
 
   defp cancel_option(socket) do
     socket
     |> assign(:editing_option, nil)
+    |> assign(:option_editor?, false)
     |> assign(:option_group_id, nil)
+    |> assign(:option_outcome, nil)
     |> assign(:option_effects, %{})
+    |> assign(:option_matrix, %{})
     |> assign(:option_label_ids, [])
     |> assign(
       :option_form,
       to_form(Authoring.change_decision_option(%DecisionOption{}), as: :option)
     )
+  end
+
+  defp assign_ending_form(socket, ending) do
+    socket
+    |> assign(:editing_ending, if(ending.id, do: ending, else: nil))
+    |> assign(:ending_form, to_form(Authoring.change_ending(ending), as: :ending))
   end
 
   defp close_event(socket) do
@@ -1125,8 +1462,23 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp persist_effects(option, effect_params, value_index) do
     for {value_id, raw} <- effect_params, vd = value_index[value_id], not is_nil(vd) do
       case String.trim(to_string(raw)) do
-        "" -> :noop
+        "" -> Authoring.delete_option_effect(option, vd)
         _ -> Authoring.set_option_effect(option, vd, to_number(raw))
+      end
+    end
+  end
+
+  # Upsert the outcome matrix (group × value → delta); blank clears the cell.
+  defp persist_matrix(option, matrix_params, value_index, groups_index) do
+    for {group_id, cells} <- matrix_params,
+        group = groups_index[group_id],
+        not is_nil(group),
+        {value_id, raw} <- cells,
+        vd = value_index[value_id],
+        not is_nil(vd) do
+      case String.trim(to_string(raw)) do
+        "" -> Authoring.delete_option_effect(option, vd, group)
+        _ -> Authoring.set_option_effect(option, vd, group, to_number(raw))
       end
     end
   end
@@ -1146,9 +1498,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
         value_dimensions: value_dimensions,
         value_index: Map.new(value_dimensions, &{&1.id, &1}),
         groups: groups,
+        groups_index: Map.new(groups, &{&1.id, &1}),
         initials: initials,
         timeline_elements: Authoring.list_timeline_elements(scenario),
-        labels: Authoring.list_labels(scenario)
+        labels: Authoring.list_labels(scenario),
+        endings: Authoring.list_endings(scenario)
       )
 
     # Keep an opened timeline_element's options in sync after edits.
@@ -1194,21 +1548,81 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp fmt_deadline(nil), do: "—"
   defp fmt_deadline(seconds), do: "#{seconds}s"
 
-  defp fmt_effects([], _index, _locale), do: ""
+  defp fmt_effects([], _value_index, _groups_index, _locale), do: ""
 
-  defp fmt_effects(effects, index, locale) do
-    effects
-    |> Enum.map(fn e ->
+  defp fmt_effects(effects, value_index, groups_index, locale) do
+    Enum.map_join(effects, ", ", fn e ->
       name =
-        case index[e.value_dimension_id] do
+        case value_index[e.value_dimension_id] do
           nil -> "?"
           vd -> I18n.t!(vd.name, locale, default: vd.key)
         end
 
+      prefix =
+        case e.group_id && groups_index[e.group_id] do
+          nil -> ""
+          g -> I18n.t!(g.name, locale, default: g.handle) <> ": "
+        end
+
       sign = if e.delta >= 0, do: "+", else: ""
-      "#{name} #{sign}#{fmt_num(e.delta)}"
+      "#{prefix}#{name} #{sign}#{fmt_num(e.delta)}"
     end)
-    |> Enum.join(", ")
+  end
+
+  defp outcome_option(options, outcome), do: Enum.find(options, &(&1.outcome == outcome))
+
+  defp condition_label(:election), do: "Condition (optional gate — global(key) only)"
+  defp condition_label(_kind), do: "Condition (optional gate — self(key), global(key))"
+
+  defp condition_placeholder(:election), do: "e.g. global(risk) >= 7"
+  defp condition_placeholder(_kind), do: "e.g. self(resources) >= 3"
+
+  attr :option, :map, required: true
+  attr :locale, :string, required: true
+  attr :value_index, :map, required: true
+  attr :groups_index, :map, required: true
+  attr :can_edit?, :boolean, required: true
+
+  defp option_row(assigns) do
+    ~H"""
+    <li class="flex items-center justify-between gap-2 rounded bg-base-200 px-3 py-2">
+      <div class="min-w-0">
+        <span class="text-sm font-medium">{@option.handle}</span>
+        <span class="text-sm opacity-70">— {I18n.t!(@option.text, @locale, default: "—")}</span>
+        <span :if={@option.is_default} class="badge badge-xs badge-info ml-1">default</span>
+        <span :if={@option.condition} class="badge badge-xs badge-warning ml-1 font-mono">
+          {@option.condition}
+        </span>
+        <span :for={l <- @option.labels} class={["badge badge-xs ml-1", label_class(l.color)]}>
+          {I18n.t!(l.name, @locale, default: "?")}
+        </span>
+        <span class="ml-1 text-xs opacity-60">
+          {fmt_effects(@option.effects, @value_index, @groups_index, @locale)}
+        </span>
+      </div>
+      <div class="whitespace-nowrap">
+        <button
+          :if={@can_edit?}
+          type="button"
+          phx-click="edit_option"
+          phx-value-id={@option.id}
+          class="btn btn-xs"
+        >
+          Edit
+        </button>
+        <button
+          :if={@can_edit?}
+          type="button"
+          phx-click="delete_option"
+          phx-value-id={@option.id}
+          data-confirm="Delete this option?"
+          class="btn btn-xs btn-error btn-soft"
+        >
+          Delete
+        </button>
+      </div>
+    </li>
+    """
   end
 
   defp label_class(:neutral), do: "badge-neutral"
