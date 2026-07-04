@@ -68,6 +68,25 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # Outbound mail via an authenticated SMTP relay (Uberspace). The relay signs
+  # DKIM for scenex.org itself; we only need to authenticate and send.
+  smtp_relay = System.get_env("SMTP_RELAY") || "brorsen.uberspace.de"
+
+  config :scenex, Scenex.Mailer,
+    adapter: Swoosh.Adapters.SMTP,
+    relay: smtp_relay,
+    username: System.get_env("SMTP_USERNAME"),
+    password: System.get_env("SMTP_PASSWORD"),
+    port: String.to_integer(System.get_env("SMTP_PORT") || "587"),
+    tls: :always,
+    auth: :always,
+    tls_options: [
+      verify: :verify_peer,
+      cacerts: :public_key.cacerts_get(),
+      server_name_indication: String.to_charlist(smtp_relay),
+      versions: [:"tlsv1.2", :"tlsv1.3"]
+    ]
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
