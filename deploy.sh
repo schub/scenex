@@ -7,7 +7,9 @@ set -euo pipefail
 VM="nf-ts-deb"
 APP_DIR="/opt/containers/scenex"
 BRANCH="${1:-main}"
-REPO_URL="$(git remote get-url origin)"
+# The VM clones over HTTPS (public repo, no credentials needed). Local dev
+# uses SSH for pushing — deliberately decoupled.
+REPO_URL="https://github.com/schub/scenex.git"
 
 echo "==> Syncing server scripts to $VM..."
 # Copy as your regular SSH user into /tmp, then su copies them to APP_DIR.
