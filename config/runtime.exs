@@ -80,19 +80,12 @@ if config_env() == :prod do
     port: String.to_integer(System.get_env("SMTP_PORT") || "587"),
     tls: :always,
     auth: :always,
-    tls_options: [
-      verify: :verify_peer,
-      cacerts: :public_key.cacerts_get(),
-      server_name_indication: String.to_charlist(smtp_relay),
-      # OTP's default path-length limit rejects some chains built against the
-      # OS trust store (:max_path_length_reached); raise the depth and use the
-      # HTTPS hostname-match rules.
-      depth: 99,
-      customize_hostname_check: [
-        match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-      ],
-      versions: [:"tlsv1.2", :"tlsv1.3"]
-    ]
+    # tls_certificate_check supplies a hardened trust store plus a partial_chain
+    # callback that truncates the server chain at a known trust anchor. Without
+    # it, OTP validates the full Let's Encrypt chain against the OS trust store
+    # and aborts with :max_path_length_reached (a CA pathLenConstraint, which
+    # raising `depth` does not fix).
+    tls_options: TlsCertificateCheck.options(smtp_relay)
 
   # ## SSL Support
   #
