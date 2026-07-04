@@ -358,6 +358,7 @@ defmodule Scenex.Play.SessionServer do
       globals: Projection.globals(state.projection),
       triggered: state.projection.triggered,
       triggered_at: state.projection.triggered_at,
+      sims_before: state.projection.sims_before,
       decisions: state.projection.decisions,
       ending_id: state.projection.ending_id,
       game_time_ms: current_game_time(state.session),

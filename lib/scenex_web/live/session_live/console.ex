@@ -224,6 +224,56 @@ defmodule ScenexWeb.SessionLive.Console do
         </section>
       </div>
 
+      <%!-- Access: QR tokens for group tables and the projected display --%>
+      <section class="mt-10 space-y-3">
+        <h3 class="text-lg font-semibold">Access &amp; QR</h3>
+        <p class="text-xs opacity-60">
+          A group token lets one table enter its own decisions; the display token is the
+          read-only board for the wall. No accounts — the code is the key.
+        </p>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            :for={g <- groups(@snap)}
+            :if={not has_token?(@tokens, g.id)}
+            phx-click="gen_group_token"
+            phx-value-group={g.id}
+            class="btn btn-xs"
+          >
+            + Code: {I18n.t!(g.name, @locale, default: g.handle)}
+          </button>
+          <button
+            :if={not has_display_token?(@tokens)}
+            phx-click="gen_display_token"
+            class="btn btn-xs"
+          >
+            + Code: projected display
+          </button>
+        </div>
+
+        <div class="flex flex-wrap gap-4">
+          <div :for={token <- @tokens} class="card bg-base-200">
+            <div class="card-body items-center p-4">
+              <span class="font-medium">
+                {token_label(token, @locale)}
+              </span>
+              {Phoenix.HTML.raw(qr_svg(token_url(token)))}
+              <a href={token_url(token)} target="_blank" class="link max-w-48 truncate text-xs">
+                {token_url(token)}
+              </a>
+              <button
+                phx-click="delete_token"
+                phx-value-id={token.id}
+                data-confirm="Revoke this code? The QR stops working immediately."
+                class="btn btn-xs btn-error btn-soft"
+              >
+                Revoke
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <%!-- Endings (after the end) --%>
       <section :if={@snap.status == :ended} class="mt-10 space-y-3">
         <h3 class="text-lg font-semibold">Choose the ending</h3>
@@ -282,7 +332,8 @@ defmodule ScenexWeb.SessionLive.Console do
            scenario: scenario,
            locale: scenario.source_locale,
            page_title: "Console — #{session.label}",
-           snap: Play.snapshot(session.id)
+           snap: Play.snapshot(session.id),
+           tokens: Play.list_tokens(session)
          )}
 
       _ ->
@@ -327,6 +378,31 @@ defmodule ScenexWeb.SessionLive.Console do
 
   def handle_event("select_ending", %{"id" => ending_id}, socket),
     do: run(socket, &Play.select_ending(&1, ending_id))
+
+  def handle_event("gen_group_token", %{"group" => group_id}, socket) do
+    group = socket.assigns.snap.definition.groups[group_id]
+    {:ok, _token} = Play.create_group_token(socket.assigns.session, group)
+    {:noreply, reload_tokens(socket)}
+  end
+
+  def handle_event("gen_display_token", _params, socket) do
+    {:ok, _token} = Play.create_display_token(socket.assigns.session)
+    {:noreply, reload_tokens(socket)}
+  end
+
+  def handle_event("delete_token", %{"id" => id}, socket) do
+    socket.assigns.tokens
+    |> Enum.find(&(&1.id == id))
+    |> case do
+      nil -> :ok
+      token -> Play.delete_token(token)
+    end
+
+    {:noreply, reload_tokens(socket)}
+  end
+
+  defp reload_tokens(socket),
+    do: assign(socket, :tokens, Play.list_tokens(socket.assigns.session))
 
   defp run(socket, command) do
     case command.(socket.assigns.session.id) do
@@ -400,6 +476,25 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp fmt_deadline_left(ms) when ms <= 0, do: "lapsed"
   defp fmt_deadline_left(ms), do: fmt_clock(ms)
+
+  # ── Tokens & QR ───────────────────────────────────────────────────────
+
+  defp has_token?(tokens, group_id),
+    do: Enum.any?(tokens, &(&1.kind == :group and &1.group_id == group_id))
+
+  defp has_display_token?(tokens), do: Enum.any?(tokens, &(&1.kind == :display))
+
+  defp token_label(%{kind: :display}, _locale), do: "Projected display"
+
+  defp token_label(%{kind: :group, group: group}, locale),
+    do: I18n.t!(group.name, locale, default: group.handle)
+
+  defp token_url(%{kind: :display, token: token}), do: url(~p"/display/#{token}")
+  defp token_url(%{token: token}), do: url(~p"/play/#{token}")
+
+  defp qr_svg(url) do
+    url |> EQRCode.encode() |> EQRCode.svg(width: 140)
+  end
 
   # ── Endings ───────────────────────────────────────────────────────────
 

@@ -71,6 +71,13 @@ defmodule ScenexWeb.Router do
   scope "/", ScenexWeb do
     pipe_through [:browser]
 
+    # Token access (QR codes) — no accounts, no login. The token IS the scope.
+    live_session :play_access,
+      on_mount: [{ScenexWeb.UserAuth, :mount_current_scope}] do
+      live "/play/:token", PlayLive.Group, :show
+      live "/display/:token", PlayLive.Display, :show
+    end
+
     live_session :current_user,
       on_mount: [{ScenexWeb.UserAuth, :mount_current_scope}] do
       live "/users/register", UserLive.Registration, :new

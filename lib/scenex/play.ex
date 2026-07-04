@@ -12,8 +12,9 @@ defmodule Scenex.Play do
   import Ecto.Query, warn: false
 
   alias Scenex.Accounts.User
-  alias Scenex.Authoring.Scenario
-  alias Scenex.Play.{Session, SessionEvent, SessionServer}
+  alias Scenex.Authoring.{Group, Scenario}
+  alias Scenex.Engine.{Condition, Sim}
+  alias Scenex.Play.{CapabilityToken, Session, SessionEvent, SessionServer}
   alias Scenex.Repo
 
   # ── Sessions (rows) ───────────────────────────────────────────────────
@@ -93,6 +94,109 @@ defmodule Scenex.Play do
   defp command(session_id, command) do
     with {:ok, _pid} <- ensure_running(session_id) do
       SessionServer.command(session_id, command)
+    end
+  end
+
+  # ── Capability tokens (QR access) ─────────────────────────────────────
+
+  @doc "Write access for exactly one group in exactly one session."
+  def create_group_token(%Session{} = session, %Group{} = group) do
+    %CapabilityToken{}
+    |> CapabilityToken.changeset(%{
+      session_id: session.id,
+      kind: :group,
+      group_id: group.id,
+      token: CapabilityToken.generate()
+    })
+    |> Repo.insert()
+  end
+
+  @doc "Read-only access for the projected board."
+  def create_display_token(%Session{} = session) do
+    %CapabilityToken{}
+    |> CapabilityToken.changeset(%{
+      session_id: session.id,
+      kind: :display,
+      token: CapabilityToken.generate()
+    })
+    |> Repo.insert()
+  end
+
+  def list_tokens(%Session{} = session) do
+    Repo.all(
+      from t in CapabilityToken,
+        where: t.session_id == ^session.id,
+        order_by: t.inserted_at,
+        preload: [:group]
+    )
+  end
+
+  def delete_token(%CapabilityToken{} = token), do: Repo.delete(token)
+
+  @doc "Resolve a token string to `{:ok, token_with_session}` or `:error`."
+  def fetch_token(token_string) when is_binary(token_string) do
+    token =
+      Repo.one(
+        from t in CapabilityToken,
+          where: t.token == ^token_string,
+          preload: [:session, :group]
+      )
+
+    cond do
+      is_nil(token) -> :error
+      expired?(token) -> :error
+      true -> {:ok, token}
+    end
+  end
+
+  def fetch_token(_), do: :error
+
+  defp expired?(%CapabilityToken{expires_at: nil}), do: false
+
+  defp expired?(%CapabilityToken{expires_at: at}),
+    do: DateTime.compare(at, DateTime.utc_now()) == :lt
+
+  # ── Gates (player-side) ───────────────────────────────────────────────
+
+  @doc """
+  Whether an option's gate is open, evaluated against the board **before its
+  element** (same semantics as the dry-run). Fail-open on unevaluable
+  conditions. The GM console does not enforce gates (the GM disposes);
+  player-facing views must.
+  """
+  def gate_open?(_snapshot, _element_id, %{condition: nil}), do: true
+
+  def gate_open?(snapshot, element_id, option) do
+    sim = snapshot.sims_before[element_id] || snapshot.sim
+    globals = Sim.globals(sim)
+
+    global_ctx =
+      Map.new(
+        for vd <- snapshot.definition.value_dimensions, is_number(globals[vd.id]) do
+          {vd.key, globals[vd.id]}
+        end
+      )
+
+    context =
+      case option.group_id do
+        nil ->
+          %{global: global_ctx}
+
+        group_id ->
+          self_ctx =
+            Map.new(
+              for vd <- snapshot.definition.value_dimensions,
+                  is_number(Sim.get(sim, vd.id, group_id)) do
+                {vd.key, Sim.get(sim, vd.id, group_id)}
+              end
+            )
+
+          %{global: global_ctx, self: self_ctx}
+      end
+
+    case Condition.evaluate(option.condition, context) do
+      {:ok, result} -> result
+      {:error, _} -> true
     end
   end
 

@@ -22,6 +22,7 @@ defmodule Scenex.Play.Projection do
     status: :draft,
     triggered: [],
     triggered_at: %{},
+    sims_before: %{},
     decisions: %{},
     ending_id: nil
   ]
@@ -111,19 +112,24 @@ defmodule Scenex.Play.Projection do
 
     slot_order = definition.group_ids ++ [:winner, :outcome]
 
-    sim =
-      Enum.reduce(p.triggered, Definition.initial_sim(definition), fn eid, acc ->
+    {sim, sims_before} =
+      Enum.reduce(p.triggered, {Definition.initial_sim(definition), %{}}, fn eid,
+                                                                             {acc, before_map} ->
+        before_map = Map.put(before_map, eid, acc)
         slots = Map.get(p.decisions, eid, %{})
 
-        Enum.reduce(slot_order, acc, fn slot, s ->
-          case slots[slot] do
-            nil -> s
-            oid -> apply_option(s, definition.options[oid], per_group_ids)
-          end
-        end)
+        acc =
+          Enum.reduce(slot_order, acc, fn slot, s ->
+            case slots[slot] do
+              nil -> s
+              oid -> apply_option(s, definition.options[oid], per_group_ids)
+            end
+          end)
+
+        {acc, before_map}
       end)
 
-    %{p | sim: sim}
+    %{p | sim: sim, sims_before: sims_before}
   end
 
   defp apply_option(sim, nil, _per_group_ids), do: sim
