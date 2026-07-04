@@ -84,6 +84,13 @@ if config_env() == :prod do
       verify: :verify_peer,
       cacerts: :public_key.cacerts_get(),
       server_name_indication: String.to_charlist(smtp_relay),
+      # OTP's default path-length limit rejects some chains built against the
+      # OS trust store (:max_path_length_reached); raise the depth and use the
+      # HTTPS hostname-match rules.
+      depth: 99,
+      customize_hostname_check: [
+        match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+      ],
       versions: [:"tlsv1.2", :"tlsv1.3"]
     ]
 
