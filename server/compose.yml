@@ -1,0 +1,14 @@
+services:
+  scenex:
+    image: scenex:latest
+    container_name: scenex
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file: .env
+    networks:
+      - postgres_default
+
+networks:
+  postgres_default:
+    external: true
