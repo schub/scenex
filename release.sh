@@ -2,9 +2,10 @@
 # Usage: ./release.sh [patch|minor|major|X.Y.Z]
 # Run from the repo root on your local machine.
 #
-# dev always carries X.Y.Z-snapshot in mix.exs. This script strips the
-# suffix, fast-forwards main, tags vX.Y.Z, and reopens dev on the next
-# snapshot version. The argument sets the NEXT dev version (default: minor).
+# dev always carries X.Y.Z-dev in mix.exs (the Elixir pre-release
+# convention). This script strips the suffix, fast-forwards main, tags
+# vX.Y.Z, and reopens dev on the next -dev version. The argument sets the
+# NEXT dev version (default: minor).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -20,12 +21,12 @@ git fetch origin
 [ -z "$(git rev-list HEAD..origin/dev)" ] || die "dev is behind origin/dev — pull first"
 [ "$(git rev-parse main)" = "$(git rev-parse origin/main)" ] || die "local main differs from origin/main"
 
-SNAPSHOT="$(sed -nE 's/^ *version: "([^"]+)",$/\1/p' mix.exs)"
-[ -n "$SNAPSHOT" ] || die "no version found in mix.exs"
+DEV_VERSION="$(sed -nE 's/^ *version: "([^"]+)",$/\1/p' mix.exs)"
+[ -n "$DEV_VERSION" ] || die "no version found in mix.exs"
 
-case "$SNAPSHOT" in
-  *-snapshot) RELEASE="${SNAPSHOT%-snapshot}" ;;
-  *) die "mix.exs version is '$SNAPSHOT' — expected X.Y.Z-snapshot" ;;
+case "$DEV_VERSION" in
+  *-dev) RELEASE="${DEV_VERSION%-dev}" ;;
+  *) die "mix.exs version is '$DEV_VERSION' — expected X.Y.Z-dev" ;;
 esac
 
 echo "$RELEASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || die "release version '$RELEASE' is not X.Y.Z"
@@ -46,7 +47,7 @@ case "$BUMP" in
     ;;
 esac
 
-echo "==> Releasing v$RELEASE; dev continues as $NEXT-snapshot."
+echo "==> Releasing v$RELEASE; dev continues as $NEXT-dev."
 
 echo "==> Running mix precommit..."
 mix precommit
@@ -58,7 +59,7 @@ set_version() {
 }
 
 # ── Release commit on dev ──────────────────────────────────────────────
-set_version "$SNAPSHOT" "$RELEASE"
+set_version "$DEV_VERSION" "$RELEASE"
 git commit -am "Release v$RELEASE"
 git push origin dev
 
@@ -69,12 +70,12 @@ git tag -a "v$RELEASE" -m "Release v$RELEASE"
 git push origin main
 git push origin "v$RELEASE"
 
-# ── Reopen dev on the next snapshot ────────────────────────────────────
+# ── Reopen dev on the next -dev version ────────────────────────────────
 git checkout dev
-set_version "$RELEASE" "$NEXT-snapshot"
-git commit -am "Start v$NEXT-snapshot"
+set_version "$RELEASE" "$NEXT-dev"
+git commit -am "Start v$NEXT-dev"
 git push origin dev
 
 echo
-echo "==> Released v$RELEASE (tagged on main). dev is now at $NEXT-snapshot."
+echo "==> Released v$RELEASE (tagged on main). dev is now at $NEXT-dev."
 echo "==> Deploy when ready: ./deploy.sh v$RELEASE"
