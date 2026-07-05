@@ -9,7 +9,7 @@ defmodule Scenex.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Scenex", "contact@example.com"})
+      |> from({"Scenex", "noreply@scenex.org"})
       |> subject(subject)
       |> text_body(body)
 

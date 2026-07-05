@@ -7,6 +7,8 @@ defmodule Scenex.Application do
 
   @impl true
   def start(_type, _args) do
+    configure_mailer_tls()
+
     children = [
       ScenexWeb.Telemetry,
       Scenex.Repo,
@@ -23,6 +25,21 @@ defmodule Scenex.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Scenex.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Build the SMTP TLS options here rather than in runtime.exs. They include a
+  # partial_chain anonymous function (which can't live in compile-time
+  # sys.config), and :tls_certificate_check isn't loaded yet during the
+  # release's config-provider boot phase. At app-start time every dependency is
+  # available. Note it's an Erlang library: :tls_certificate_check, not an
+  # Elixir-cased module.
+  defp configure_mailer_tls do
+    config = Application.get_env(:scenex, Scenex.Mailer, [])
+
+    if config[:adapter] == Swoosh.Adapters.SMTP do
+      tls_options = :tls_certificate_check.options(config[:relay])
+      Application.put_env(:scenex, Scenex.Mailer, Keyword.put(config, :tls_options, tls_options))
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

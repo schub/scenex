@@ -4,7 +4,7 @@ defmodule Scenex.MixProject do
   def project do
     [
       app: :scenex,
-      version: "0.4.0",
+      version: "0.5.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -61,6 +61,8 @@ defmodule Scenex.MixProject do
        compile: false,
        depth: 1},
       {:swoosh, "~> 1.16"},
+      {:gen_smtp, "~> 1.2"},
+      {:tls_certificate_check, "~> 1.27"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
