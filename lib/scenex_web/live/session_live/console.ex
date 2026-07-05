@@ -177,7 +177,16 @@ defmodule ScenexWeb.SessionLive.Console do
             <span :if={element.id in @snap.triggered} class="badge badge-sm badge-primary badge-soft">
               triggered
             </span>
-            <span :if={deadline_left(@snap, element)} class={deadline_class(@snap, element)}>
+            <span
+              :if={Play.element_decided?(@snap, element)}
+              class="badge badge-sm badge-success badge-soft"
+            >
+              decided
+            </span>
+            <span
+              :if={deadline_left(@snap, element) && !Play.element_decided?(@snap, element)}
+              class={deadline_class(@snap, element)}
+            >
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
             </span>
             <button
@@ -441,7 +450,11 @@ defmodule ScenexWeb.SessionLive.Console do
         run(
           socket,
           &Play.resolve_election(&1, element_id, winner, tally),
-          &clear_input(&1, :election_inputs, element_id)
+          fn socket ->
+            socket
+            |> clear_input(:election_inputs, element_id)
+            |> put_flash(:info, "Result declared. Declaring again overwrites it.")
+          end
         )
 
       _ ->

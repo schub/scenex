@@ -148,6 +148,7 @@ defmodule Scenex.PlayTest do
 
     assert stab(snap, ctx, ctx.gov) == 7.0
     assert stab(snap, ctx, ctx.media) == 3.0
+    assert snap.vote_tallies[ctx.election.id] == %{ctx.yes.id => 21}
 
     # Sidequest success -> media +1 = 4
     assert {:ok, _} = Play.trigger_element(session.id, ctx.sidequest.id)

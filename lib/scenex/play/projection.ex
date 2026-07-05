@@ -25,6 +25,7 @@ defmodule Scenex.Play.Projection do
     sims_before: %{},
     decisions: %{},
     tallies: %{},
+    vote_tallies: %{},
     ending_id: nil
   ]
 
@@ -85,8 +86,17 @@ defmodule Scenex.Play.Projection do
   defp handle(p, "deadline_lapsed", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :winner, oid)
 
-  defp handle(p, "election_resolved", %{"element_id" => eid, "option_id" => oid}, _),
-    do: put_decision(p, eid, :winner, oid)
+  # The winner decides; the hand-count tally is kept for presentation.
+  defp handle(p, "election_resolved", %{"element_id" => eid, "option_id" => oid} = payload, _) do
+    tally =
+      for {option_id, count} <- payload["tally"] || %{},
+          is_integer(count),
+          into: %{},
+          do: {option_id, count}
+
+    %{p | vote_tallies: Map.put(p.vote_tallies, eid, tally)}
+    |> put_decision(eid, :winner, oid)
+  end
 
   defp handle(p, "sidequest_adjudicated", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :outcome, oid)

@@ -51,6 +51,23 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         condition: "self(stability) >= 6"
       })
 
+    {:ok, election} =
+      Authoring.create_timeline_element(scenario, %{
+        handle: "Referendum",
+        title: %{"en" => "Referendum"},
+        kind: :election,
+        position: 2,
+        deadline_seconds: 300
+      })
+
+    {:ok, yes} =
+      Authoring.create_decision_option(election, nil, %{
+        handle: "Yes",
+        text: %{"en" => "Yes to the plan"}
+      })
+
+    Authoring.set_option_effect(yes, stability, gov, 2.0)
+
     {:ok, ending} =
       Authoring.create_ending(scenario, %{handle: "Fin", title: %{"en" => "The End"}})
 
@@ -69,6 +86,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       event: event,
       crack: crack,
       gated: gated,
+      election: election,
+      yes: yes,
       ending: ending,
       session: session,
       group_token: group_token,
@@ -171,6 +190,29 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       # The display hears about it via PubSub.
       assert render(lv) =~ "The End"
+    end
+
+    test "shows a declared election result with the hand count", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.election.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      # Voting time: the countdown runs, no result yet.
+      assert html =~ "Referendum"
+      assert html =~ "⏱"
+      refute html =~ "Result"
+
+      {:ok, _} =
+        Play.resolve_election(ctx.session.id, ctx.election.id, ctx.yes.id, %{ctx.yes.id => 23})
+
+      # Declared: result + votes appear, the countdown gives way to "decided".
+      html = render(lv)
+      assert html =~ "Result"
+      assert html =~ "Yes to the plan"
+      assert html =~ "23"
+      assert html =~ "decided"
+      refute html =~ "⏱"
     end
 
     test "shows the latest well-being tally once one is recorded", ctx do

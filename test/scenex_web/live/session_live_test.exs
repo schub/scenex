@@ -149,6 +149,9 @@ defmodule ScenexWeb.SessionLiveTest do
       |> render_submit()
 
     assert html =~ "9"
+    # Declaring confirms itself: a flash plus a "decided" badge on the element.
+    assert html =~ "Result declared"
+    assert html =~ "decided"
 
     # Sidequest adjudication
     lv

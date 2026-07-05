@@ -398,6 +398,7 @@ defmodule Scenex.Play.SessionServer do
       sims_before: state.projection.sims_before,
       decisions: state.projection.decisions,
       tallies: state.projection.tallies,
+      vote_tallies: state.projection.vote_tallies,
       ending_id: state.projection.ending_id,
       game_time_ms: current_game_time(state.session),
       definition: state.definition

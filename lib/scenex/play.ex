@@ -164,6 +164,29 @@ defmodule Scenex.Play do
   defp expired?(%CapabilityToken{expires_at: at}),
     do: DateTime.compare(at, DateTime.utc_now()) == :lt
 
+  @doc """
+  Whether a triggered element's decisions are all in: elections need a
+  declared winner, sidequests an adjudicated outcome, events one decision per
+  group that has options. Corrections stay possible (last wins) — "decided"
+  is a presentation state, not a lock.
+  """
+  def element_decided?(snapshot, %{kind: :election, id: id}),
+    do: get_in(snapshot.decisions, [id, :winner]) != nil
+
+  def element_decided?(snapshot, %{kind: :sidequest, id: id}),
+    do: get_in(snapshot.decisions, [id, :outcome]) != nil
+
+  def element_decided?(snapshot, %{kind: :event, id: id}) do
+    group_ids =
+      snapshot.definition.options_by_element[id]
+      |> List.wrap()
+      |> Enum.map(& &1.group_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    group_ids != [] and Enum.all?(group_ids, &get_in(snapshot.decisions, [id, &1]))
+  end
+
   # ── Gates (player-side) ───────────────────────────────────────────────
 
   @doc """
