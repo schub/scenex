@@ -81,4 +81,46 @@ defmodule Scenex.Accounts.UserNotifier do
     ==============================
     """)
   end
+
+  @doc """
+  Deliver an invitation to join a scenario (recipient has no account yet).
+  """
+  def deliver_scenario_invitation(email, scenario_name, role, url) do
+    deliver(email, "You've been invited to \"#{scenario_name}\" on Scenex", """
+
+    ==============================
+
+    Hi #{email},
+
+    You've been invited to join the scenario "#{scenario_name}" as #{role}
+    on Scenex.
+
+    Create your account and join by visiting the URL below:
+
+    #{url}
+
+    The invitation is valid for 7 days. If you weren't expecting this,
+    please ignore this email.
+
+    ==============================
+    """)
+  end
+
+  @doc """
+  Notify an existing user that they were added to a scenario.
+  """
+  def deliver_added_to_scenario(user, scenario_name, role) do
+    deliver(user.email, "You've been added to \"#{scenario_name}\" on Scenex", """
+
+    ==============================
+
+    Hi #{user.email},
+
+    You've been added to the scenario "#{scenario_name}" as #{role} on Scenex.
+
+    Log in to see it in your scenario list.
+
+    ==============================
+    """)
+  end
 end

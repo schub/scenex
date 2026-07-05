@@ -83,6 +83,7 @@ defmodule ScenexWeb.Router do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+      live "/invites/:token", UserLive.AcceptInvite, :new
     end
 
     post "/users/log-in", UserSessionController, :create
