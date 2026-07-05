@@ -21,11 +21,25 @@ defmodule Scenex.Play do
 
   def list_sessions(%Scenario{} = scenario) do
     Repo.all(
-      from s in Session, where: s.scenario_id == ^scenario.id, order_by: [desc: s.inserted_at]
+      from s in Session,
+        where: s.scenario_id == ^scenario.id,
+        order_by: [desc: s.inserted_at],
+        preload: [:created_by]
     )
   end
 
   def get_session!(id), do: Repo.get!(Session, id)
+
+  @doc """
+  Whether a user may run this session (open the console, send commands).
+
+  A session belongs to the author who created it — other authors of the same
+  scenario cannot control it. The scenario owner keeps an override as the
+  recovery path for live events (GM unavailable, orphaned sessions).
+  """
+  def gm?(%Session{} = session, %User{} = user, role) do
+    role == :owner or (role == :author and session.created_by_id == user.id)
+  end
 
   @doc "Create a session (status `:draft`); the creator acts as its GM."
   def create_session(%User{} = user, %Scenario{} = scenario, attrs) do
@@ -91,6 +105,14 @@ defmodule Scenex.Play do
   def adjudicate_sidequest(session_id, element_id, option_id),
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})
 
+  @doc """
+  Record a hand-count well-being tally for a `per_participant` value:
+  `%{score => count}`. The latest tally sets the value's global (its
+  count-weighted mean); history stays in the log and the snapshot's `tallies`.
+  """
+  def record_tally(session_id, value_id, counts),
+    do: command(session_id, {:record_tally, value_id, counts})
+
   defp command(session_id, command) do
     with {:ok, _pid} <- ensure_running(session_id) do
       SessionServer.command(session_id, command)
@@ -155,6 +177,29 @@ defmodule Scenex.Play do
 
   defp expired?(%CapabilityToken{expires_at: at}),
     do: DateTime.compare(at, DateTime.utc_now()) == :lt
+
+  @doc """
+  Whether a triggered element's decisions are all in: elections need a
+  declared winner, sidequests an adjudicated outcome, events one decision per
+  group that has options. Corrections stay possible (last wins) — "decided"
+  is a presentation state, not a lock.
+  """
+  def element_decided?(snapshot, %{kind: :election, id: id}),
+    do: get_in(snapshot.decisions, [id, :winner]) != nil
+
+  def element_decided?(snapshot, %{kind: :sidequest, id: id}),
+    do: get_in(snapshot.decisions, [id, :outcome]) != nil
+
+  def element_decided?(snapshot, %{kind: :event, id: id}) do
+    group_ids =
+      snapshot.definition.options_by_element[id]
+      |> List.wrap()
+      |> Enum.map(& &1.group_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    group_ids != [] and Enum.all?(group_ids, &get_in(snapshot.decisions, [id, &1]))
+  end
 
   # ── Gates (player-side) ───────────────────────────────────────────────
 

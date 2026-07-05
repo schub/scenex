@@ -22,6 +22,15 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         max: 10.0
       )
 
+    wellbeing =
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant,
+        min: 1.0,
+        max: 4.0
+      )
+
     gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
@@ -42,6 +51,23 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         condition: "self(stability) >= 6"
       })
 
+    {:ok, election} =
+      Authoring.create_timeline_element(scenario, %{
+        handle: "Referendum",
+        title: %{"en" => "Referendum"},
+        kind: :election,
+        position: 2,
+        deadline_seconds: 300
+      })
+
+    {:ok, yes} =
+      Authoring.create_decision_option(election, nil, %{
+        handle: "Yes",
+        text: %{"en" => "Yes to the plan"}
+      })
+
+    Authoring.set_option_effect(yes, stability, gov, 2.0)
+
     {:ok, ending} =
       Authoring.create_ending(scenario, %{handle: "Fin", title: %{"en" => "The End"}})
 
@@ -55,10 +81,13 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       gm: gm,
       scenario: scenario,
       stability: stability,
+      wellbeing: wellbeing,
       gov: gov,
       event: event,
       crack: crack,
       gated: gated,
+      election: election,
+      yes: yes,
       ending: ending,
       session: session,
       group_token: group_token,
@@ -161,6 +190,46 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       # The display hears about it via PubSub.
       assert render(lv) =~ "The End"
+    end
+
+    test "shows a declared election result with the hand count", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.election.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      # Voting time: the countdown runs, no result yet.
+      assert html =~ "Referendum"
+      assert html =~ "⏱"
+      refute html =~ "Result"
+
+      {:ok, _} =
+        Play.resolve_election(ctx.session.id, ctx.election.id, ctx.yes.id, %{ctx.yes.id => 23})
+
+      # Declared: result + votes appear, the countdown gives way to "decided".
+      html = render(lv)
+      assert html =~ "Result"
+      assert html =~ "Yes to the plan"
+      assert html =~ "23"
+      assert html =~ "decided"
+      refute html =~ "⏱"
+    end
+
+    test "shows the latest well-being tally once one is recorded", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      # No tally yet — no well-being readout.
+      refute html =~ "Well-being"
+
+      {:ok, _} = Play.record_tally(ctx.session.id, ctx.wellbeing.id, %{"4" => 3, "3" => 1})
+
+      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub.
+      html = render(lv)
+      assert html =~ "Well-being"
+      assert html =~ "3.8"
+      assert html =~ "😀"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do

@@ -27,13 +27,16 @@ defmodule Scenex.Engine.Sim do
   @type group_id :: term()
   @type effect :: {key(), group_id(), number()}
 
+  @type tally :: %{optional(number()) => non_neg_integer()}
+
   @type t :: %__MODULE__{
           specs: %{optional(key()) => ValueSpec.t()},
           groups: [group_id()],
-          group_values: %{optional(key()) => %{optional(group_id()) => number()}}
+          group_values: %{optional(key()) => %{optional(group_id()) => number()}},
+          tallies: %{optional(key()) => tally()}
         }
 
-  defstruct specs: %{}, groups: [], group_values: %{}
+  defstruct specs: %{}, groups: [], group_values: %{}, tallies: %{}
 
   @doc """
   Build a simulation from value specs, the list of groups, and optional initial
@@ -87,10 +90,40 @@ defmodule Scenex.Engine.Sim do
   end
 
   @doc """
+  Record a hand-count tally for a `per_participant` value: `%{score => count}`.
+
+  The value's global becomes the count-weighted mean of the scores (see
+  `tally_mean/1`). A later tally replaces the earlier one — the sim keeps only
+  the latest reading. Raises if `key` is not a known `per_participant` value.
+  """
+  @spec record_tally(t(), key(), tally()) :: t()
+  def record_tally(%__MODULE__{} = sim, key, counts) when is_map(counts) do
+    %ValueSpec{input_scope: :per_participant} = Map.fetch!(sim.specs, key)
+    %{sim | tallies: Map.put(sim.tallies, key, counts)}
+  end
+
+  @doc """
+  The count-weighted mean of a tally (`%{score => count}`), or `nil` when no
+  one was counted.
+
+      iex> Scenex.Engine.Sim.tally_mean(%{4 => 2, 3 => 1, 1 => 1})
+      3.0
+  """
+  @spec tally_mean(tally()) :: float() | nil
+  def tally_mean(counts) when is_map(counts) do
+    total = counts |> Map.values() |> Enum.sum()
+
+    if total > 0 do
+      weighted = Enum.reduce(counts, 0, fn {score, count}, acc -> acc + score * count end)
+      weighted / total
+    end
+  end
+
+  @doc """
   Derive the global value for every value, `%{value_key => number | nil}`.
 
   A global is `nil` when it can't be computed yet — e.g. a `per_participant`
-  value (no group votes here) or a `per_group` value with no groups.
+  value with no tally recorded or a `per_group` value with no groups.
   """
   @spec globals(t()) :: %{optional(key()) => number() | nil}
   def globals(%__MODULE__{} = sim) do
@@ -106,7 +139,12 @@ defmodule Scenex.Engine.Sim do
     end
   end
 
-  defp global_for(_sim, _key, _spec), do: nil
+  defp global_for(sim, key, %ValueSpec{input_scope: :per_participant}) do
+    case sim.tallies[key] do
+      nil -> nil
+      counts -> tally_mean(counts)
+    end
+  end
 
   defp clamp(value, %ValueSpec{min: lo, max: hi}) do
     value = if lo, do: max(value, lo), else: value

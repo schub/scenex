@@ -57,6 +57,20 @@ defmodule ScenexWeb.PlayLive.Display do
           </table>
         </div>
 
+        <%!-- Well-being: the latest hand-count tally per participant value --%>
+        <section :if={tallied_dims(@snap) != []} class="flex flex-wrap justify-center gap-6">
+          <div
+            :for={vd <- tallied_dims(@snap)}
+            class="rounded-box bg-base-200 px-6 py-4 text-center"
+          >
+            <div class="text-sm opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+            <div class="flex items-baseline justify-center gap-3">
+              <span class="text-3xl">{tally_face(@snap.globals[vd.id])}</span>
+              <span class="text-3xl font-bold tabular-nums">{fmt_num(@snap.globals[vd.id])}</span>
+            </div>
+          </div>
+        </section>
+
         <%!-- The finale, once chosen --%>
         <section :if={ending = chosen_ending(@snap)} class="rounded-box bg-base-200 p-6 space-y-3">
           <h2 class="text-2xl font-bold">{I18n.t!(ending.title, @locale, default: ending.handle)}</h2>
@@ -71,11 +85,42 @@ defmodule ScenexWeb.PlayLive.Display do
         >
           <h2 class="text-2xl font-bold">
             {I18n.t!(element.title, @locale, default: element.handle)}
-            <span :if={deadline_left(@snap, element)} class="badge badge-lg ml-2 align-middle">
+            <span
+              :if={Play.element_decided?(@snap, element)}
+              class="badge badge-lg badge-success ml-2 align-middle"
+            >
+              ✓ decided
+            </span>
+            <span
+              :if={!Play.element_decided?(@snap, element) && deadline_left(@snap, element)}
+              class="badge badge-lg ml-2 align-middle"
+            >
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
             </span>
           </h2>
           <p class="whitespace-pre-line text-lg">{I18n.t(element.narrative, @locale)}</p>
+
+          <%!-- Election result, once declared --%>
+          <div
+            :if={winner = declared_winner(@snap, element)}
+            class="rounded-box bg-base-100 p-4 space-y-2"
+          >
+            <div class="flex flex-wrap items-baseline gap-3">
+              <span class="badge badge-success">Result</span>
+              <span class="text-xl font-bold">
+                {I18n.t!(winner.text, @locale, default: winner.handle)}
+              </span>
+            </div>
+            <div
+              :if={vote_lines(@snap, element) != []}
+              class="flex flex-wrap gap-x-6 gap-y-1 text-base opacity-80"
+            >
+              <span :for={{option, count} <- vote_lines(@snap, element)}>
+                {I18n.t!(option.text, @locale, default: option.handle)}:
+                <span class="font-semibold tabular-nums">{count}</span>
+              </span>
+            </div>
+          </div>
         </section>
 
         <p :if={@snap.status == :draft} class="text-center text-xl opacity-60">
@@ -126,6 +171,19 @@ defmodule ScenexWeb.PlayLive.Display do
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
 
+  # Per-participant values with at least one recorded tally.
+  defp tallied_dims(snap) do
+    Enum.filter(
+      snap.definition.value_dimensions,
+      &(&1.input_scope == :per_participant and is_number(snap.globals[&1.id]))
+    )
+  end
+
+  defp tally_face(avg) when avg >= 3.5, do: "😀"
+  defp tally_face(avg) when avg >= 2.5, do: "🙂"
+  defp tally_face(avg) when avg >= 1.5, do: "😐"
+  defp tally_face(_avg), do: "🙁"
+
   defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 
   defp current_element(snap) do
@@ -139,6 +197,25 @@ defmodule ScenexWeb.PlayLive.Display do
 
   defp chosen_ending(snap),
     do: Enum.find(snap.definition.endings, &(&1.id == snap.ending_id))
+
+  defp declared_winner(snap, %{kind: :election} = element) do
+    case get_in(snap.decisions, [element.id, :winner]) do
+      nil -> nil
+      option_id -> snap.definition.options[option_id]
+    end
+  end
+
+  defp declared_winner(_snap, _element), do: nil
+
+  # The declared hand count, in ballot order; options without a count are
+  # omitted (a lapsed-deadline default winner has no tally).
+  defp vote_lines(snap, element) do
+    tally = snap.vote_tallies[element.id] || %{}
+
+    for option <- snap.definition.options_by_element[element.id] || [],
+        count = tally[option.id],
+        do: {option, count}
+  end
 
   defp deadline_left(snap, %{deadline_seconds: seconds} = element) when is_integer(seconds) do
     case snap.triggered_at[element.id] do

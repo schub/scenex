@@ -92,6 +92,73 @@ defmodule ScenexWeb.SessionLive.Console do
         </table>
       </div>
 
+      <%!-- Well-being: hand-count tallies for per-participant values --%>
+      <section
+        :for={vd <- participant_dims(@snap)}
+        class="mt-8 rounded-box border border-base-300 p-4 space-y-3"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <h3 class="text-lg font-semibold">{I18n.t!(vd.name, @locale, default: vd.key)}</h3>
+          <span class="badge badge-sm badge-ghost">hand count</span>
+          <span
+            :if={avg = @snap.globals[vd.id]}
+            class="ml-auto text-xl font-bold tabular-nums"
+            title="Latest tally average"
+          >
+            {tally_face(avg)} {fmt_num(avg)}
+          </span>
+        </div>
+
+        <form
+          phx-submit="record_tally"
+          phx-change="tally_change"
+          class="flex flex-wrap items-end gap-3"
+        >
+          <input type="hidden" name="value" value={vd.id} />
+          <label :for={{score, face, label} <- tally_scale()} class="flex flex-col gap-1 text-xs">
+            <span>{face} {label} ({score})</span>
+            <input
+              type="number"
+              name={"counts[#{score}]"}
+              value={get_in(@tally_inputs, [vd.id, to_string(score)])}
+              min="0"
+              placeholder="0"
+              class="input input-bordered input-sm w-24"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={@snap.status not in [:live, :paused]}
+            class="btn btn-sm btn-primary"
+          >
+            Record tally
+          </button>
+        </form>
+
+        <div :if={tally_history(@snap, vd.id) != []} class="overflow-x-auto">
+          <table class="table table-xs">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th :for={{_score, face, _label} <- tally_scale()} class="text-right">{face}</th>
+                <th class="text-right">Average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={entry <- Enum.reverse(tally_history(@snap, vd.id))}>
+                <td class="font-mono tabular-nums">{fmt_clock(entry.game_time_ms)}</td>
+                <td :for={{score, _face, _label} <- tally_scale()} class="text-right tabular-nums">
+                  {entry.counts[score] || 0}
+                </td>
+                <td class="text-right font-semibold tabular-nums">
+                  {fmt_num(Sim.tally_mean(entry.counts))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <%!-- Timeline --%>
       <div class="mt-8 space-y-6">
         <section
@@ -110,7 +177,16 @@ defmodule ScenexWeb.SessionLive.Console do
             <span :if={element.id in @snap.triggered} class="badge badge-sm badge-primary badge-soft">
               triggered
             </span>
-            <span :if={deadline_left(@snap, element)} class={deadline_class(@snap, element)}>
+            <span
+              :if={Play.element_decided?(@snap, element)}
+              class="badge badge-sm badge-success badge-soft"
+            >
+              decided
+            </span>
+            <span
+              :if={deadline_left(@snap, element) && !Play.element_decided?(@snap, element)}
+              class={deadline_class(@snap, element)}
+            >
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
             </span>
             <button
@@ -161,6 +237,7 @@ defmodule ScenexWeb.SessionLive.Console do
             <form
               :if={element.kind == :election}
               phx-submit="resolve_election"
+              phx-change="election_change"
               class="space-y-2"
             >
               <input type="hidden" name="element" value={element.id} />
@@ -173,7 +250,7 @@ defmodule ScenexWeb.SessionLive.Console do
                     type="radio"
                     name="winner"
                     value={o.id}
-                    checked={decided?(@snap, element.id, :winner, o.id)}
+                    checked={winner_choice(@election_inputs, @snap, element.id) == o.id}
                     class="radio radio-sm"
                   />
                   <span class={[
@@ -189,6 +266,7 @@ defmodule ScenexWeb.SessionLive.Console do
                 <input
                   type="number"
                   name={"tally[#{o.id}]"}
+                  value={get_in(@election_inputs, [element.id, "tally", o.id])}
                   min="0"
                   placeholder="votes"
                   class="input input-bordered input-xs w-20"
@@ -320,21 +398,17 @@ defmodule ScenexWeb.SessionLive.Console do
 
     case Authoring.get_scenario_for_user(session.scenario_id, user) do
       {scenario, role} when role in [:owner, :author] ->
-        if connected?(socket) do
-          Play.subscribe(session.id)
-          :timer.send_interval(1000, :tick)
+        if Play.gm?(session, user, role) do
+          mount_console(socket, session, scenario)
+        else
+          {:ok,
+           socket
+           |> put_flash(
+             :error,
+             "This session is run by another GM — only its creator or the scenario owner can control it."
+           )
+           |> push_navigate(to: ~p"/scenarios/#{session.scenario_id}/sessions")}
         end
-
-        {:ok,
-         socket
-         |> assign(
-           session: session,
-           scenario: scenario,
-           locale: scenario.source_locale,
-           page_title: "Console — #{session.label}",
-           snap: Play.snapshot(session.id),
-           tokens: Play.list_tokens(session)
-         )}
 
       _ ->
         {:ok,
@@ -342,6 +416,26 @@ defmodule ScenexWeb.SessionLive.Console do
          |> put_flash(:error, "You cannot run sessions for this scenario.")
          |> push_navigate(to: ~p"/scenarios")}
     end
+  end
+
+  defp mount_console(socket, session, scenario) do
+    if connected?(socket) do
+      Play.subscribe(session.id)
+      :timer.send_interval(1000, :tick)
+    end
+
+    {:ok,
+     socket
+     |> assign(
+       session: session,
+       scenario: scenario,
+       locale: scenario.source_locale,
+       page_title: "Console — #{session.label}",
+       snap: Play.snapshot(session.id),
+       tokens: Play.list_tokens(session),
+       tally_inputs: %{},
+       election_inputs: %{}
+     )}
   end
 
   # ── Commands ──────────────────────────────────────────────────────────
@@ -366,15 +460,52 @@ defmodule ScenexWeb.SessionLive.Console do
     case params["winner"] do
       winner when is_binary(winner) and winner != "" ->
         tally = parse_tally(params["tally"] || %{})
-        run(socket, &Play.resolve_election(&1, element_id, winner, tally))
+
+        run(
+          socket,
+          &Play.resolve_election(&1, element_id, winner, tally),
+          fn socket ->
+            socket
+            |> clear_input(:election_inputs, element_id)
+            |> put_flash(:info, "Result declared. Declaring again overwrites it.")
+          end
+        )
 
       _ ->
         {:noreply, put_flash(socket, :error, "Pick the winning option first.")}
     end
   end
 
+  # Keep in-progress form input in assigns: the console re-renders every tick
+  # (game clock), and uncontrolled inputs would be reset to empty each second.
+  def handle_event("election_change", %{"element" => element_id} = params, socket) do
+    inputs =
+      Map.put(socket.assigns.election_inputs, element_id, Map.take(params, ["winner", "tally"]))
+
+    {:noreply, assign(socket, :election_inputs, inputs)}
+  end
+
+  def handle_event("tally_change", %{"value" => value_id} = params, socket) do
+    inputs = Map.put(socket.assigns.tally_inputs, value_id, params["counts"] || %{})
+    {:noreply, assign(socket, :tally_inputs, inputs)}
+  end
+
   def handle_event("adjudicate", %{"element" => element_id, "option" => option_id}, socket),
     do: run(socket, &Play.adjudicate_sidequest(&1, element_id, option_id))
+
+  def handle_event("record_tally", %{"value" => value_id} = params, socket) do
+    counts = parse_tally(params["counts"] || %{})
+
+    if counts == %{} or counts |> Map.values() |> Enum.sum() == 0 do
+      {:noreply, put_flash(socket, :error, "Count at least one participant first.")}
+    else
+      run(
+        socket,
+        &Play.record_tally(&1, value_id, counts),
+        &clear_input(&1, :tally_inputs, value_id)
+      )
+    end
+  end
 
   def handle_event("select_ending", %{"id" => ending_id}, socket),
     do: run(socket, &Play.select_ending(&1, ending_id))
@@ -404,15 +535,19 @@ defmodule ScenexWeb.SessionLive.Console do
   defp reload_tokens(socket),
     do: assign(socket, :tokens, Play.list_tokens(socket.assigns.session))
 
-  defp run(socket, command) do
+  defp run(socket, command, on_success \\ & &1) do
     case command.(socket.assigns.session.id) do
       {:ok, snapshot} ->
-        {:noreply, assign(socket, :snap, snapshot)}
+        {:noreply, socket |> assign(:snap, snapshot) |> on_success.()}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Rejected: #{inspect(reason)}")}
     end
   end
+
+  # Drop one form's held input (after its command succeeded).
+  defp clear_input(socket, key, id),
+    do: assign(socket, key, Map.delete(socket.assigns[key], id))
 
   @impl true
   def handle_info({:session_updated, _id}, socket), do: {:noreply, refresh(socket)}
@@ -436,6 +571,26 @@ defmodule ScenexWeb.SessionLive.Console do
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
 
+  defp participant_dims(snap),
+    do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_participant))
+
+  defp tally_history(snap, value_id), do: snap.tallies[value_id] || []
+
+  # The fixed 4-step smiley-coin scale (see the well-being design concept).
+  defp tally_scale do
+    [
+      {4, "😀", "Very happy"},
+      {3, "🙂", "Happy"},
+      {2, "😐", "Okay"},
+      {1, "🙁", "Not happy"}
+    ]
+  end
+
+  defp tally_face(avg) when avg >= 3.5, do: "😀"
+  defp tally_face(avg) when avg >= 2.5, do: "🙂"
+  defp tally_face(avg) when avg >= 1.5, do: "😐"
+  defp tally_face(_avg), do: "🙁"
+
   defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 
   defp elements(snap), do: Enum.map(snap.definition.element_order, &snap.definition.elements[&1])
@@ -450,6 +605,12 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp decided?(snap, element_id, slot, option_id),
     do: get_in(snap.decisions, [element_id, slot]) == option_id
+
+  # The radio reflects what the GM is picking right now, falling back to the
+  # recorded winner (so a declared result stays visible).
+  defp winner_choice(inputs, snap, element_id) do
+    get_in(inputs, [element_id, "winner"]) || get_in(snap.decisions, [element_id, :winner])
+  end
 
   defp notes(element, locale), do: I18n.t(element.director_notes, locale)
 

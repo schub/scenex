@@ -31,8 +31,15 @@ defmodule ScenexWeb.SessionLive.Index do
               <span class="text-lg font-semibold">{session.label}</span>
               <span class="badge badge-sm ml-2">{session.status}</span>
               <span class="ml-2 text-xs opacity-60">created {session.inserted_at}</span>
+              <span class="ml-2 text-xs opacity-60">
+                GM: {gm_label(session, @current_scope.user)}
+              </span>
             </div>
-            <.link navigate={~p"/sessions/#{session.id}/console"} class="btn btn-sm btn-primary">
+            <.link
+              :if={Play.gm?(session, @current_scope.user, @role)}
+              navigate={~p"/sessions/#{session.id}/console"}
+              class="btn btn-sm btn-primary"
+            >
               Open console
             </.link>
           </div>
@@ -51,7 +58,7 @@ defmodule ScenexWeb.SessionLive.Index do
       {scenario, role} when role in [:owner, :author] ->
         {:ok,
          socket
-         |> assign(scenario: scenario, page_title: "Sessions")
+         |> assign(scenario: scenario, role: role, page_title: "Sessions")
          |> assign(:form, to_form(%{"label" => ""}, as: :session))
          |> reload()}
 
@@ -78,5 +85,13 @@ defmodule ScenexWeb.SessionLive.Index do
 
   defp reload(socket) do
     assign(socket, :sessions, Play.list_sessions(socket.assigns.scenario))
+  end
+
+  defp gm_label(session, current_user) do
+    case session.created_by do
+      %{id: id} when id == current_user.id -> "you"
+      %{email: email} -> email
+      nil -> "unknown"
+    end
   end
 end

@@ -21,6 +21,15 @@ defmodule ScenexWeb.SessionLiveTest do
         max: 10.0
       )
 
+    wellbeing =
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant,
+        min: 1.0,
+        max: 4.0
+      )
+
     gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
@@ -69,6 +78,7 @@ defmodule ScenexWeb.SessionLiveTest do
     %{
       scenario: scenario,
       stability: stability,
+      wellbeing: wellbeing,
       gov: gov,
       event: event,
       crack: crack,
@@ -139,6 +149,9 @@ defmodule ScenexWeb.SessionLiveTest do
       |> render_submit()
 
     assert html =~ "9"
+    # Declaring confirms itself: a flash plus a "decided" badge on the element.
+    assert html =~ "Result declared"
+    assert html =~ "decided"
 
     # Sidequest adjudication
     lv
@@ -172,12 +185,118 @@ defmodule ScenexWeb.SessionLiveTest do
     assert tally_event.payload["tally"][ctx.yes.id] == 23
   end
 
+  test "typed tally counts survive the 1s clock refresh", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    # Typing fires the change event; the clock tick re-renders — the counts
+    # must be written back into the inputs, not reset to empty.
+    lv
+    |> form(~s{form[phx-submit=record_tally]}, %{"counts" => %{"4" => "10"}})
+    |> render_change()
+
+    send(lv.pid, :tick)
+
+    assert lv |> element(~s{input[name="counts[4]"]}) |> render() =~ ~s(value="10")
+  end
+
+  test "typed election tallies and winner survive the 1s clock refresh", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    lv
+    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
+    |> render_click()
+
+    lv
+    |> form(~s{form[phx-submit=resolve_election]}, %{
+      "winner" => ctx.yes.id,
+      "tally" => %{ctx.yes.id => "23"}
+    })
+    |> render_change()
+
+    send(lv.pid, :tick)
+
+    assert lv |> element(~s{input[name="tally[#{ctx.yes.id}]"]}) |> render() =~ ~s(value="23")
+    assert lv |> element(~s{input[type=radio][value="#{ctx.yes.id}"]}) |> render() =~ "checked"
+  end
+
+  test "recording a well-being tally", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "Well-being"
+    assert html =~ "hand count"
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    # An empty tally is refused client-side with a flash.
+    html = lv |> form(~s{form[phx-submit=record_tally]}) |> render_submit()
+    assert html =~ "Count at least one participant"
+
+    html =
+      lv
+      |> form(~s{form[phx-submit=record_tally]}, %{
+        "counts" => %{"4" => "2", "3" => "1", "1" => "1"}
+      })
+      |> render_submit()
+
+    # Weighted mean (4+4+3+1)/4 = 3 — latest reading and a history row appear.
+    assert html =~ "🙂 3"
+    assert html =~ "Average"
+  end
+
   test "a viewer cannot open the console", %{session: session} do
     other = user_fixture()
     conn = build_conn() |> log_in_user(other)
 
     assert {:error, {:live_redirect, %{to: "/scenarios"}}} =
              live(conn, ~p"/sessions/#{session.id}/console")
+  end
+
+  describe "session ownership" do
+    test "another author cannot open a session they did not create", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      conn = build_conn() |> log_in_user(other)
+
+      assert {:error, {:live_redirect, %{to: to, flash: flash}}} =
+               live(conn, ~p"/sessions/#{ctx.session.id}/console")
+
+      assert to == "/scenarios/#{ctx.scenario.id}/sessions"
+      assert flash["error"] =~ "run by another GM"
+    end
+
+    test "the scenario owner can open any session (override)", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      {:ok, session} = Play.create_session(other, ctx.scenario, %{label: "Other night"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      # ctx.conn is logged in as the scenario owner.
+      {:ok, _lv, html} = live(ctx.conn, ~p"/sessions/#{session.id}/console")
+      assert html =~ "Other night"
+    end
+
+    test "the index shows who runs a session and hides the console link for non-GMs", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      conn = build_conn() |> log_in_user(other)
+
+      {:ok, _lv, html} = live(conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
+      assert html =~ "Premiere"
+      assert html =~ ctx.user.email
+      refute html =~ "Open console"
+
+      # The creator still sees their own session as "you" with the link.
+      {:ok, _lv, html} = live(ctx.conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
+      assert html =~ "GM: you"
+      assert html =~ "Open console"
+    end
   end
 
   test "invalid commands surface as flash, not crashes", ctx do
