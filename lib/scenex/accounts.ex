@@ -80,6 +80,21 @@ defmodule Scenex.Accounts do
     |> Repo.insert()
   end
 
+  @doc """
+  Registers a user accepting a scenario invitation.
+
+  The email comes from the (emailed, token-verified) invitation itself, so the
+  account is created already confirmed. A valid password is required — this is
+  the closed-registration path where invitees choose their password up front.
+  """
+  def register_invited_user(email, password_params) do
+    %User{}
+    |> User.email_changeset(%{email: email})
+    |> User.password_changeset(password_params)
+    |> User.confirm_changeset()
+    |> Repo.insert()
+  end
+
   ## Settings
 
   @doc """

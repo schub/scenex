@@ -62,7 +62,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
       <div role="tablist" class="tabs tabs-box mt-4 w-fit">
         <button
-          :for={s <- sections()}
+          :for={s <- sections(@role)}
           type="button"
           role="tab"
           phx-click="section"
@@ -949,6 +949,105 @@ defmodule ScenexWeb.ScenarioLive.Show do
             </div>
           </div>
         </div>
+
+        <%!-- Members (owner only) --%>
+        <div :if={@section == :members && @role == :owner} class="space-y-6">
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={m <- @members}>
+                  <td>{m.user.email}</td>
+                  <td><span class="badge badge-sm">{m.role}</span></td>
+                  <td class="text-right">
+                    <button
+                      :if={m.role != :owner}
+                      type="button"
+                      phx-click="remove_member"
+                      phx-value-id={m.id}
+                      data-confirm={"Remove #{m.user.email} from this scenario?"}
+                      class="btn btn-xs btn-error btn-soft"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div :if={@pending_invitations != []}>
+            <h3 class="mb-2 font-semibold">Pending invitations</h3>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Invited</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={i <- @pending_invitations}>
+                    <td>{i.email}</td>
+                    <td><span class="badge badge-sm">{i.role}</span></td>
+                    <td class="text-sm opacity-70">
+                      {Calendar.strftime(i.inserted_at, "%Y-%m-%d")}
+                    </td>
+                    <td class="text-right">
+                      <button
+                        type="button"
+                        phx-click="revoke_invitation"
+                        phx-value-id={i.id}
+                        data-confirm={"Revoke the invitation for #{i.email}?"}
+                        class="btn btn-xs btn-error btn-soft"
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card bg-base-200">
+            <div class="card-body">
+              <h3 class="font-semibold">Invite someone</h3>
+              <p class="text-sm opacity-70">
+                If they already have an account they're added right away; otherwise they
+                receive an email with a link to create their account and join.
+              </p>
+              <form phx-submit="invite_member" class="flex flex-wrap items-end gap-3">
+                <div class="grow">
+                  <.input
+                    type="email"
+                    name="invite[email]"
+                    value=""
+                    label="Email"
+                    placeholder="person@example.com"
+                    required
+                  />
+                </div>
+                <.input
+                  type="select"
+                  name="invite[role]"
+                  value="author"
+                  label="Role"
+                  options={[{"Author", "author"}, {"Viewer", "viewer"}]}
+                />
+                <.button variant="primary">Invite</.button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </Layouts.app>
     """
@@ -1032,6 +1131,69 @@ defmodule ScenexWeb.ScenarioLive.Show do
           {:noreply, assign(socket, :settings_form, to_form(changeset, as: :scenario))}
       end
     end)
+  end
+
+  # ── Members (owner only) ──────────────────────────────────────────────
+
+  def handle_event(
+        "invite_member",
+        %{"invite" => %{"email" => email, "role" => role}},
+        %{assigns: %{role: :owner}} = socket
+      ) do
+    role = if role == "viewer", do: :viewer, else: :author
+    inviter = socket.assigns.current_scope.user
+
+    socket =
+      case Authoring.invite_member(
+             socket.assigns.scenario,
+             inviter,
+             email,
+             role,
+             &url(~p"/invites/#{&1}")
+           ) do
+        {:ok, :member_added} ->
+          put_flash(socket, :info, "#{email} already had an account and was added as #{role}.")
+
+        {:ok, :invitation_sent} ->
+          put_flash(socket, :info, "Invitation sent to #{email}.")
+
+        {:error, :already_member} ->
+          put_flash(socket, :error, "#{email} is already a member of this scenario.")
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {field, {msg, _}} = List.first(changeset.errors)
+          put_flash(socket, :error, "Could not invite: #{field} #{msg}.")
+      end
+
+    {:noreply, reload_members(socket)}
+  end
+
+  def handle_event("remove_member", %{"id" => id}, %{assigns: %{role: :owner}} = socket) do
+    membership = Enum.find(socket.assigns.members, &(&1.id == id))
+
+    socket =
+      if membership && membership.role != :owner do
+        {:ok, _} = Authoring.remove_member(membership)
+        put_flash(socket, :info, "#{membership.user.email} removed.")
+      else
+        socket
+      end
+
+    {:noreply, reload_members(socket)}
+  end
+
+  def handle_event("revoke_invitation", %{"id" => id}, %{assigns: %{role: :owner}} = socket) do
+    invitation = Enum.find(socket.assigns.pending_invitations, &(&1.id == id))
+
+    socket =
+      if invitation do
+        {:ok, _} = Authoring.revoke_invitation(invitation)
+        put_flash(socket, :info, "Invitation for #{invitation.email} revoked.")
+      else
+        socket
+      end
+
+    {:noreply, reload_members(socket)}
   end
 
   # ── Values ────────────────────────────────────────────────────────────
@@ -1511,6 +1673,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
         labels: Authoring.list_labels(scenario),
         endings: Authoring.list_endings(scenario)
       )
+      |> reload_members()
 
     # Keep an opened timeline_element's options in sync after edits.
     if socket.assigns.selected_timeline_element do
@@ -1642,5 +1805,18 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp label_class(:error), do: "badge-error"
   defp label_class(_), do: "badge-neutral"
 
-  def sections, do: @sections
+  # Member emails and pending invitations are owner-only data; everyone else
+  # gets empty lists (the section is hidden for them anyway).
+  defp reload_members(%{assigns: %{role: :owner, scenario: scenario}} = socket) do
+    assign(socket,
+      members: Authoring.list_members(scenario),
+      pending_invitations: Authoring.list_pending_invitations(scenario)
+    )
+  end
+
+  defp reload_members(socket), do: assign(socket, members: [], pending_invitations: [])
+
+  # The members section (invitations, roles) is owner-only.
+  def sections(:owner), do: @sections ++ [:members]
+  def sections(_role), do: @sections
 end

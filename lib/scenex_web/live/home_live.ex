@@ -19,10 +19,7 @@ defmodule ScenexWeb.HomeLive do
             Go to your scenarios <span aria-hidden="true">→</span>
           </.link>
 
-          <.link :if={!@current_scope} navigate={~p"/users/register"} class="btn btn-primary">
-            Get started
-          </.link>
-          <.link :if={!@current_scope} navigate={~p"/users/log-in"} class="btn btn-ghost">
+          <.link :if={!@current_scope} navigate={~p"/users/log-in"} class="btn btn-primary">
             Log in
           </.link>
         </div>

@@ -7,7 +7,8 @@ defmodule ScenexWeb.HomeLiveTest do
     {:ok, _lv, html} = live(conn, ~p"/")
 
     assert html =~ "Scenex"
-    assert html =~ ~p"/users/register"
+    # Registration is invitation-only; the landing page offers login only.
+    refute html =~ ~p"/users/register"
     assert html =~ ~p"/users/log-in"
   end
 

@@ -500,4 +500,177 @@ defmodule Scenex.AuthoringTest do
     sim = Sim.apply_effect(sim, spec.key, gov.id, -20.0)
     assert Sim.globals(sim)[spec.key] == 40.0
   end
+
+  describe "invitations" do
+    defp invite_url_fun, do: fn token -> "http://localhost/invites/#{token}" end
+
+    # Order-independent (fixtures also send emails, e.g. login instructions).
+    defp email_sent_to?(address) do
+      receive do
+        {:email, %Swoosh.Email{to: to}} ->
+          Enum.any?(to, fn {_name, addr} -> addr == address end) or email_sent_to?(address)
+      after
+        0 -> false
+      end
+    end
+
+    test "inviting an existing user adds the membership right away" do
+      owner = user_fixture()
+      invitee = user_fixture()
+      scenario = scenario_fixture(owner)
+
+      assert {:ok, :member_added} =
+               Authoring.invite_member(scenario, owner, invitee.email, :author, invite_url_fun())
+
+      assert Authoring.get_user_role(scenario, invitee) == :author
+      assert Authoring.list_pending_invitations(scenario) == []
+      assert email_sent_to?(invitee.email)
+    end
+
+    test "inviting an existing member returns already_member" do
+      owner = user_fixture()
+      invitee = user_fixture()
+      scenario = scenario_fixture(owner)
+
+      {:ok, :member_added} =
+        Authoring.invite_member(scenario, owner, invitee.email, :viewer, invite_url_fun())
+
+      assert {:error, :already_member} =
+               Authoring.invite_member(scenario, owner, invitee.email, :author, invite_url_fun())
+    end
+
+    test "inviting an unknown email stores an invitation and emails the token link" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+      email = "newcomer@example.com"
+
+      captured_token =
+        capture_invite_token(fn url_fun ->
+          assert {:ok, :invitation_sent} =
+                   Authoring.invite_member(scenario, owner, email, :author, url_fun)
+        end)
+
+      assert [invitation] = Authoring.list_pending_invitations(scenario)
+      assert invitation.email == email
+      assert invitation.role == :author
+      assert email_sent_to?(email)
+
+      # The emailed token resolves; the stored one is only a hash.
+      found = Authoring.get_invitation_by_token(captured_token)
+      assert found.id == invitation.id
+      refute invitation.token == captured_token
+    end
+
+    test "re-inviting the same email replaces the pending invitation" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+      email = "newcomer@example.com"
+
+      first_token =
+        capture_invite_token(fn url_fun ->
+          {:ok, :invitation_sent} =
+            Authoring.invite_member(scenario, owner, email, :author, url_fun)
+        end)
+
+      {:ok, :invitation_sent} =
+        Authoring.invite_member(scenario, owner, email, :viewer, invite_url_fun())
+
+      assert [invitation] = Authoring.list_pending_invitations(scenario)
+      assert invitation.role == :viewer
+      assert Authoring.get_invitation_by_token(first_token) == nil
+    end
+
+    test "accept_invitation creates a confirmed user with password and the membership" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+      email = "newcomer@example.com"
+
+      token =
+        capture_invite_token(fn url_fun ->
+          {:ok, :invitation_sent} =
+            Authoring.invite_member(scenario, owner, email, :author, url_fun)
+        end)
+
+      invitation = Authoring.get_invitation_by_token(token)
+
+      assert {:ok, user} =
+               Authoring.accept_invitation(invitation, %{
+                 "password" => "hello world!!",
+                 "password_confirmation" => "hello world!!"
+               })
+
+      assert user.email == email
+      assert user.confirmed_at
+      assert Scenex.Accounts.get_user_by_email_and_password(email, "hello world!!")
+      assert Authoring.get_user_role(scenario, user) == :author
+      assert Authoring.list_pending_invitations(scenario) == []
+    end
+
+    test "accept_invitation rejects an invalid password and keeps the invitation" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+
+      token =
+        capture_invite_token(fn url_fun ->
+          {:ok, :invitation_sent} =
+            Authoring.invite_member(scenario, owner, "x@example.com", :author, url_fun)
+        end)
+
+      invitation = Authoring.get_invitation_by_token(token)
+
+      assert {:error, changeset} =
+               Authoring.accept_invitation(invitation, %{"password" => "short"})
+
+      assert %{password: _} = errors_on(changeset)
+      assert Authoring.get_invitation_by_token(token)
+      assert Scenex.Accounts.get_user_by_email("x@example.com") == nil
+    end
+
+    test "accept_invitation for a user who registered meanwhile just adds membership" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+      email = "meanwhile@example.com"
+
+      token =
+        capture_invite_token(fn url_fun ->
+          {:ok, :invitation_sent} =
+            Authoring.invite_member(scenario, owner, email, :author, url_fun)
+        end)
+
+      user = user_fixture(%{email: email})
+      invitation = Authoring.get_invitation_by_token(token)
+
+      assert {:ok, :existing_user} = Authoring.accept_invitation(invitation, %{})
+      assert Authoring.get_user_role(scenario, user) == :author
+      assert Authoring.list_pending_invitations(scenario) == []
+    end
+
+    test "revoke_invitation invalidates the token" do
+      owner = user_fixture()
+      scenario = scenario_fixture(owner)
+
+      token =
+        capture_invite_token(fn url_fun ->
+          {:ok, :invitation_sent} =
+            Authoring.invite_member(scenario, owner, "y@example.com", :author, url_fun)
+        end)
+
+      [invitation] = Authoring.list_pending_invitations(scenario)
+      assert {:ok, _} = Authoring.revoke_invitation(invitation)
+      assert Authoring.get_invitation_by_token(token) == nil
+    end
+
+    # Runs `fun` with a url_fun that captures the encoded token it receives.
+    defp capture_invite_token(fun) do
+      test_pid = self()
+
+      fun.(fn token ->
+        send(test_pid, {:invite_token, token})
+        "http://localhost/invites/#{token}"
+      end)
+
+      assert_received {:invite_token, token}
+      token
+    end
+  end
 end

@@ -21,6 +21,7 @@ defmodule Scenex.Authoring do
     Ending,
     TimelineElement,
     Scenario,
+    ScenarioInvitation,
     ScenarioMembership,
     Group,
     GroupInitialValue,
@@ -127,6 +128,129 @@ defmodule Scenex.Authoring do
   end
 
   def remove_member(%ScenarioMembership{} = membership), do: Repo.delete(membership)
+
+  # ── Invitations ─────────────────────────────────────────────────────────
+  #
+  # Public registration is closed; inviting someone by email is how new
+  # accounts come into existence. Two paths:
+  #
+  #   * email belongs to an existing user  → membership is added right away
+  #   * email is unknown                   → a ScenarioInvitation is stored and
+  #     an acceptance link emailed; accepting creates the account (password
+  #     required) and the membership in one step.
+
+  @doc """
+  Invite `email` to `scenario` with `role` (`:author` or `:viewer`).
+
+  Returns:
+
+    * `{:ok, :member_added}` — the email already had an account; membership
+      added and a notification email sent.
+    * `{:ok, :invitation_sent}` — no account yet; invitation stored and an
+      acceptance link emailed.
+    * `{:error, :already_member}` — the user already has a role on the scenario.
+    * `{:error, changeset}` — invalid email or a still-pending invitation.
+
+  `invite_url_fun` receives the encoded token and returns the acceptance URL.
+  """
+  def invite_member(%Scenario{} = scenario, %User{} = inviter, email, role, invite_url_fun)
+      when role in [:author, :viewer] and is_function(invite_url_fun, 1) do
+    email = email |> to_string() |> String.trim()
+
+    case Scenex.Accounts.get_user_by_email(email) do
+      %User{} = user ->
+        case add_member(scenario, user, role) do
+          {:ok, _membership} ->
+            Scenex.Accounts.UserNotifier.deliver_added_to_scenario(
+              user,
+              scenario_display_name(scenario),
+              role
+            )
+
+            {:ok, :member_added}
+
+          {:error, _changeset} ->
+            {:error, :already_member}
+        end
+
+      nil ->
+        {encoded_token, changeset} = ScenarioInvitation.build(scenario, inviter, email, role)
+
+        # Re-inviting the same email replaces the old invitation (fresh token).
+        Repo.delete_all(
+          from i in ScenarioInvitation,
+            where: i.scenario_id == ^scenario.id and i.email == ^email
+        )
+
+        with {:ok, invitation} <- Repo.insert(changeset) do
+          Scenex.Accounts.UserNotifier.deliver_scenario_invitation(
+            invitation.email,
+            scenario_display_name(scenario),
+            role,
+            invite_url_fun.(encoded_token)
+          )
+
+          {:ok, :invitation_sent}
+        end
+    end
+  end
+
+  def list_pending_invitations(%Scenario{} = scenario) do
+    Repo.all(
+      from i in ScenarioInvitation,
+        where: i.scenario_id == ^scenario.id,
+        order_by: [desc: i.inserted_at]
+    )
+  end
+
+  def revoke_invitation(%ScenarioInvitation{} = invitation), do: Repo.delete(invitation)
+
+  @doc "Resolve an encoded invite token to a valid invitation (scenario preloaded), or nil."
+  def get_invitation_by_token(encoded_token) do
+    with {:ok, query} <- ScenarioInvitation.verify_token_query(encoded_token) do
+      Repo.one(query)
+    else
+      :error -> nil
+    end
+  end
+
+  @doc """
+  Accept an invitation by creating a new account with a password.
+
+  Runs in a transaction: registers a confirmed user from the invitation's
+  email + the given password params, adds the membership, and deletes the
+  invitation. Returns `{:ok, user}` or `{:error, changeset}`.
+
+  If an account for the email appeared after the invite was sent, no account
+  is created; the membership is added and `{:ok, :existing_user}` returned —
+  the caller should send the person to the login page.
+  """
+  def accept_invitation(%ScenarioInvitation{} = invitation, password_params) do
+    invitation = Repo.preload(invitation, :scenario)
+
+    case Scenex.Accounts.get_user_by_email(invitation.email) do
+      %User{} = user ->
+        Repo.transact(fn ->
+          _ = add_member(invitation.scenario, user, invitation.role)
+          {:ok, _} = Repo.delete(invitation)
+          {:ok, :existing_user}
+        end)
+
+      nil ->
+        Repo.transact(fn ->
+          with {:ok, user} <-
+                 Scenex.Accounts.register_invited_user(invitation.email, password_params),
+               {:ok, _membership} <- add_member(invitation.scenario, user, invitation.role),
+               {:ok, _} <- Repo.delete(invitation) do
+            {:ok, user}
+          end
+        end)
+    end
+  end
+
+  defp scenario_display_name(%Scenario{} = scenario) do
+    Scenex.I18n.t!(scenario.name, scenario.source_locale, default: scenario.handle)
+  end
 
   # ── Value dimensions ────────────────────────────────────────────────────
 
