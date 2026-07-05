@@ -259,6 +259,14 @@ defmodule Scenex.Play.SessionServer do
     end
   end
 
+  defp validate({:record_tally, value_id, counts}, state) do
+    with :ok <- running(state),
+         :ok <- fetch_per_participant(state, value_id),
+         :ok <- valid_tally(counts) do
+      {:ok, "tally_recorded", %{value_id: value_id, counts: counts}, %{}}
+    end
+  end
+
   defp validate(_command, _state), do: {:error, :unknown_command}
 
   defp running(%{projection: %{status: status}}) when status in [:live, :paused], do: :ok
@@ -288,6 +296,35 @@ defmodule Scenex.Play.SessionServer do
       _ -> {:error, :unknown_option}
     end
   end
+
+  defp fetch_per_participant(state, value_id) do
+    case Enum.find(state.definition.specs, &(&1.key == value_id)) do
+      nil -> {:error, :unknown_value}
+      %{input_scope: :per_participant} -> :ok
+      %{} -> {:error, :not_per_participant}
+    end
+  end
+
+  # A tally is `%{score => count}` (scores as integers or integer strings —
+  # form params arrive stringly); at least one participant must be counted.
+  defp valid_tally(counts) when is_map(counts) and map_size(counts) > 0 do
+    entries_ok =
+      Enum.all?(counts, fn {score, count} ->
+        valid_score?(score) and is_integer(count) and count >= 0
+      end)
+
+    cond do
+      not entries_ok -> {:error, :invalid_tally}
+      counts |> Map.values() |> Enum.sum() == 0 -> {:error, :empty_tally}
+      true -> :ok
+    end
+  end
+
+  defp valid_tally(_counts), do: {:error, :invalid_tally}
+
+  defp valid_score?(score) when is_integer(score), do: true
+  defp valid_score?(score) when is_binary(score), do: match?({_, ""}, Integer.parse(score))
+  defp valid_score?(_score), do: false
 
   # ── Persistence ───────────────────────────────────────────────────────
 
@@ -360,6 +397,7 @@ defmodule Scenex.Play.SessionServer do
       triggered_at: state.projection.triggered_at,
       sims_before: state.projection.sims_before,
       decisions: state.projection.decisions,
+      tallies: state.projection.tallies,
       ending_id: state.projection.ending_id,
       game_time_ms: current_game_time(state.session),
       definition: state.definition

@@ -22,6 +22,15 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         max: 10.0
       )
 
+    wellbeing =
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant,
+        min: 1.0,
+        max: 4.0
+      )
+
     gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
@@ -55,6 +64,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       gm: gm,
       scenario: scenario,
       stability: stability,
+      wellbeing: wellbeing,
       gov: gov,
       event: event,
       crack: crack,
@@ -161,6 +171,23 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       # The display hears about it via PubSub.
       assert render(lv) =~ "The End"
+    end
+
+    test "shows the latest well-being tally once one is recorded", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      # No tally yet — no well-being readout.
+      refute html =~ "Well-being"
+
+      {:ok, _} = Play.record_tally(ctx.session.id, ctx.wellbeing.id, %{"4" => 3, "3" => 1})
+
+      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub.
+      html = render(lv)
+      assert html =~ "Well-being"
+      assert html =~ "3.8"
+      assert html =~ "😀"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do

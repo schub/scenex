@@ -24,6 +24,7 @@ defmodule Scenex.Play.Projection do
     triggered_at: %{},
     sims_before: %{},
     decisions: %{},
+    tallies: %{},
     ending_id: nil
   ]
 
@@ -90,6 +91,13 @@ defmodule Scenex.Play.Projection do
   defp handle(p, "sidequest_adjudicated", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :outcome, oid)
 
+  # A hand-count tally for a per-participant value; history accumulates, the
+  # latest reading wins for the global (recompute re-applies it to the sim).
+  defp handle(p, "tally_recorded", %{"value_id" => vid, "counts" => counts}, game_time_ms) do
+    entry = %{counts: normalize_counts(counts), game_time_ms: game_time_ms}
+    %{p | tallies: Map.update(p.tallies, vid, [entry], &(&1 ++ [entry]))}
+  end
+
   # Unknown event types are ignored — old logs stay replayable as the
   # vocabulary grows.
   defp handle(p, _type, _payload, _game_time_ms), do: p
@@ -101,12 +109,41 @@ defmodule Scenex.Play.Projection do
     %{p | decisions: decisions}
   end
 
+  # JSONB round-trips tally scores as strings; fold them back to numbers and
+  # drop anything malformed (old logs stay replayable).
+  defp normalize_counts(counts) when is_map(counts) do
+    for {score, count} <- counts,
+        parsed = parse_score(score),
+        is_integer(count) and count >= 0,
+        into: %{},
+        do: {parsed, count}
+  end
+
+  defp normalize_counts(_counts), do: %{}
+
+  defp parse_score(score) when is_number(score), do: score
+
+  defp parse_score(score) when is_binary(score) do
+    case Integer.parse(score) do
+      {n, ""} -> n
+      _ -> nil
+    end
+  end
+
+  defp parse_score(_score), do: nil
+
   # ── Recompute ─────────────────────────────────────────────────────────
 
   defp recompute(%__MODULE__{definition: definition} = p) do
     per_group_ids =
       for spec <- definition.specs,
           spec.input_scope == :per_group,
+          into: MapSet.new(),
+          do: spec.key
+
+    per_participant_ids =
+      for spec <- definition.specs,
+          spec.input_scope == :per_participant,
           into: MapSet.new(),
           do: spec.key
 
@@ -127,6 +164,14 @@ defmodule Scenex.Play.Projection do
           end)
 
         {acc, before_map}
+      end)
+
+    # The latest tally per per-participant value feeds its global.
+    sim =
+      Enum.reduce(p.tallies, sim, fn {value_id, entries}, acc ->
+        if MapSet.member?(per_participant_ids, value_id),
+          do: Sim.record_tally(acc, value_id, List.last(entries).counts),
+          else: acc
       end)
 
     %{p | sim: sim, sims_before: sims_before}

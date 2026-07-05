@@ -57,6 +57,20 @@ defmodule ScenexWeb.PlayLive.Display do
           </table>
         </div>
 
+        <%!-- Well-being: the latest hand-count tally per participant value --%>
+        <section :if={tallied_dims(@snap) != []} class="flex flex-wrap justify-center gap-6">
+          <div
+            :for={vd <- tallied_dims(@snap)}
+            class="rounded-box bg-base-200 px-6 py-4 text-center"
+          >
+            <div class="text-sm opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+            <div class="flex items-baseline justify-center gap-3">
+              <span class="text-3xl">{tally_face(@snap.globals[vd.id])}</span>
+              <span class="text-3xl font-bold tabular-nums">{fmt_num(@snap.globals[vd.id])}</span>
+            </div>
+          </div>
+        </section>
+
         <%!-- The finale, once chosen --%>
         <section :if={ending = chosen_ending(@snap)} class="rounded-box bg-base-200 p-6 space-y-3">
           <h2 class="text-2xl font-bold">{I18n.t!(ending.title, @locale, default: ending.handle)}</h2>
@@ -125,6 +139,19 @@ defmodule ScenexWeb.PlayLive.Display do
 
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
+
+  # Per-participant values with at least one recorded tally.
+  defp tallied_dims(snap) do
+    Enum.filter(
+      snap.definition.value_dimensions,
+      &(&1.input_scope == :per_participant and is_number(snap.globals[&1.id]))
+    )
+  end
+
+  defp tally_face(avg) when avg >= 3.5, do: "😀"
+  defp tally_face(avg) when avg >= 2.5, do: "🙂"
+  defp tally_face(avg) when avg >= 1.5, do: "😐"
+  defp tally_face(_avg), do: "🙁"
 
   defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 

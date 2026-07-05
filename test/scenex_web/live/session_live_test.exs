@@ -21,6 +21,15 @@ defmodule ScenexWeb.SessionLiveTest do
         max: 10.0
       )
 
+    wellbeing =
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant,
+        min: 1.0,
+        max: 4.0
+      )
+
     gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
@@ -69,6 +78,7 @@ defmodule ScenexWeb.SessionLiveTest do
     %{
       scenario: scenario,
       stability: stability,
+      wellbeing: wellbeing,
       gov: gov,
       event: event,
       crack: crack,
@@ -170,6 +180,31 @@ defmodule ScenexWeb.SessionLiveTest do
       session |> Play.list_session_events() |> Enum.find(&(&1.type == "election_resolved"))
 
     assert tally_event.payload["tally"][ctx.yes.id] == 23
+  end
+
+  test "recording a well-being tally", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "Well-being"
+    assert html =~ "hand count"
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    # An empty tally is refused client-side with a flash.
+    html = lv |> form(~s{form[phx-submit=record_tally]}) |> render_submit()
+    assert html =~ "Count at least one participant"
+
+    html =
+      lv
+      |> form(~s{form[phx-submit=record_tally]}, %{
+        "counts" => %{"4" => "2", "3" => "1", "1" => "1"}
+      })
+      |> render_submit()
+
+    # Weighted mean (4+4+3+1)/4 = 3 — latest reading and a history row appear.
+    assert html =~ "🙂 3"
+    assert html =~ "Average"
   end
 
   test "a viewer cannot open the console", %{session: session} do

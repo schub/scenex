@@ -92,6 +92,68 @@ defmodule ScenexWeb.SessionLive.Console do
         </table>
       </div>
 
+      <%!-- Well-being: hand-count tallies for per-participant values --%>
+      <section
+        :for={vd <- participant_dims(@snap)}
+        class="mt-8 rounded-box border border-base-300 p-4 space-y-3"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <h3 class="text-lg font-semibold">{I18n.t!(vd.name, @locale, default: vd.key)}</h3>
+          <span class="badge badge-sm badge-ghost">hand count</span>
+          <span
+            :if={avg = @snap.globals[vd.id]}
+            class="ml-auto text-xl font-bold tabular-nums"
+            title="Latest tally average"
+          >
+            {tally_face(avg)} {fmt_num(avg)}
+          </span>
+        </div>
+
+        <form phx-submit="record_tally" class="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="value" value={vd.id} />
+          <label :for={{score, face, label} <- tally_scale()} class="flex flex-col gap-1 text-xs">
+            <span>{face} {label} ({score})</span>
+            <input
+              type="number"
+              name={"counts[#{score}]"}
+              min="0"
+              placeholder="0"
+              class="input input-bordered input-sm w-24"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={@snap.status not in [:live, :paused]}
+            class="btn btn-sm btn-primary"
+          >
+            Record tally
+          </button>
+        </form>
+
+        <div :if={tally_history(@snap, vd.id) != []} class="overflow-x-auto">
+          <table class="table table-xs">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th :for={{_score, face, _label} <- tally_scale()} class="text-right">{face}</th>
+                <th class="text-right">Average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={entry <- Enum.reverse(tally_history(@snap, vd.id))}>
+                <td class="font-mono tabular-nums">{fmt_clock(entry.game_time_ms)}</td>
+                <td :for={{score, _face, _label} <- tally_scale()} class="text-right tabular-nums">
+                  {entry.counts[score] || 0}
+                </td>
+                <td class="text-right font-semibold tabular-nums">
+                  {fmt_num(Sim.tally_mean(entry.counts))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <%!-- Timeline --%>
       <div class="mt-8 space-y-6">
         <section
@@ -376,6 +438,16 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("adjudicate", %{"element" => element_id, "option" => option_id}, socket),
     do: run(socket, &Play.adjudicate_sidequest(&1, element_id, option_id))
 
+  def handle_event("record_tally", %{"value" => value_id} = params, socket) do
+    counts = parse_tally(params["counts"] || %{})
+
+    if counts == %{} or counts |> Map.values() |> Enum.sum() == 0 do
+      {:noreply, put_flash(socket, :error, "Count at least one participant first.")}
+    else
+      run(socket, &Play.record_tally(&1, value_id, counts))
+    end
+  end
+
   def handle_event("select_ending", %{"id" => ending_id}, socket),
     do: run(socket, &Play.select_ending(&1, ending_id))
 
@@ -435,6 +507,26 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
+
+  defp participant_dims(snap),
+    do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_participant))
+
+  defp tally_history(snap, value_id), do: snap.tallies[value_id] || []
+
+  # The fixed 4-step smiley-coin scale (see the well-being design concept).
+  defp tally_scale do
+    [
+      {4, "😀", "Very happy"},
+      {3, "🙂", "Happy"},
+      {2, "😐", "Okay"},
+      {1, "🙁", "Not happy"}
+    ]
+  end
+
+  defp tally_face(avg) when avg >= 3.5, do: "😀"
+  defp tally_face(avg) when avg >= 2.5, do: "🙂"
+  defp tally_face(avg) when avg >= 1.5, do: "😐"
+  defp tally_face(_avg), do: "🙁"
 
   defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 

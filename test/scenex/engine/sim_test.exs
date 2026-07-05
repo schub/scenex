@@ -92,6 +92,35 @@ defmodule Scenex.Engine.SimTest do
     end
   end
 
+  describe "record_tally/3" do
+    test "the per-participant global becomes the count-weighted mean" do
+      s = Sim.record_tally(sim(), :wellbeing, %{4 => 2, 3 => 1, 1 => 1})
+      assert Sim.globals(s).wellbeing == 3.0
+    end
+
+    test "a later tally replaces the earlier one" do
+      s =
+        sim()
+        |> Sim.record_tally(:wellbeing, %{4 => 10})
+        |> Sim.record_tally(:wellbeing, %{2 => 3, 1 => 1})
+
+      assert Sim.globals(s).wellbeing == 1.75
+    end
+
+    test "an all-zero tally yields a nil global" do
+      s = Sim.record_tally(sim(), :wellbeing, %{4 => 0, 1 => 0})
+      assert Sim.globals(s).wellbeing == nil
+    end
+
+    test "raises for a per-group value" do
+      assert_raise MatchError, fn -> Sim.record_tally(sim(), :stability, %{4 => 1}) end
+    end
+
+    test "raises for an unknown value" do
+      assert_raise KeyError, fn -> Sim.record_tally(sim(), :nope, %{4 => 1}) end
+    end
+  end
+
   describe "apply_effects/2" do
     test "applies a list of effects in order" do
       s = Sim.apply_effects(sim(), [{:stability, :gov, -10}, {:solidarity, :media, -25}])

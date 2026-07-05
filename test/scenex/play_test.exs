@@ -24,6 +24,15 @@ defmodule Scenex.PlayTest do
         max: 10.0
       )
 
+    wellbeing =
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant,
+        min: 1.0,
+        max: 4.0
+      )
+
     gov = group_fixture(scenario, handle: "Gov")
     media = group_fixture(scenario, handle: "Media")
     Authoring.set_group_initial_value(gov, stability, 5.0)
@@ -82,6 +91,7 @@ defmodule Scenex.PlayTest do
     %{
       scenario: scenario,
       stability: stability,
+      wellbeing: wellbeing,
       gov: gov,
       media: media,
       event: event,
@@ -169,6 +179,45 @@ defmodule Scenex.PlayTest do
            ]
   end
 
+  test "well-being tallies feed the per-participant global (latest wins)", ctx do
+    %{session: session, wellbeing: wellbeing} = ctx
+
+    {:ok, snap} = Play.start_session(session.id)
+    assert snap.globals[wellbeing.id] == nil
+
+    # Counts arrive stringly from the form; scores fold back to numbers.
+    {:ok, snap} = Play.record_tally(session.id, wellbeing.id, %{"4" => 2, "3" => 1, "1" => 1})
+    assert snap.globals[wellbeing.id] == 3.0
+    assert [%{counts: %{4 => 2, 3 => 1, 1 => 1}}] = snap.tallies[wellbeing.id]
+
+    # A later reading supersedes the global; history keeps both.
+    {:ok, snap} = Play.record_tally(session.id, wellbeing.id, %{"2" => 3, "1" => 1})
+    assert snap.globals[wellbeing.id] == 1.75
+    assert length(snap.tallies[wellbeing.id]) == 2
+
+    types = session |> Play.list_session_events() |> Enum.map(& &1.type)
+    assert Enum.count(types, &(&1 == "tally_recorded")) == 2
+  end
+
+  test "tally commands are validated", ctx do
+    %{session: session, wellbeing: wellbeing, stability: stability} = ctx
+
+    assert {:error, :not_running} =
+             Play.record_tally(session.id, wellbeing.id, %{"4" => 1})
+
+    {:ok, _} = Play.start_session(session.id)
+
+    assert {:error, :unknown_value} = Play.record_tally(session.id, ctx.gov.id, %{"4" => 1})
+
+    assert {:error, :not_per_participant} =
+             Play.record_tally(session.id, stability.id, %{"4" => 1})
+
+    assert {:error, :invalid_tally} = Play.record_tally(session.id, wellbeing.id, %{})
+    assert {:error, :invalid_tally} = Play.record_tally(session.id, wellbeing.id, %{"4" => -1})
+    assert {:error, :invalid_tally} = Play.record_tally(session.id, wellbeing.id, %{"x" => 1})
+    assert {:error, :empty_tally} = Play.record_tally(session.id, wellbeing.id, %{"4" => 0})
+  end
+
   test "a session survives a process restart (replay)", ctx do
     %{session: session} = ctx
 
@@ -176,7 +225,8 @@ defmodule Scenex.PlayTest do
     {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
     {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
     {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
-    {:ok, before} = Play.resolve_election(session.id, ctx.election.id, ctx.yes.id)
+    {:ok, _} = Play.resolve_election(session.id, ctx.election.id, ctx.yes.id)
+    {:ok, before} = Play.record_tally(session.id, ctx.wellbeing.id, %{"4" => 1, "2" => 1})
 
     :ok = Play.stop_running(session.id)
     # Registry unregistration is asynchronous; wait for the name to free.
@@ -188,6 +238,8 @@ defmodule Scenex.PlayTest do
     assert after_restart.triggered == before.triggered
     assert after_restart.decisions == before.decisions
     assert after_restart.sim.group_values == before.sim.group_values
+    assert after_restart.tallies == before.tallies
+    assert after_restart.globals == before.globals
   end
 
   test "two sessions of the same scenario are isolated", ctx do
@@ -280,7 +332,7 @@ defmodule Scenex.PlayTest do
 
     Authoring.set_option_effect(gov_default, stability, -2.0)
 
-    {:ok, media_default} =
+    {:ok, _media_default} =
       Authoring.create_decision_option(timed, media, %{
         handle: "Media default",
         text: %{"en" => "Media default"},

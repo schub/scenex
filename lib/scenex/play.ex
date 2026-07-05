@@ -91,6 +91,14 @@ defmodule Scenex.Play do
   def adjudicate_sidequest(session_id, element_id, option_id),
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})
 
+  @doc """
+  Record a hand-count well-being tally for a `per_participant` value:
+  `%{score => count}`. The latest tally sets the value's global (its
+  count-weighted mean); history stays in the log and the snapshot's `tallies`.
+  """
+  def record_tally(session_id, value_id, counts),
+    do: command(session_id, {:record_tally, value_id, counts})
+
   defp command(session_id, command) do
     with {:ok, _pid} <- ensure_running(session_id) do
       SessionServer.command(session_id, command)
