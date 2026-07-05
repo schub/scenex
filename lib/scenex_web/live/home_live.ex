@@ -23,6 +23,8 @@ defmodule ScenexWeb.HomeLive do
             Log in
           </.link>
         </div>
+
+        <p class="text-xs opacity-50">v{Application.spec(:scenex, :vsn)}</p>
       </div>
     </Layouts.app>
     """
