@@ -182,6 +182,46 @@ defmodule ScenexWeb.SessionLiveTest do
     assert tally_event.payload["tally"][ctx.yes.id] == 23
   end
 
+  test "typed tally counts survive the 1s clock refresh", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    # Typing fires the change event; the clock tick re-renders — the counts
+    # must be written back into the inputs, not reset to empty.
+    lv
+    |> form(~s{form[phx-submit=record_tally]}, %{"counts" => %{"4" => "10"}})
+    |> render_change()
+
+    send(lv.pid, :tick)
+
+    assert lv |> element(~s{input[name="counts[4]"]}) |> render() =~ ~s(value="10")
+  end
+
+  test "typed election tallies and winner survive the 1s clock refresh", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    lv |> element("button[phx-click=start]") |> render_click()
+
+    lv
+    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
+    |> render_click()
+
+    lv
+    |> form(~s{form[phx-submit=resolve_election]}, %{
+      "winner" => ctx.yes.id,
+      "tally" => %{ctx.yes.id => "23"}
+    })
+    |> render_change()
+
+    send(lv.pid, :tick)
+
+    assert lv |> element(~s{input[name="tally[#{ctx.yes.id}]"]}) |> render() =~ ~s(value="23")
+    assert lv |> element(~s{input[type=radio][value="#{ctx.yes.id}"]}) |> render() =~ "checked"
+  end
+
   test "recording a well-being tally", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")

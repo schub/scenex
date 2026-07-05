@@ -109,13 +109,18 @@ defmodule ScenexWeb.SessionLive.Console do
           </span>
         </div>
 
-        <form phx-submit="record_tally" class="flex flex-wrap items-end gap-3">
+        <form
+          phx-submit="record_tally"
+          phx-change="tally_change"
+          class="flex flex-wrap items-end gap-3"
+        >
           <input type="hidden" name="value" value={vd.id} />
           <label :for={{score, face, label} <- tally_scale()} class="flex flex-col gap-1 text-xs">
             <span>{face} {label} ({score})</span>
             <input
               type="number"
               name={"counts[#{score}]"}
+              value={get_in(@tally_inputs, [vd.id, to_string(score)])}
               min="0"
               placeholder="0"
               class="input input-bordered input-sm w-24"
@@ -223,6 +228,7 @@ defmodule ScenexWeb.SessionLive.Console do
             <form
               :if={element.kind == :election}
               phx-submit="resolve_election"
+              phx-change="election_change"
               class="space-y-2"
             >
               <input type="hidden" name="element" value={element.id} />
@@ -235,7 +241,7 @@ defmodule ScenexWeb.SessionLive.Console do
                     type="radio"
                     name="winner"
                     value={o.id}
-                    checked={decided?(@snap, element.id, :winner, o.id)}
+                    checked={winner_choice(@election_inputs, @snap, element.id) == o.id}
                     class="radio radio-sm"
                   />
                   <span class={[
@@ -251,6 +257,7 @@ defmodule ScenexWeb.SessionLive.Console do
                 <input
                   type="number"
                   name={"tally[#{o.id}]"}
+                  value={get_in(@election_inputs, [element.id, "tally", o.id])}
                   min="0"
                   placeholder="votes"
                   class="input input-bordered input-xs w-20"
@@ -395,7 +402,9 @@ defmodule ScenexWeb.SessionLive.Console do
            locale: scenario.source_locale,
            page_title: "Console — #{session.label}",
            snap: Play.snapshot(session.id),
-           tokens: Play.list_tokens(session)
+           tokens: Play.list_tokens(session),
+           tally_inputs: %{},
+           election_inputs: %{}
          )}
 
       _ ->
@@ -428,11 +437,30 @@ defmodule ScenexWeb.SessionLive.Console do
     case params["winner"] do
       winner when is_binary(winner) and winner != "" ->
         tally = parse_tally(params["tally"] || %{})
-        run(socket, &Play.resolve_election(&1, element_id, winner, tally))
+
+        run(
+          socket,
+          &Play.resolve_election(&1, element_id, winner, tally),
+          &clear_input(&1, :election_inputs, element_id)
+        )
 
       _ ->
         {:noreply, put_flash(socket, :error, "Pick the winning option first.")}
     end
+  end
+
+  # Keep in-progress form input in assigns: the console re-renders every tick
+  # (game clock), and uncontrolled inputs would be reset to empty each second.
+  def handle_event("election_change", %{"element" => element_id} = params, socket) do
+    inputs =
+      Map.put(socket.assigns.election_inputs, element_id, Map.take(params, ["winner", "tally"]))
+
+    {:noreply, assign(socket, :election_inputs, inputs)}
+  end
+
+  def handle_event("tally_change", %{"value" => value_id} = params, socket) do
+    inputs = Map.put(socket.assigns.tally_inputs, value_id, params["counts"] || %{})
+    {:noreply, assign(socket, :tally_inputs, inputs)}
   end
 
   def handle_event("adjudicate", %{"element" => element_id, "option" => option_id}, socket),
@@ -444,7 +472,11 @@ defmodule ScenexWeb.SessionLive.Console do
     if counts == %{} or counts |> Map.values() |> Enum.sum() == 0 do
       {:noreply, put_flash(socket, :error, "Count at least one participant first.")}
     else
-      run(socket, &Play.record_tally(&1, value_id, counts))
+      run(
+        socket,
+        &Play.record_tally(&1, value_id, counts),
+        &clear_input(&1, :tally_inputs, value_id)
+      )
     end
   end
 
@@ -476,15 +508,19 @@ defmodule ScenexWeb.SessionLive.Console do
   defp reload_tokens(socket),
     do: assign(socket, :tokens, Play.list_tokens(socket.assigns.session))
 
-  defp run(socket, command) do
+  defp run(socket, command, on_success \\ & &1) do
     case command.(socket.assigns.session.id) do
       {:ok, snapshot} ->
-        {:noreply, assign(socket, :snap, snapshot)}
+        {:noreply, socket |> assign(:snap, snapshot) |> on_success.()}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Rejected: #{inspect(reason)}")}
     end
   end
+
+  # Drop one form's held input (after its command succeeded).
+  defp clear_input(socket, key, id),
+    do: assign(socket, key, Map.delete(socket.assigns[key], id))
 
   @impl true
   def handle_info({:session_updated, _id}, socket), do: {:noreply, refresh(socket)}
@@ -542,6 +578,12 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp decided?(snap, element_id, slot, option_id),
     do: get_in(snap.decisions, [element_id, slot]) == option_id
+
+  # The radio reflects what the GM is picking right now, falling back to the
+  # recorded winner (so a declared result stays visible).
+  defp winner_choice(inputs, snap, element_id) do
+    get_in(inputs, [element_id, "winner"]) || get_in(snap.decisions, [element_id, :winner])
+  end
 
   defp notes(element, locale), do: I18n.t(element.director_notes, locale)
 
