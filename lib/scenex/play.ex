@@ -21,11 +21,25 @@ defmodule Scenex.Play do
 
   def list_sessions(%Scenario{} = scenario) do
     Repo.all(
-      from s in Session, where: s.scenario_id == ^scenario.id, order_by: [desc: s.inserted_at]
+      from s in Session,
+        where: s.scenario_id == ^scenario.id,
+        order_by: [desc: s.inserted_at],
+        preload: [:created_by]
     )
   end
 
   def get_session!(id), do: Repo.get!(Session, id)
+
+  @doc """
+  Whether a user may run this session (open the console, send commands).
+
+  A session belongs to the author who created it — other authors of the same
+  scenario cannot control it. The scenario owner keeps an override as the
+  recovery path for live events (GM unavailable, orphaned sessions).
+  """
+  def gm?(%Session{} = session, %User{} = user, role) do
+    role == :owner or (role == :author and session.created_by_id == user.id)
+  end
 
   @doc "Create a session (status `:draft`); the creator acts as its GM."
   def create_session(%User{} = user, %Scenario{} = scenario, attrs) do

@@ -398,23 +398,17 @@ defmodule ScenexWeb.SessionLive.Console do
 
     case Authoring.get_scenario_for_user(session.scenario_id, user) do
       {scenario, role} when role in [:owner, :author] ->
-        if connected?(socket) do
-          Play.subscribe(session.id)
-          :timer.send_interval(1000, :tick)
+        if Play.gm?(session, user, role) do
+          mount_console(socket, session, scenario)
+        else
+          {:ok,
+           socket
+           |> put_flash(
+             :error,
+             "This session is run by another GM — only its creator or the scenario owner can control it."
+           )
+           |> push_navigate(to: ~p"/scenarios/#{session.scenario_id}/sessions")}
         end
-
-        {:ok,
-         socket
-         |> assign(
-           session: session,
-           scenario: scenario,
-           locale: scenario.source_locale,
-           page_title: "Console — #{session.label}",
-           snap: Play.snapshot(session.id),
-           tokens: Play.list_tokens(session),
-           tally_inputs: %{},
-           election_inputs: %{}
-         )}
 
       _ ->
         {:ok,
@@ -422,6 +416,26 @@ defmodule ScenexWeb.SessionLive.Console do
          |> put_flash(:error, "You cannot run sessions for this scenario.")
          |> push_navigate(to: ~p"/scenarios")}
     end
+  end
+
+  defp mount_console(socket, session, scenario) do
+    if connected?(socket) do
+      Play.subscribe(session.id)
+      :timer.send_interval(1000, :tick)
+    end
+
+    {:ok,
+     socket
+     |> assign(
+       session: session,
+       scenario: scenario,
+       locale: scenario.source_locale,
+       page_title: "Console — #{session.label}",
+       snap: Play.snapshot(session.id),
+       tokens: Play.list_tokens(session),
+       tally_inputs: %{},
+       election_inputs: %{}
+     )}
   end
 
   # ── Commands ──────────────────────────────────────────────────────────

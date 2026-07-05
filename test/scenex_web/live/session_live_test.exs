@@ -258,6 +258,47 @@ defmodule ScenexWeb.SessionLiveTest do
              live(conn, ~p"/sessions/#{session.id}/console")
   end
 
+  describe "session ownership" do
+    test "another author cannot open a session they did not create", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      conn = build_conn() |> log_in_user(other)
+
+      assert {:error, {:live_redirect, %{to: to, flash: flash}}} =
+               live(conn, ~p"/sessions/#{ctx.session.id}/console")
+
+      assert to == "/scenarios/#{ctx.scenario.id}/sessions"
+      assert flash["error"] =~ "run by another GM"
+    end
+
+    test "the scenario owner can open any session (override)", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      {:ok, session} = Play.create_session(other, ctx.scenario, %{label: "Other night"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      # ctx.conn is logged in as the scenario owner.
+      {:ok, _lv, html} = live(ctx.conn, ~p"/sessions/#{session.id}/console")
+      assert html =~ "Other night"
+    end
+
+    test "the index shows who runs a session and hides the console link for non-GMs", ctx do
+      other = user_fixture()
+      {:ok, _} = Authoring.add_member(ctx.scenario, other, :author)
+      conn = build_conn() |> log_in_user(other)
+
+      {:ok, _lv, html} = live(conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
+      assert html =~ "Premiere"
+      assert html =~ ctx.user.email
+      refute html =~ "Open console"
+
+      # The creator still sees their own session as "you" with the link.
+      {:ok, _lv, html} = live(ctx.conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
+      assert html =~ "GM: you"
+      assert html =~ "Open console"
+    end
+  end
+
   test "invalid commands surface as flash, not crashes", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
