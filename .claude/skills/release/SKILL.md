@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a Scenex release by running ./release.sh (strips the -dev suffix, fast-forwards main, tags vX.Y.Z, reopens dev on the next -dev version). Use when Markus asks to create/cut/make a release. Optional argument sets the next dev version (patch/minor/major or explicit X.Y.Z; default minor).
+description: Cut a Scenex release by running ./release.sh (strips the -dev suffix, merges dev into main as a tagged merge commit, reopens dev on the next -dev version). Use when Markus asks to create/cut/make a release. Optional argument sets the next dev version (patch/minor/major or explicit X.Y.Z; default minor).
 ---
 
 # Release Scenex
