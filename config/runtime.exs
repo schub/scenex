@@ -72,6 +72,9 @@ if config_env() == :prod do
   # DKIM for scenex.org itself; we only need to authenticate and send.
   smtp_relay = System.get_env("SMTP_RELAY") || "brorsen.uberspace.de"
 
+  # tls_options are injected at application start (see Scenex.Application),
+  # because building them requires TlsCertificateCheck, which isn't loaded yet
+  # during this config-provider boot phase.
   config :scenex, Scenex.Mailer,
     adapter: Swoosh.Adapters.SMTP,
     relay: smtp_relay,
@@ -79,13 +82,7 @@ if config_env() == :prod do
     password: System.get_env("SMTP_PASSWORD"),
     port: String.to_integer(System.get_env("SMTP_PORT") || "587"),
     tls: :always,
-    auth: :always,
-    # tls_certificate_check supplies a hardened trust store plus a partial_chain
-    # callback that truncates the server chain at a known trust anchor. Without
-    # it, OTP validates the full Let's Encrypt chain against the OS trust store
-    # and aborts with :max_path_length_reached (a CA pathLenConstraint, which
-    # raising `depth` does not fix).
-    tls_options: TlsCertificateCheck.options(smtp_relay)
+    auth: :always
 
   # ## SSL Support
   #
