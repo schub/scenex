@@ -4,7 +4,7 @@ defmodule Scenex.MixProject do
   def project do
     [
       app: :scenex,
-      version: "0.11.0-dev",
+      version: "0.11.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
