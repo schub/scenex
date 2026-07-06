@@ -221,7 +221,7 @@ defmodule ScenexWeb.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
+            class={["checkbox", @class || "checkbox-sm"]}
             {@rest}
           />{@label}
         </span>
@@ -239,7 +239,7 @@ defmodule ScenexWeb.CoreComponents do
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={["select", @class || "w-full", @errors != [] && (@error_class || "select-error")]}
           multiple={@multiple}
           {@rest}
         >
@@ -261,7 +261,8 @@ defmodule ScenexWeb.CoreComponents do
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
+            "textarea",
+            @class || "w-full",
             @errors != [] && (@error_class || "textarea-error")
           ]}
           {@rest}
@@ -284,7 +285,8 @@ defmodule ScenexWeb.CoreComponents do
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
+            "input",
+            @class || "w-full",
             @errors != [] && (@error_class || "input-error")
           ]}
           {@rest}
