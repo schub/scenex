@@ -15,8 +15,7 @@ This is a web application written using the Phoenix web framework.
 - Phoenix v1.8 moved the `<.flash_group>` component to the `Layouts` module. You are **forbidden** from calling `<.flash_group>` outside of the `layouts.ex` module
 - Out of the box, `core_components.ex` imports an `<.icon name="hero-x-mark" class="w-5 h-5"/>` component for for hero icons. **Always** use the `<.icon>` component for icons, **never** use `Heroicons` modules or similar
 - **Always** use the imported `<.input>` component for form inputs from `core_components.ex` when available. `<.input>` is imported and using it will save steps and prevent errors
-- If you override the default input classes (`<.input class="myclass px-2 py-1 rounded-lg">)`) class with your own values, no default classes are inherited, so your
-custom classes must fully style the input
+- Our `<.input>` diverges from the Phoenix default here: the DaisyUI base class (`input`, `select`, `textarea`, `checkbox`) is **always** applied, and a custom `class` *extends* it rather than replacing it (e.g. `<.input class="w-72">` renders `input w-72`). Only the default `w-full` gives way to a custom class — never pass the base class yourself
 
 ### JS and CSS guidelines
 
