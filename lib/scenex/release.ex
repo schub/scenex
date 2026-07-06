@@ -71,24 +71,31 @@ defmodule Scenex.Release do
   Create the CIVITAS demo scenario (English) owned by an existing account.
 
       bin/scenex eval 'Scenex.Release.demo_scenario("you@example.com")'
+
+  Starts only the Repo (not the endpoint), so it can run via `docker exec`
+  inside the live container without fighting over port 4000.
   """
   def demo_scenario(email) do
     load_app()
-    {:ok, _} = Application.ensure_all_started(@app)
 
-    case Scenex.Accounts.get_user_by_email(email) do
-      nil ->
-        IO.puts("No account with email #{email} — register or bootstrap it first.")
+    {:ok, message, _apps} =
+      Ecto.Migrator.with_repo(Scenex.Repo, fn _repo ->
+        case Scenex.Accounts.get_user_by_email(email) do
+          nil ->
+            "No account with email #{email} — register or bootstrap it first."
 
-      user ->
-        case Scenex.DemoScenario.create(user) do
-          {:ok, scenario} ->
-            IO.puts("Created demo scenario \"#{scenario.handle}\" owned by #{email}.")
+          user ->
+            case Scenex.DemoScenario.create(user) do
+              {:ok, scenario} ->
+                "Created demo scenario \"#{scenario.handle}\" owned by #{email}."
 
-          {:error, :already_exists} ->
-            IO.puts("#{email} already has a \"CIVITAS\" scenario — nothing created.")
+              {:error, :already_exists} ->
+                "#{email} already has a \"CIVITAS\" scenario — nothing created."
+            end
         end
-    end
+      end)
+
+    IO.puts(message)
   end
 
   defp repos do
