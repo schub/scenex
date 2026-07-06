@@ -8,6 +8,11 @@ defmodule ScenexWeb.PlayLive.Group do
   element. Gates are enforced here (players cannot pick locked options — only
   the GM may override in the console), and a lapsed deadline closes the
   element.
+
+  A decision is **confirmed once**: after the table locks it in (native
+  confirm dialog), the element closes for this group — corrections are the
+  GM's alone. The lock derives from the projection ("a decision exists"), so
+  a GM entry or a lapsed-deadline default locks the group out the same way.
   """
   use ScenexWeb, :live_view
 
@@ -102,10 +107,17 @@ defmodule ScenexWeb.PlayLive.Group do
               phx-click="choose"
               phx-value-element={element.id}
               phx-value-option={option.id}
-              disabled={not choosable?(@snap, element, option)}
+              data-confirm={"Lock in “#{I18n.t!(option.text, @locale, default: option.handle)}”? Your group cannot change this afterwards."}
+              disabled={
+                not choosable?(@snap, element, option, @group.id) and
+                  not chosen?(@snap, element.id, @group.id, option.id)
+              }
               class={[
                 "btn h-auto min-h-14 justify-start py-3 text-left text-base normal-case",
-                chosen?(@snap, element.id, @group.id, option.id) && "btn-primary",
+                chosen?(@snap, element.id, @group.id, option.id) &&
+                  "btn-primary pointer-events-none",
+                locked?(@snap, element.id, @group.id) &&
+                  not chosen?(@snap, element.id, @group.id, option.id) && "opacity-40",
                 not Play.gate_open?(@snap, element.id, option) && "btn-disabled opacity-60"
               ]}
             >
@@ -124,7 +136,17 @@ defmodule ScenexWeb.PlayLive.Group do
             </button>
           </div>
 
-          <p :if={expired?(@snap, element)} class="text-xs opacity-60">
+          <p
+            :if={locked?(@snap, element.id, @group.id)}
+            class="text-sm font-medium text-success"
+          >
+            ✓ Decision confirmed — only the game master can change it now.
+          </p>
+
+          <p
+            :if={expired?(@snap, element) and not locked?(@snap, element.id, @group.id)}
+            class="text-xs opacity-60"
+          >
             The deadline has passed — this decision is closed.
           </p>
         </section>
@@ -179,7 +201,11 @@ defmodule ScenexWeb.PlayLive.Group do
       is_nil(element) or is_nil(option) ->
         {:noreply, socket}
 
-      not choosable?(snap, element, option) ->
+      locked?(snap, element_id, socket.assigns.group.id) ->
+        {:noreply,
+         put_flash(socket, :error, "Your decision is locked — ask the game master to change it.")}
+
+      not choosable?(snap, element, option, socket.assigns.group.id) ->
         {:noreply, put_flash(socket, :error, "This option can't be chosen right now.")}
 
       true ->
@@ -207,11 +233,17 @@ defmodule ScenexWeb.PlayLive.Group do
 
   # ── Rules ─────────────────────────────────────────────────────────────
 
-  defp choosable?(snap, element, option) do
+  defp choosable?(snap, element, option, group_id) do
     snap.status == :live and
+      not locked?(snap, element.id, group_id) and
       not expired?(snap, element) and
       Play.gate_open?(snap, element.id, option)
   end
+
+  # Confirmed once: any recorded decision (the group's, the GM's, or a
+  # lapsed-deadline default) closes the element for this group.
+  defp locked?(snap, element_id, group_id),
+    do: get_in(snap.decisions, [element_id, group_id]) != nil
 
   defp expired?(snap, element) do
     case deadline_left(snap, element) do

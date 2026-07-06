@@ -145,6 +145,33 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert snap.decisions[ctx.event.id][ctx.gov.id] == ctx.crack.id
     end
 
+    test "a confirmed decision is locked for the group", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, _html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "Decision confirmed"
+
+      # A stale client trying to revise is refused; the decision stands.
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.gated.id})
+      assert html =~ "locked"
+      assert Play.snapshot(ctx.session.id).decisions[ctx.event.id][ctx.gov.id] == ctx.crack.id
+    end
+
+    test "a GM-entered decision locks the group out too", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Decision confirmed"
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "locked"
+    end
+
     test "gated options are locked for players", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
