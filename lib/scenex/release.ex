@@ -67,6 +67,30 @@ defmodule Scenex.Release do
     """)
   end
 
+  @doc """
+  Create the CIVITAS demo scenario (English) owned by an existing account.
+
+      bin/scenex eval 'Scenex.Release.demo_scenario("you@example.com")'
+  """
+  def demo_scenario(email) do
+    load_app()
+    {:ok, _} = Application.ensure_all_started(@app)
+
+    case Scenex.Accounts.get_user_by_email(email) do
+      nil ->
+        IO.puts("No account with email #{email} — register or bootstrap it first.")
+
+      user ->
+        case Scenex.DemoScenario.create(user) do
+          {:ok, scenario} ->
+            IO.puts("Created demo scenario \"#{scenario.handle}\" owned by #{email}.")
+
+          {:error, :already_exists} ->
+            IO.puts("#{email} already has a \"CIVITAS\" scenario — nothing created.")
+        end
+    end
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end
