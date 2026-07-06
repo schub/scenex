@@ -18,37 +18,43 @@ defmodule ScenexWeb.PlayLive.Group do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <.header>
-        {I18n.t!(@group.name, @locale, default: @group.handle)}
-        <:subtitle>
-          <span class="badge badge-sm badge-accent">group access</span>
-          <span class={["badge badge-sm", status_badge(@snap.status)]}>{@snap.status}</span>
-          <span class="ml-2 font-mono tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
-        </:subtitle>
-      </.header>
+    <Layouts.play flash={@flash}>
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 class="text-3xl font-bold">
+          {I18n.t!(@group.name, @locale, default: @group.handle)}
+        </h1>
+        <div class="flex items-center gap-3">
+          <span class={["badge", status_badge(@snap.status)]}>{@snap.status}</span>
+          <span class="font-mono text-2xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
+        </div>
+      </div>
 
       <%!-- Own values + globals --%>
-      <div class="mt-6 overflow-x-auto">
-        <table class="table table-sm">
+      <div class="mt-4 overflow-x-auto">
+        <table class="table">
           <thead>
             <tr>
               <th></th>
-              <th :for={vd <- value_dims(@snap)} class="text-right">
+              <th :for={vd <- value_dims(@snap)} class="text-right text-base">
                 {I18n.t!(vd.name, @locale, default: vd.key)}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="font-medium">{I18n.t!(@group.name, @locale, default: @group.handle)}</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums font-semibold">
+              <td class="text-lg font-medium">
+                {I18n.t!(@group.name, @locale, default: @group.handle)}
+              </td>
+              <td
+                :for={vd <- value_dims(@snap)}
+                class="text-right text-lg tabular-nums font-semibold"
+              >
                 {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}
               </td>
             </tr>
             <tr class="opacity-70">
               <td>Global</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
+              <td :for={vd <- value_dims(@snap)} class="text-right text-lg tabular-nums">
                 {fmt_num(@snap.globals[vd.id])}
               </td>
             </tr>
@@ -56,11 +62,15 @@ defmodule ScenexWeb.PlayLive.Group do
         </table>
       </div>
 
-      <p :if={@snap.status == :draft} class="mt-8 opacity-70">
+      <p :if={@snap.status == :draft} class="mt-8 text-center text-lg opacity-70">
         The session hasn't started yet — hold tight.
       </p>
 
-      <p :if={@snap.status == :ended} class="mt-8 opacity-70">
+      <p :if={@snap.status == :paused} class="mt-8 text-center text-lg opacity-70">
+        ⏸ The session is paused — decisions reopen when play resumes.
+      </p>
+
+      <p :if={@snap.status == :ended} class="mt-8 text-center text-lg opacity-70">
         The session has ended. Thank you for playing.
       </p>
 
@@ -71,7 +81,7 @@ defmodule ScenexWeb.PlayLive.Group do
           class="rounded-box border border-base-300 p-4 space-y-3"
         >
           <div class="flex flex-wrap items-center gap-2">
-            <h3 class="text-lg font-semibold">
+            <h3 class="text-xl font-semibold">
               {I18n.t!(element.title, @locale, default: element.handle)}
             </h3>
             <span :if={deadline_left(@snap, element)} class={deadline_class(@snap, element)}>
@@ -79,11 +89,14 @@ defmodule ScenexWeb.PlayLive.Group do
             </span>
           </div>
 
-          <p :if={narrative = I18n.t(element.narrative, @locale)} class="whitespace-pre-line text-sm">
+          <p
+            :if={narrative = I18n.t(element.narrative, @locale)}
+            class="whitespace-pre-line text-base"
+          >
             {narrative}
           </p>
 
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-3">
             <button
               :for={option <- my_options(@snap, element.id, @group.id)}
               phx-click="choose"
@@ -91,7 +104,7 @@ defmodule ScenexWeb.PlayLive.Group do
               phx-value-option={option.id}
               disabled={not choosable?(@snap, element, option)}
               class={[
-                "btn h-auto justify-start py-2 text-left normal-case",
+                "btn h-auto min-h-14 justify-start py-3 text-left text-base normal-case",
                 chosen?(@snap, element.id, @group.id, option.id) && "btn-primary",
                 not Play.gate_open?(@snap, element.id, option) && "btn-disabled opacity-60"
               ]}
@@ -116,7 +129,7 @@ defmodule ScenexWeb.PlayLive.Group do
           </p>
         </section>
       </div>
-    </Layouts.app>
+    </Layouts.play>
     """
   end
 
