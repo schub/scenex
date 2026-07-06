@@ -8,6 +8,12 @@ defmodule ScenexWeb.PlayLive.Group do
   element. Gates are enforced here (players cannot pick locked options — only
   the GM may override in the console), and a lapsed deadline closes the
   element.
+
+  A decision is **confirmed once**: tapping an option opens a styled confirm
+  modal (a pending choice held in assigns — no native `window.confirm`), and
+  confirming locks the element for this group — corrections are the GM's
+  alone. The lock derives from the projection ("a decision exists"), so a GM
+  entry or a lapsed-deadline default locks the group out the same way.
   """
   use ScenexWeb, :live_view
 
@@ -18,37 +24,43 @@ defmodule ScenexWeb.PlayLive.Group do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <.header>
-        {I18n.t!(@group.name, @locale, default: @group.handle)}
-        <:subtitle>
-          <span class="badge badge-sm badge-accent">group access</span>
-          <span class={["badge badge-sm", status_badge(@snap.status)]}>{@snap.status}</span>
-          <span class="ml-2 font-mono tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
-        </:subtitle>
-      </.header>
+    <Layouts.play flash={@flash}>
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 class="text-3xl font-bold">
+          {I18n.t!(@group.name, @locale, default: @group.handle)}
+        </h1>
+        <div class="flex items-center gap-3">
+          <span class={["badge", status_badge(@snap.status)]}>{@snap.status}</span>
+          <span class="font-mono text-2xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
+        </div>
+      </div>
 
       <%!-- Own values + globals --%>
-      <div class="mt-6 overflow-x-auto">
-        <table class="table table-sm">
+      <div class="mt-4 overflow-x-auto">
+        <table class="table">
           <thead>
             <tr>
               <th></th>
-              <th :for={vd <- value_dims(@snap)} class="text-right">
+              <th :for={vd <- value_dims(@snap)} class="text-right text-base">
                 {I18n.t!(vd.name, @locale, default: vd.key)}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="font-medium">{I18n.t!(@group.name, @locale, default: @group.handle)}</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums font-semibold">
+              <td class="text-lg font-medium">
+                {I18n.t!(@group.name, @locale, default: @group.handle)}
+              </td>
+              <td
+                :for={vd <- value_dims(@snap)}
+                class="text-right text-lg tabular-nums font-semibold"
+              >
                 {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}
               </td>
             </tr>
             <tr class="opacity-70">
               <td>Global</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
+              <td :for={vd <- value_dims(@snap)} class="text-right text-lg tabular-nums">
                 {fmt_num(@snap.globals[vd.id])}
               </td>
             </tr>
@@ -56,11 +68,15 @@ defmodule ScenexWeb.PlayLive.Group do
         </table>
       </div>
 
-      <p :if={@snap.status == :draft} class="mt-8 opacity-70">
+      <p :if={@snap.status == :draft} class="mt-8 text-center text-lg opacity-70">
         The session hasn't started yet — hold tight.
       </p>
 
-      <p :if={@snap.status == :ended} class="mt-8 opacity-70">
+      <p :if={@snap.status == :paused} class="mt-8 text-center text-lg opacity-70">
+        ⏸ The session is paused — decisions reopen when play resumes.
+      </p>
+
+      <p :if={@snap.status == :ended} class="mt-8 text-center text-lg opacity-70">
         The session has ended. Thank you for playing.
       </p>
 
@@ -71,7 +87,7 @@ defmodule ScenexWeb.PlayLive.Group do
           class="rounded-box border border-base-300 p-4 space-y-3"
         >
           <div class="flex flex-wrap items-center gap-2">
-            <h3 class="text-lg font-semibold">
+            <h3 class="text-xl font-semibold">
               {I18n.t!(element.title, @locale, default: element.handle)}
             </h3>
             <span :if={deadline_left(@snap, element)} class={deadline_class(@snap, element)}>
@@ -79,20 +95,29 @@ defmodule ScenexWeb.PlayLive.Group do
             </span>
           </div>
 
-          <p :if={narrative = I18n.t(element.narrative, @locale)} class="whitespace-pre-line text-sm">
+          <p
+            :if={narrative = I18n.t(element.narrative, @locale)}
+            class="whitespace-pre-line text-base"
+          >
             {narrative}
           </p>
 
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-3">
             <button
               :for={option <- my_options(@snap, element.id, @group.id)}
-              phx-click="choose"
+              phx-click="select"
               phx-value-element={element.id}
               phx-value-option={option.id}
-              disabled={not choosable?(@snap, element, option)}
+              disabled={
+                not choosable?(@snap, element, option, @group.id) and
+                  not chosen?(@snap, element.id, @group.id, option.id)
+              }
               class={[
-                "btn h-auto justify-start py-2 text-left normal-case",
-                chosen?(@snap, element.id, @group.id, option.id) && "btn-primary",
+                "btn h-auto min-h-14 justify-start py-3 text-left text-base normal-case",
+                chosen?(@snap, element.id, @group.id, option.id) &&
+                  "btn-primary pointer-events-none",
+                locked?(@snap, element.id, @group.id) &&
+                  not chosen?(@snap, element.id, @group.id, option.id) && "opacity-40",
                 not Play.gate_open?(@snap, element.id, option) && "btn-disabled opacity-60"
               ]}
             >
@@ -111,12 +136,47 @@ defmodule ScenexWeb.PlayLive.Group do
             </button>
           </div>
 
-          <p :if={expired?(@snap, element)} class="text-xs opacity-60">
+          <p
+            :if={locked?(@snap, element.id, @group.id)}
+            class="text-sm font-medium text-success"
+          >
+            ✓ Decision confirmed — only the game master can change it now.
+          </p>
+
+          <p
+            :if={expired?(@snap, element) and not locked?(@snap, element.id, @group.id)}
+            class="text-xs opacity-60"
+          >
             The deadline has passed — this decision is closed.
           </p>
         </section>
       </div>
-    </Layouts.app>
+
+      <%!-- Styled confirm dialog for the pending choice --%>
+      <div :if={option = pending_option(@snap, @pending)} class="modal modal-open" role="dialog">
+        <div class="modal-box space-y-4">
+          <h3 class="text-xl font-bold">Lock in your decision?</h3>
+          <p class="rounded-box bg-base-200 p-3 text-base font-medium">
+            {I18n.t!(option.text, @locale, default: option.handle)}
+          </p>
+          <p class="text-sm opacity-70">
+            Your group cannot change this afterwards — only the game master can.
+          </p>
+          <div class="modal-action">
+            <button phx-click="cancel_choice" class="btn btn-lg">Cancel</button>
+            <button
+              phx-click="choose"
+              phx-value-element={@pending.element_id}
+              phx-value-option={@pending.option_id}
+              class="btn btn-lg btn-primary"
+            >
+              Confirm decision
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" phx-click="cancel_choice"></div>
+      </div>
+    </Layouts.play>
     """
   end
 
@@ -140,7 +200,8 @@ defmodule ScenexWeb.PlayLive.Group do
            session_id: token.session_id,
            locale: scenario_locale,
            page_title: token.group.handle,
-           snap: snap
+           snap: snap,
+           pending: nil
          )}
 
       _ ->
@@ -156,20 +217,31 @@ defmodule ScenexWeb.PlayLive.Group do
     Scenex.Authoring.get_scenario!(token.session.scenario_id).source_locale
   end
 
+  # Step 1: the tap — hold the choice as pending and open the confirm modal.
   @impl true
-  def handle_event("choose", %{"element" => element_id, "option" => option_id}, socket) do
-    snap = socket.assigns.snap
-    element = snap.definition.elements[element_id]
-    option = snap.definition.options[option_id]
+  def handle_event("select", %{"element" => element_id, "option" => option_id}, socket) do
+    case choice_error(socket.assigns.snap, element_id, option_id, socket.assigns.group.id) do
+      nil ->
+        {:noreply, assign(socket, :pending, %{element_id: element_id, option_id: option_id})}
 
-    cond do
-      is_nil(element) or is_nil(option) ->
+      :ignore ->
         {:noreply, socket}
 
-      not choosable?(snap, element, option) ->
-        {:noreply, put_flash(socket, :error, "This option can't be chosen right now.")}
+      message ->
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
 
-      true ->
+  def handle_event("cancel_choice", _params, socket),
+    do: {:noreply, assign(socket, :pending, nil)}
+
+  # Step 2: the confirmation — re-validated, since the board may have moved
+  # (GM entry, lapsed deadline, pause) while the modal was open.
+  def handle_event("choose", %{"element" => element_id, "option" => option_id}, socket) do
+    socket = assign(socket, :pending, nil)
+
+    case choice_error(socket.assigns.snap, element_id, option_id, socket.assigns.group.id) do
+      nil ->
         # The group id comes from the token — never from the client.
         case Play.choose_option(
                socket.assigns.session_id,
@@ -183,6 +255,12 @@ defmodule ScenexWeb.PlayLive.Group do
           {:error, reason} ->
             {:noreply, put_flash(socket, :error, "Rejected: #{inspect(reason)}")}
         end
+
+      :ignore ->
+        {:noreply, socket}
+
+      message ->
+        {:noreply, put_flash(socket, :error, message)}
     end
   end
 
@@ -190,15 +268,65 @@ defmodule ScenexWeb.PlayLive.Group do
   def handle_info({:session_updated, _id}, socket), do: {:noreply, refresh(socket)}
   def handle_info(:tick, socket), do: {:noreply, refresh(socket)}
 
-  defp refresh(socket), do: assign(socket, :snap, Play.snapshot(socket.assigns.session_id))
+  defp refresh(socket) do
+    socket
+    |> assign(:snap, Play.snapshot(socket.assigns.session_id))
+    |> drop_stale_pending()
+  end
+
+  # Close an open confirm modal when its choice stops being valid (GM entry,
+  # lapsed deadline, pause) — better than confirming into a rejection.
+  defp drop_stale_pending(%{assigns: %{pending: nil}} = socket), do: socket
+
+  defp drop_stale_pending(%{assigns: %{pending: pending}} = socket) do
+    case choice_error(
+           socket.assigns.snap,
+           pending.element_id,
+           pending.option_id,
+           socket.assigns.group.id
+         ) do
+      nil -> socket
+      _ -> assign(socket, :pending, nil)
+    end
+  end
 
   # ── Rules ─────────────────────────────────────────────────────────────
 
-  defp choosable?(snap, element, option) do
+  defp choosable?(snap, element, option, group_id) do
     snap.status == :live and
+      not locked?(snap, element.id, group_id) and
       not expired?(snap, element) and
       Play.gate_open?(snap, element.id, option)
   end
+
+  # Confirmed once: any recorded decision (the group's, the GM's, or a
+  # lapsed-deadline default) closes the element for this group.
+  defp locked?(snap, element_id, group_id),
+    do: get_in(snap.decisions, [element_id, group_id]) != nil
+
+  # Why a choice can't proceed: an error message, `:ignore` for garbage
+  # ids, or nil when it's allowed.
+  defp choice_error(snap, element_id, option_id, group_id) do
+    element = snap.definition.elements[element_id]
+    option = snap.definition.options[option_id]
+
+    cond do
+      is_nil(element) or is_nil(option) ->
+        :ignore
+
+      locked?(snap, element_id, group_id) ->
+        "Your decision is locked — ask the game master to change it."
+
+      not choosable?(snap, element, option, group_id) ->
+        "This option can't be chosen right now."
+
+      true ->
+        nil
+    end
+  end
+
+  defp pending_option(_snap, nil), do: nil
+  defp pending_option(snap, %{option_id: option_id}), do: snap.definition.options[option_id]
 
   defp expired?(snap, element) do
     case deadline_left(snap, element) do

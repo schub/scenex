@@ -130,19 +130,63 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Blackout"
       assert html =~ "Crack down"
 
+      # Tapping opens the styled confirm modal instead of deciding directly.
       html =
         lv
         |> element(
-          ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+          ~s{button[phx-click=select][phx-value-element="#{ctx.event.id}"]} <>
             ~s{[phx-value-option="#{ctx.crack.id}"]}
         )
         |> render_click()
 
-      # 5 + 2 = 7 on the board
+      assert html =~ "Lock in your decision?"
+      assert Play.snapshot(ctx.session.id).decisions == %{}
+
+      # Cancel keeps everything open.
+      html = lv |> element(~s{button[phx-click=cancel_choice]}) |> render_click()
+      refute html =~ "Lock in your decision?"
+
+      # Select again and confirm: 5 + 2 = 7 on the board.
+      lv
+      |> element(
+        ~s{button[phx-click=select][phx-value-element="#{ctx.event.id}"]} <>
+          ~s{[phx-value-option="#{ctx.crack.id}"]}
+      )
+      |> render_click()
+
+      html = lv |> element(~s{.modal button[phx-click=choose]}) |> render_click()
       assert html =~ "7"
+      refute html =~ "Lock in your decision?"
 
       snap = Play.snapshot(ctx.session.id)
       assert snap.decisions[ctx.event.id][ctx.gov.id] == ctx.crack.id
+    end
+
+    test "a confirmed decision is locked for the group", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, _html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "Decision confirmed"
+
+      # A stale client trying to revise is refused; the decision stands.
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.gated.id})
+      assert html =~ "locked"
+      assert Play.snapshot(ctx.session.id).decisions[ctx.event.id][ctx.gov.id] == ctx.crack.id
+    end
+
+    test "a GM-entered decision locks the group out too", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Decision confirmed"
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "locked"
     end
 
     test "gated options are locked for players", ctx do
@@ -157,14 +201,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       locked_button =
         lv
         |> element(
-          ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+          ~s{button[phx-click=select][phx-value-element="#{ctx.event.id}"]} <>
             ~s{[phx-value-option="#{ctx.gated.id}"]}
         )
         |> render()
 
       assert locked_button =~ "disabled"
 
-      # A stale client bypassing the disabled attribute is still refused.
+      # A stale client bypassing the disabled attribute is still refused —
+      # on both the select and the confirm step.
+      html = render_click(lv, "select", %{"element" => ctx.event.id, "option" => ctx.gated.id})
+      assert html =~ "can&#39;t be chosen"
+
       html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.gated.id})
       assert html =~ "can&#39;t be chosen"
       assert Play.snapshot(ctx.session.id).decisions == %{}

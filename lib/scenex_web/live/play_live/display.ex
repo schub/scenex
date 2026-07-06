@@ -16,38 +16,38 @@ defmodule ScenexWeb.PlayLive.Display do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-5xl space-y-8 py-8">
+    <Layouts.play flash={@flash}>
+      <div class="space-y-8 py-4">
         <div class="flex items-baseline justify-between">
-          <h1 class="text-3xl font-bold">{@session_label}</h1>
+          <h1 class="text-4xl font-bold">{@session_label}</h1>
           <div class="flex items-center gap-3">
-            <span class={["badge", status_badge(@snap.status)]}>{@snap.status}</span>
-            <span class="font-mono text-2xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
+            <span class={["badge badge-lg", status_badge(@snap.status)]}>{@snap.status}</span>
+            <span class="font-mono text-3xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
           </div>
         </div>
 
         <%!-- The board --%>
         <div class="overflow-x-auto">
-          <table class="table">
+          <table class="table table-lg">
             <thead>
               <tr>
-                <th class="text-base">Group</th>
-                <th :for={vd <- value_dims(@snap)} class="text-right text-base">
+                <th class="text-lg">Group</th>
+                <th :for={vd <- value_dims(@snap)} class="text-right text-lg">
                   {I18n.t!(vd.name, @locale, default: vd.key)}
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr :for={g <- groups(@snap)}>
-                <td class="text-lg font-medium">{I18n.t!(g.name, @locale, default: g.handle)}</td>
+                <td class="text-xl font-medium">{I18n.t!(g.name, @locale, default: g.handle)}</td>
                 <td
                   :for={vd <- value_dims(@snap)}
-                  class={["text-right text-lg tabular-nums", cell_class(@snap.sim, vd, g.id)]}
+                  class={["text-right text-xl tabular-nums", cell_class(@snap.sim, vd, g.id)]}
                 >
                   {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}
                 </td>
               </tr>
-              <tr class="border-t-2 border-base-300 text-xl font-bold">
+              <tr class="border-t-2 border-base-300 text-2xl font-bold">
                 <td>Global</td>
                 <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
                   {fmt_num(@snap.globals[vd.id])}
@@ -73,8 +73,8 @@ defmodule ScenexWeb.PlayLive.Display do
 
         <%!-- The finale, once chosen --%>
         <section :if={ending = chosen_ending(@snap)} class="rounded-box bg-base-200 p-6 space-y-3">
-          <h2 class="text-2xl font-bold">{I18n.t!(ending.title, @locale, default: ending.handle)}</h2>
-          <p class="whitespace-pre-line text-lg">{I18n.t(ending.narrative, @locale)}</p>
+          <h2 class="text-3xl font-bold">{I18n.t!(ending.title, @locale, default: ending.handle)}</h2>
+          <p class="whitespace-pre-line text-xl">{I18n.t(ending.narrative, @locale)}</p>
         </section>
 
         <%!-- The current beat --%>
@@ -83,7 +83,7 @@ defmodule ScenexWeb.PlayLive.Display do
           :if={chosen_ending(@snap) == nil}
           class="rounded-box bg-base-200 p-6 space-y-3"
         >
-          <h2 class="text-2xl font-bold">
+          <h2 class="text-3xl font-bold">
             {I18n.t!(element.title, @locale, default: element.handle)}
             <span
               :if={Play.element_decided?(@snap, element)}
@@ -98,7 +98,7 @@ defmodule ScenexWeb.PlayLive.Display do
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
             </span>
           </h2>
-          <p class="whitespace-pre-line text-lg">{I18n.t(element.narrative, @locale)}</p>
+          <p class="whitespace-pre-line text-xl">{I18n.t(element.narrative, @locale)}</p>
 
           <%!-- Election result, once declared --%>
           <div
@@ -106,14 +106,14 @@ defmodule ScenexWeb.PlayLive.Display do
             class="rounded-box bg-base-100 p-4 space-y-2"
           >
             <div class="flex flex-wrap items-baseline gap-3">
-              <span class="badge badge-success">Result</span>
-              <span class="text-xl font-bold">
+              <span class="badge badge-lg badge-success">Result</span>
+              <span class="text-2xl font-bold">
                 {I18n.t!(winner.text, @locale, default: winner.handle)}
               </span>
             </div>
             <div
               :if={vote_lines(@snap, element) != []}
-              class="flex flex-wrap gap-x-6 gap-y-1 text-base opacity-80"
+              class="flex flex-wrap gap-x-6 gap-y-1 text-lg opacity-80"
             >
               <span :for={{option, count} <- vote_lines(@snap, element)}>
                 {I18n.t!(option.text, @locale, default: option.handle)}:
@@ -123,11 +123,11 @@ defmodule ScenexWeb.PlayLive.Display do
           </div>
         </section>
 
-        <p :if={@snap.status == :draft} class="text-center text-xl opacity-60">
+        <p :if={@snap.status == :draft} class="text-center text-2xl opacity-60">
           The show will begin shortly.
         </p>
       </div>
-    </Layouts.app>
+    </Layouts.play>
     """
   end
 

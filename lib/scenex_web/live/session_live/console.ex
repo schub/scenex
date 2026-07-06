@@ -116,14 +116,14 @@ defmodule ScenexWeb.SessionLive.Console do
         >
           <input type="hidden" name="value" value={vd.id} />
           <label :for={{score, face, label} <- tally_scale()} class="flex flex-col gap-1 text-xs">
-            <span>{face} {label} ({score})</span>
+            <span class="whitespace-nowrap">{face} {label} ({score})</span>
             <input
               type="number"
               name={"counts[#{score}]"}
               value={get_in(@tally_inputs, [vd.id, to_string(score)])}
               min="0"
               placeholder="0"
-              class="input input-bordered input-sm w-24"
+              class="input input-bordered w-24 text-right"
             />
           </label>
           <button
@@ -243,9 +243,9 @@ defmodule ScenexWeb.SessionLive.Console do
               <input type="hidden" name="element" value={element.id} />
               <div
                 :for={o <- options_for_element(@snap, element.id)}
-                class="flex flex-wrap items-center gap-2"
+                class="grid max-w-xl grid-cols-[minmax(0,1fr)_6rem] items-center gap-2"
               >
-                <label class="flex items-center gap-2">
+                <label class="flex cursor-pointer items-center gap-2">
                   <input
                     type="radio"
                     name="winner"
@@ -269,7 +269,7 @@ defmodule ScenexWeb.SessionLive.Console do
                   value={get_in(@election_inputs, [element.id, "tally", o.id])}
                   min="0"
                   placeholder="votes"
-                  class="input input-bordered input-xs w-20"
+                  class="input input-bordered input-sm w-24 text-right"
                 />
               </div>
               <button

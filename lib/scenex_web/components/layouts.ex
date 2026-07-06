@@ -41,13 +41,52 @@ defmodule ScenexWeb.Layouts do
           <span class="text-lg font-semibold">Scenex</span>
         </a>
       </div>
+      <div class="flex-none flex items-center gap-4">
+        <ul class="menu menu-horizontal items-center gap-2 px-0 text-sm">
+          <%= if @current_scope do %>
+            <li class="hidden opacity-60 sm:flex">{@current_scope.user.email}</li>
+            <li><.link href={~p"/users/settings"}>Settings</.link></li>
+            <li><.link href={~p"/users/log-out"} method="delete">Log out</.link></li>
+          <% else %>
+            <li><.link href={~p"/users/log-in"}>Log in</.link></li>
+          <% end %>
+        </ul>
+        <.theme_toggle />
+      </div>
+    </header>
+
+    <main class="px-4 py-8 sm:px-6 lg:px-8">
+      <div class="space-y-4">
+        {render_slot(@inner_block)}
+      </div>
+    </main>
+
+    <.flash_group flash={@flash} />
+    """
+  end
+
+  @doc """
+  Lean layout for token-access play screens (group tables, projected display):
+  no account chrome — just a quiet brand mark and the theme toggle — and the
+  full width of the screen.
+  """
+  attr :flash, :map, required: true, doc: "the map of flash messages"
+
+  slot :inner_block, required: true
+
+  def play(assigns) do
+    ~H"""
+    <header class="navbar min-h-0 px-4 py-2 sm:px-6">
+      <div class="flex-1">
+        <span class="text-sm font-semibold opacity-50">Scenex</span>
+      </div>
       <div class="flex-none">
         <.theme_toggle />
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+    <main class="px-4 pb-12 sm:px-6">
+      <div class="space-y-4">
         {render_slot(@inner_block)}
       </div>
     </main>
