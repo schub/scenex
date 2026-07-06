@@ -9,10 +9,11 @@ defmodule ScenexWeb.PlayLive.Group do
   the GM may override in the console), and a lapsed deadline closes the
   element.
 
-  A decision is **confirmed once**: after the table locks it in (native
-  confirm dialog), the element closes for this group — corrections are the
-  GM's alone. The lock derives from the projection ("a decision exists"), so
-  a GM entry or a lapsed-deadline default locks the group out the same way.
+  A decision is **confirmed once**: tapping an option opens a styled confirm
+  modal (a pending choice held in assigns — no native `window.confirm`), and
+  confirming locks the element for this group — corrections are the GM's
+  alone. The lock derives from the projection ("a decision exists"), so a GM
+  entry or a lapsed-deadline default locks the group out the same way.
   """
   use ScenexWeb, :live_view
 
@@ -104,10 +105,9 @@ defmodule ScenexWeb.PlayLive.Group do
           <div class="flex flex-col gap-3">
             <button
               :for={option <- my_options(@snap, element.id, @group.id)}
-              phx-click="choose"
+              phx-click="select"
               phx-value-element={element.id}
               phx-value-option={option.id}
-              data-confirm={"Lock in “#{I18n.t!(option.text, @locale, default: option.handle)}”? Your group cannot change this afterwards."}
               disabled={
                 not choosable?(@snap, element, option, @group.id) and
                   not chosen?(@snap, element.id, @group.id, option.id)
@@ -151,6 +151,31 @@ defmodule ScenexWeb.PlayLive.Group do
           </p>
         </section>
       </div>
+
+      <%!-- Styled confirm dialog for the pending choice --%>
+      <div :if={option = pending_option(@snap, @pending)} class="modal modal-open" role="dialog">
+        <div class="modal-box space-y-4">
+          <h3 class="text-xl font-bold">Lock in your decision?</h3>
+          <p class="rounded-box bg-base-200 p-3 text-base font-medium">
+            {I18n.t!(option.text, @locale, default: option.handle)}
+          </p>
+          <p class="text-sm opacity-70">
+            Your group cannot change this afterwards — only the game master can.
+          </p>
+          <div class="modal-action">
+            <button phx-click="cancel_choice" class="btn btn-lg">Cancel</button>
+            <button
+              phx-click="choose"
+              phx-value-element={@pending.element_id}
+              phx-value-option={@pending.option_id}
+              class="btn btn-lg btn-primary"
+            >
+              Confirm decision
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" phx-click="cancel_choice"></div>
+      </div>
     </Layouts.play>
     """
   end
@@ -175,7 +200,8 @@ defmodule ScenexWeb.PlayLive.Group do
            session_id: token.session_id,
            locale: scenario_locale,
            page_title: token.group.handle,
-           snap: snap
+           snap: snap,
+           pending: nil
          )}
 
       _ ->
@@ -191,24 +217,31 @@ defmodule ScenexWeb.PlayLive.Group do
     Scenex.Authoring.get_scenario!(token.session.scenario_id).source_locale
   end
 
+  # Step 1: the tap — hold the choice as pending and open the confirm modal.
   @impl true
-  def handle_event("choose", %{"element" => element_id, "option" => option_id}, socket) do
-    snap = socket.assigns.snap
-    element = snap.definition.elements[element_id]
-    option = snap.definition.options[option_id]
+  def handle_event("select", %{"element" => element_id, "option" => option_id}, socket) do
+    case choice_error(socket.assigns.snap, element_id, option_id, socket.assigns.group.id) do
+      nil ->
+        {:noreply, assign(socket, :pending, %{element_id: element_id, option_id: option_id})}
 
-    cond do
-      is_nil(element) or is_nil(option) ->
+      :ignore ->
         {:noreply, socket}
 
-      locked?(snap, element_id, socket.assigns.group.id) ->
-        {:noreply,
-         put_flash(socket, :error, "Your decision is locked — ask the game master to change it.")}
+      message ->
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
 
-      not choosable?(snap, element, option, socket.assigns.group.id) ->
-        {:noreply, put_flash(socket, :error, "This option can't be chosen right now.")}
+  def handle_event("cancel_choice", _params, socket),
+    do: {:noreply, assign(socket, :pending, nil)}
 
-      true ->
+  # Step 2: the confirmation — re-validated, since the board may have moved
+  # (GM entry, lapsed deadline, pause) while the modal was open.
+  def handle_event("choose", %{"element" => element_id, "option" => option_id}, socket) do
+    socket = assign(socket, :pending, nil)
+
+    case choice_error(socket.assigns.snap, element_id, option_id, socket.assigns.group.id) do
+      nil ->
         # The group id comes from the token — never from the client.
         case Play.choose_option(
                socket.assigns.session_id,
@@ -222,6 +255,12 @@ defmodule ScenexWeb.PlayLive.Group do
           {:error, reason} ->
             {:noreply, put_flash(socket, :error, "Rejected: #{inspect(reason)}")}
         end
+
+      :ignore ->
+        {:noreply, socket}
+
+      message ->
+        {:noreply, put_flash(socket, :error, message)}
     end
   end
 
@@ -229,7 +268,27 @@ defmodule ScenexWeb.PlayLive.Group do
   def handle_info({:session_updated, _id}, socket), do: {:noreply, refresh(socket)}
   def handle_info(:tick, socket), do: {:noreply, refresh(socket)}
 
-  defp refresh(socket), do: assign(socket, :snap, Play.snapshot(socket.assigns.session_id))
+  defp refresh(socket) do
+    socket
+    |> assign(:snap, Play.snapshot(socket.assigns.session_id))
+    |> drop_stale_pending()
+  end
+
+  # Close an open confirm modal when its choice stops being valid (GM entry,
+  # lapsed deadline, pause) — better than confirming into a rejection.
+  defp drop_stale_pending(%{assigns: %{pending: nil}} = socket), do: socket
+
+  defp drop_stale_pending(%{assigns: %{pending: pending}} = socket) do
+    case choice_error(
+           socket.assigns.snap,
+           pending.element_id,
+           pending.option_id,
+           socket.assigns.group.id
+         ) do
+      nil -> socket
+      _ -> assign(socket, :pending, nil)
+    end
+  end
 
   # ── Rules ─────────────────────────────────────────────────────────────
 
@@ -244,6 +303,30 @@ defmodule ScenexWeb.PlayLive.Group do
   # lapsed-deadline default) closes the element for this group.
   defp locked?(snap, element_id, group_id),
     do: get_in(snap.decisions, [element_id, group_id]) != nil
+
+  # Why a choice can't proceed: an error message, `:ignore` for garbage
+  # ids, or nil when it's allowed.
+  defp choice_error(snap, element_id, option_id, group_id) do
+    element = snap.definition.elements[element_id]
+    option = snap.definition.options[option_id]
+
+    cond do
+      is_nil(element) or is_nil(option) ->
+        :ignore
+
+      locked?(snap, element_id, group_id) ->
+        "Your decision is locked — ask the game master to change it."
+
+      not choosable?(snap, element, option, group_id) ->
+        "This option can't be chosen right now."
+
+      true ->
+        nil
+    end
+  end
+
+  defp pending_option(_snap, nil), do: nil
+  defp pending_option(snap, %{option_id: option_id}), do: snap.definition.options[option_id]
 
   defp expired?(snap, element) do
     case deadline_left(snap, element) do
