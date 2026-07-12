@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: hu\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Műveletek"
+
+msgid "Attempting to reconnect"
+msgstr "Újracsatlakozás folyamatban"
+
+msgid "Cancel"
+msgstr "Mégse"
+
+msgid "Confirm decision"
+msgstr "Döntés megerősítése"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "A döntés megerősítve — mostantól csak a játékmester módosíthatja."
+
+msgid "Global"
+msgstr "Összesített"
+
+msgid "Group"
+msgstr "Csoport"
+
+msgid "Lock in your decision?"
+msgstr "Véglegesíted a döntést?"
+
+msgid "Result"
+msgstr "Eredmény"
+
+msgid "Something went wrong!"
+msgstr "Valami hiba történt!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "Az idő lejárt — ez a döntés lezárult."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "A játék véget ért. Köszönjük a részvételt!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "A játék még nem kezdődött el — egy kis türelmet."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "A játék szünetel — a döntések a folytatáskor nyílnak meg újra."
+
+msgid "The show will begin shortly."
+msgstr "Az előadás hamarosan kezdődik."
+
+msgid "This code is not valid (anymore)."
+msgstr "Ez a kód (már) nem érvényes."
+
+msgid "This didn't go through — please try again."
+msgstr "Nem sikerült — próbáljátok újra."
+
+msgid "This option can't be chosen right now."
+msgstr "Ez a lehetőség most nem választható."
+
+msgid "We can't find the internet"
+msgstr "Nincs internetkapcsolat"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "A döntésetek rögzítve van — a módosításhoz szóljatok a játékmesternek."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "A csoportotok ezt utána már nem módosíthatja — csak a játékmester."
+
+msgid "close"
+msgstr "bezárás"
+
+msgid "closed"
+msgstr "lezárva"
+
+msgid "decided"
+msgstr "eldöntve"
+
+msgid "draft"
+msgstr "vázlat"
+
+msgid "ended"
+msgstr "befejezve"
+
+msgid "live"
+msgstr "élő"
+
+msgid "paused"
+msgstr "szünetel"

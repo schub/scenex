@@ -431,7 +431,7 @@ defmodule ScenexWeb.SessionLive.Console do
      |> assign(
        session: session,
        scenario: scenario,
-       locale: scenario.source_locale,
+       locale: session.locale || scenario.source_locale,
        page_title: "Console — #{session.label}",
        snap: Play.snapshot(session.id),
        tokens: Play.list_tokens(session),

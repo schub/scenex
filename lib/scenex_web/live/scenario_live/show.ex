@@ -15,7 +15,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   alias ScenexWeb.LocalizedForm
 
   @sections ~w(settings values groups initial timeline labels endings)a
-  @locale_choices ~w(en de pt es it)
+  @locale_choices Scenex.I18n.locales()
 
   @impl true
   def render(assigns) do

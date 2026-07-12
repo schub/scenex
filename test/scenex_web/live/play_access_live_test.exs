@@ -284,6 +284,20 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "😀"
     end
 
+    test "audience screens speak the session's play language", ctx do
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Berlin", locale: "de"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      # Chrome in German; untranslated content falls back to English.
+      assert html =~ "Die Show beginnt in Kürze."
+      assert html =~ "Gruppe"
+      assert html =~ "Entwurf"
+      assert html =~ "Government"
+    end
+
     test "a group token cannot open the display (and vice versa)", ctx do
       assert {:error, {:live_redirect, %{to: "/"}}} =
                live(build_conn(), ~p"/display/#{ctx.group_token.token}")

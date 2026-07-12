@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: pt\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Ações"
+
+msgid "Attempting to reconnect"
+msgstr "A tentar restabelecer a ligação"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Confirm decision"
+msgstr "Confirmar decisão"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "Decisão confirmada — agora só a direção de jogo a pode alterar."
+
+msgid "Global"
+msgstr "Global"
+
+msgid "Group"
+msgstr "Grupo"
+
+msgid "Lock in your decision?"
+msgstr "Confirmar a decisão definitivamente?"
+
+msgid "Result"
+msgstr "Resultado"
+
+msgid "Something went wrong!"
+msgstr "Algo correu mal!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "O tempo esgotou — esta decisão está encerrada."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "A sessão terminou. Obrigado por jogarem!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "A sessão ainda não começou — só um momento."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "A sessão está em pausa — as decisões reabrem quando o jogo continuar."
+
+msgid "The show will begin shortly."
+msgstr "O espetáculo vai começar em breve."
+
+msgid "This code is not valid (anymore)."
+msgstr "Este código já não é válido."
+
+msgid "This didn't go through — please try again."
+msgstr "Não foi possível registar — tentem novamente."
+
+msgid "This option can't be chosen right now."
+msgstr "Esta opção não pode ser escolhida neste momento."
+
+msgid "We can't find the internet"
+msgstr "Sem ligação à internet"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "A vossa decisão está bloqueada — peçam à direção de jogo para a alterar."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "O vosso grupo não a poderá alterar depois — só a direção de jogo."
+
+msgid "close"
+msgstr "fechar"
+
+msgid "closed"
+msgstr "encerrada"
+
+msgid "decided"
+msgstr "decidido"
+
+msgid "draft"
+msgstr "rascunho"
+
+msgid "ended"
+msgstr "terminada"
+
+msgid "live"
+msgstr "ao vivo"
+
+msgid "paused"
+msgstr "em pausa"

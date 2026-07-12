@@ -19,6 +19,23 @@ defmodule Scenex.I18n do
 
   @type translations :: %{optional(String.t()) => String.t()} | nil
 
+  # The languages the product supports for content and play chrome — offered
+  # in the editor's locale switcher and the session's play-language select.
+  @supported_locales [
+    {"en", "English"},
+    {"de", "Deutsch"},
+    {"es", "Español"},
+    {"hu", "Magyar"},
+    {"it", "Italiano"},
+    {"pt", "Português"}
+  ]
+
+  @doc "The supported locale codes, e.g. `[\"en\", \"de\", ...]`."
+  def locales, do: Enum.map(@supported_locales, &elem(&1, 0))
+
+  @doc "`{label, code}` pairs for select inputs, labeled in their own language."
+  def locale_options, do: Enum.map(@supported_locales, fn {code, name} -> {name, code} end)
+
   @doc """
   Fetch the localized string for `locale`.
 
