@@ -25,8 +25,11 @@ defmodule Scenex.I18n do
     {"en", "English"},
     {"de", "Deutsch"},
     {"es", "Español"},
+    {"et", "Eesti"},
     {"hu", "Magyar"},
     {"it", "Italiano"},
+    {"no", "Norsk"},
+    {"pl", "Polski"},
     {"pt", "Português"}
   ]
 
