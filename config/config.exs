@@ -65,6 +65,12 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
+# Media library: where uploaded bytes live and the per-file size cap.
+# Prod overrides both from env in runtime.exs.
+config :scenex, Scenex.Media,
+  dir: Path.expand("../priv/media", __DIR__),
+  max_upload_mb: 250
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
@@ -72,6 +78,18 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Media extensions the MIME library doesn't know out of the box
+# (iPhone videos are .mov, voice memos .m4a).
+config :mime, :types, %{
+  "audio/aac" => ["aac"],
+  "audio/flac" => ["flac"],
+  "audio/mp4" => ["m4a"],
+  "audio/ogg" => ["oga", "ogg"],
+  "image/avif" => ["avif"],
+  "video/quicktime" => ["mov"],
+  "video/x-m4v" => ["m4v"]
+}
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

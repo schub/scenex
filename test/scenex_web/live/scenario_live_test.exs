@@ -328,6 +328,37 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html2 =~ "self(...) is not allowed here"
     end
 
+    test "uploads and deletes a media file", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+
+      lv |> element("button[phx-value-section=media]") |> render_click()
+
+      lv
+      |> file_input(~s(form[phx-submit="save_media"]), :media, [
+        %{
+          name: "poster.png",
+          content: "fake png bytes",
+          type: "image/png"
+        }
+      ])
+      |> render_upload("poster.png")
+
+      html = lv |> form(~s(form[phx-submit="save_media"])) |> render_submit()
+      assert html =~ "poster.png"
+      assert html =~ "Copy link"
+
+      assert [file] = Scenex.Media.list_files(scenario)
+      assert file.filename == "poster.png"
+
+      html =
+        lv
+        |> element(~s(button[phx-click="delete_media"][phx-value-id="#{file.id}"]))
+        |> render_click()
+
+      refute html =~ "poster.png"
+      assert Scenex.Media.list_files(scenario) == []
+    end
+
     test "saves director's notes on a group", %{conn: conn, scenario: scenario} do
       group = group_fixture(scenario, name: %{"en" => "Government"})
 

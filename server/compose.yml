@@ -6,6 +6,8 @@ services:
     ports:
       - "4000:4000"
     env_file: .env
+    volumes:
+      - ./media:/data/media
     networks:
       - postgres_default
 

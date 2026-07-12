@@ -20,6 +20,9 @@ defmodule ScenexWeb.Router do
   scope "/", ScenexWeb do
     pipe_through :browser
 
+    # Public media: the unguessable id is the access token (like play QRs).
+    get "/media/:id/:filename", MediaController, :show
+
     live_session :home,
       on_mount: [{ScenexWeb.UserAuth, :mount_current_scope}] do
       live "/", HomeLive, :index

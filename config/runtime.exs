@@ -55,6 +55,10 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
 
+  config :scenex, Scenex.Media,
+    dir: System.get_env("MEDIA_DIR") || "/data/media",
+    max_upload_mb: String.to_integer(System.get_env("MEDIA_MAX_UPLOAD_MB") || "250")
+
   config :scenex, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :scenex, ScenexWeb.Endpoint,

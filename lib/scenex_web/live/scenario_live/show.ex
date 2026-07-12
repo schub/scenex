@@ -12,9 +12,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
   alias Scenex.Authoring
   alias Scenex.Authoring.{DecisionOption, Ending, TimelineElement, Group, Label, ValueDimension}
   alias Scenex.I18n
+  alias Scenex.Media
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values groups initial timeline labels endings)a
+  @sections ~w(settings values groups initial timeline labels endings media)a
   @locale_choices Scenex.I18n.locales()
 
   @impl true
@@ -962,6 +963,101 @@ defmodule ScenexWeb.ScenarioLive.Show do
           </div>
         </div>
 
+        <%!-- Media library --%>
+        <div :if={@section == :media} class="space-y-6">
+          <p class="text-xs opacity-60">
+            Images, video, and audio for this scenario. Copy a file's link and paste it into
+            any content snippet. Up to {Media.max_upload_mb()} MB per file.
+          </p>
+
+          <form :if={@can_edit?} phx-submit="save_media" phx-change="validate_media">
+            <div class="flex flex-wrap items-center gap-3">
+              <.live_file_input upload={@uploads.media} class="file-input file-input-bordered" />
+              <.button variant="primary" phx-disable-with="Uploading…">Upload</.button>
+            </div>
+
+            <div :for={entry <- @uploads.media.entries} class="mt-2 flex items-center gap-2">
+              <span class="max-w-60 truncate text-sm">{entry.client_name}</span>
+              <progress class="progress progress-primary w-40" value={entry.progress} max="100" />
+              <button
+                type="button"
+                phx-click="cancel_media_upload"
+                phx-value-ref={entry.ref}
+                class="btn btn-xs btn-ghost"
+              >
+                ✕
+              </button>
+              <span :for={err <- upload_errors(@uploads.media, entry)} class="text-xs text-error">
+                {upload_error(err)}
+              </span>
+            </div>
+
+            <p :for={err <- upload_errors(@uploads.media)} class="mt-1 text-xs text-error">
+              {upload_error(err)}
+            </p>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>File</th>
+                  <th>Type</th>
+                  <th class="text-right">Size</th>
+                  <th>Link</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={file <- @media_files}>
+                  <td class="w-16">
+                    <img
+                      :if={Media.kind(file) == :image}
+                      src={Media.public_path(file)}
+                      class="h-12 w-12 rounded object-cover"
+                    />
+                    <span :if={Media.kind(file) != :image} class="text-2xl">
+                      {media_icon(file)}
+                    </span>
+                  </td>
+                  <td class="max-w-60 truncate font-medium">{file.filename}</td>
+                  <td class="text-xs opacity-70">{file.content_type}</td>
+                  <td class="text-right text-xs tabular-nums">{fmt_bytes(file.size)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      phx-click={
+                        JS.dispatch("scenex:copy",
+                          detail: %{text: url(~p"/media/#{file.id}/#{file.filename}")}
+                        )
+                      }
+                      class="btn btn-xs"
+                      title="Copy the public link"
+                    >
+                      Copy link
+                    </button>
+                  </td>
+                  <td class="text-right">
+                    <button
+                      :if={@can_edit?}
+                      phx-click="delete_media"
+                      phx-value-id={file.id}
+                      data-confirm="Delete this file? Links to it in content will break."
+                      class="btn btn-xs btn-error btn-soft"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p :if={@media_files == []} class="mt-2 text-sm opacity-60">
+              No media yet — upload the first file above.
+            </p>
+          </div>
+        </div>
+
         <%!-- Members (owner only) --%>
         <div :if={@section == :members && @role == :owner} class="space-y-6">
           <div class="overflow-x-auto">
@@ -1105,6 +1201,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
          |> assign_event_form(%TimelineElement{})
          |> assign_label_form(%Label{})
          |> assign_ending_form(%Ending{})
+         |> allow_upload(:media,
+           accept:
+             ~w(.png .jpg .jpeg .gif .webp .avif .mp4 .webm .mov .m4v .mp3 .ogg .oga .wav .m4a .aac .flac),
+           max_file_size: Media.max_upload_bytes(),
+           max_entries: 5
+         )
          |> reload()}
     end
   end
@@ -1118,6 +1220,51 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("set_locale", %{"locale" => locale}, socket) do
     {:noreply, assign(socket, :locale, locale)}
+  end
+
+  # ── Media library ─────────────────────────────────────────────────────
+
+  def handle_event("validate_media", _params, socket), do: {:noreply, socket}
+
+  def handle_event("cancel_media_upload", %{"ref" => ref}, socket),
+    do: {:noreply, cancel_upload(socket, :media, ref)}
+
+  def handle_event("save_media", _params, socket) do
+    with_edit(socket, fn ->
+      user = socket.assigns.current_scope.user
+      scenario = socket.assigns.scenario
+
+      results =
+        consume_uploaded_entries(socket, :media, fn %{path: path}, entry ->
+          {:ok,
+           Media.create_file(scenario, user, %{
+             path: path,
+             filename: entry.client_name,
+             content_type: entry.client_type,
+             size: entry.client_size
+           })}
+        end)
+
+      socket = assign(socket, :media_files, Media.list_files(scenario))
+
+      case Enum.split_with(results, &match?({:ok, _}, &1)) do
+        {_ok, []} -> {:noreply, socket}
+        {_ok, failed} -> {:noreply, put_flash(socket, :error, media_errors(failed))}
+      end
+    end)
+  end
+
+  def handle_event("delete_media", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      case Enum.find(socket.assigns.media_files, &(&1.id == id)) do
+        nil ->
+          {:noreply, socket}
+
+        file ->
+          {:ok, _} = Media.delete_file(file)
+          {:noreply, assign(socket, :media_files, Media.list_files(socket.assigns.scenario))}
+      end
+    end)
   end
 
   # ── Settings ──────────────────────────────────────────────────────────
@@ -1684,7 +1831,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
         initials: initials,
         timeline_elements: Authoring.list_timeline_elements(scenario),
         labels: Authoring.list_labels(scenario),
-        endings: Authoring.list_endings(scenario)
+        endings: Authoring.list_endings(scenario),
+        media_files: Media.list_files(scenario)
       )
       |> reload_members()
 
@@ -1832,4 +1980,29 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # The members section (invitations, roles) is owner-only.
   def sections(:owner), do: @sections ++ [:members]
   def sections(_role), do: @sections
+
+  # ── Media helpers ─────────────────────────────────────────────────────
+
+  defp media_errors(failed) do
+    "#{length(failed)} file(s) could not be stored — check type and size, then try again."
+  end
+
+  defp media_icon(file) do
+    case Media.kind(file) do
+      :video -> "🎬"
+      :audio -> "🎵"
+      :image -> "🖼"
+    end
+  end
+
+  defp fmt_bytes(bytes) when bytes >= 1024 * 1024,
+    do: "#{Float.round(bytes / (1024 * 1024), 1)} MB"
+
+  defp fmt_bytes(bytes) when bytes >= 1024, do: "#{div(bytes, 1024)} KB"
+  defp fmt_bytes(bytes), do: "#{bytes} B"
+
+  defp upload_error(:too_large), do: "too large (max #{Media.max_upload_mb()} MB)"
+  defp upload_error(:not_accepted), do: "not an accepted media type"
+  defp upload_error(:too_many_files), do: "too many files at once"
+  defp upload_error(other), do: to_string(other)
 end
