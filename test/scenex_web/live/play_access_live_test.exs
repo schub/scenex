@@ -284,6 +284,27 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "😀"
     end
 
+    test "narratives render as markdown with media embeds", ctx do
+      {:ok, _} =
+        Authoring.update_timeline_element(ctx.event, %{
+          narrative: %{
+            "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
+          }
+        })
+
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "MD night"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      assert html =~ "<strong>Chaos</strong>"
+      assert html =~ ~s(<video controls)
+    end
+
     test "audience screens speak the session's play language", ctx do
       {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Berlin", locale: "de"})
       on_exit(fn -> Play.stop_running(session.id) end)

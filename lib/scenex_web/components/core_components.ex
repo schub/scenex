@@ -332,6 +332,20 @@ defmodule ScenexWeb.CoreComponents do
     if rounded > 0, do: "+" <> formatted, else: formatted
   end
 
+  @doc """
+  Authored content (markdown) rendered as safe HTML with media embeds —
+  see `ScenexWeb.Markdown`. Renders nothing for nil/blank text. Styling
+  comes from the `markdown` CSS class (app.css).
+  """
+  attr :text, :string, default: nil
+  attr :class, :any, default: nil
+
+  def markdown(assigns) do
+    ~H"""
+    <div :if={html = ScenexWeb.Markdown.to_html(@text)} class={["markdown", @class]}>{html}</div>
+    """
+  end
+
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""

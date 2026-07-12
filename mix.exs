@@ -4,7 +4,7 @@ defmodule Scenex.MixProject do
   def project do
     [
       app: :scenex,
-      version: "0.14.0",
+      version: "0.15.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -41,6 +41,7 @@ defmodule Scenex.MixProject do
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
+      {:earmark, "~> 1.4"},
       {:eqrcode, "~> 0.2"},
       {:phoenix, "~> 1.8.3"},
       {:phoenix_ecto, "~> 4.5"},

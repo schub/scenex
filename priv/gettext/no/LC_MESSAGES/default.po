@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: no\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Handlinger"
+
+msgid "Attempting to reconnect"
+msgstr "Prøver å koble til på nytt"
+
+msgid "Cancel"
+msgstr "Avbryt"
+
+msgid "Confirm decision"
+msgstr "Bekreft avgjørelsen"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "Avgjørelsen er bekreftet — nå kan bare spillederen endre den."
+
+msgid "Global"
+msgstr "Samlet"
+
+msgid "Group"
+msgstr "Gruppe"
+
+msgid "Lock in your decision?"
+msgstr "Vil dere låse avgjørelsen?"
+
+msgid "Result"
+msgstr "Resultat"
+
+msgid "Something went wrong!"
+msgstr "Noe gikk galt!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "Tiden er ute — denne avgjørelsen er stengt."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "Økten er over. Takk for at dere spilte!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "Økten har ikke startet ennå — et øyeblikk."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "Økten er satt på pause — avgjørelser åpnes igjen når spillet fortsetter."
+
+msgid "The show will begin shortly."
+msgstr "Forestillingen begynner snart."
+
+msgid "This code is not valid (anymore)."
+msgstr "Denne koden er ikke gyldig (lenger)."
+
+msgid "This didn't go through — please try again."
+msgstr "Det gikk ikke gjennom — prøv igjen."
+
+msgid "This option can't be chosen right now."
+msgstr "Dette valget kan ikke velges akkurat nå."
+
+msgid "We can't find the internet"
+msgstr "Finner ikke internett"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "Avgjørelsen deres er låst — be spillederen om å endre den."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "Gruppen deres kan ikke endre dette etterpå — bare spillederen kan."
+
+msgid "close"
+msgstr "lukk"
+
+msgid "closed"
+msgstr "stengt"
+
+msgid "decided"
+msgstr "avgjort"
+
+msgid "draft"
+msgstr "utkast"
+
+msgid "ended"
+msgstr "avsluttet"
+
+msgid "live"
+msgstr "pågår"
+
+msgid "paused"
+msgstr "pause"

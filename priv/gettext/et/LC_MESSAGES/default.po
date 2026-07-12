@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: et\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Toimingud"
+
+msgid "Attempting to reconnect"
+msgstr "Taasühendamine"
+
+msgid "Cancel"
+msgstr "Tühista"
+
+msgid "Confirm decision"
+msgstr "Kinnita otsus"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "Otsus kinnitatud — nüüd saab seda muuta ainult mängujuht."
+
+msgid "Global"
+msgstr "Üldine"
+
+msgid "Group"
+msgstr "Rühm"
+
+msgid "Lock in your decision?"
+msgstr "Kas kinnitad otsuse lõplikult?"
+
+msgid "Result"
+msgstr "Tulemus"
+
+msgid "Something went wrong!"
+msgstr "Midagi läks valesti!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "Aeg on läbi — see otsus on suletud."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "Seanss on lõppenud. Aitäh mängimast!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "Seanss pole veel alanud — üks hetk."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "Seanss on peatatud — otsused avanevad taas, kui mäng jätkub."
+
+msgid "The show will begin shortly."
+msgstr "Etendus algab peagi."
+
+msgid "This code is not valid (anymore)."
+msgstr "See kood ei ole (enam) kehtiv."
+
+msgid "This didn't go through — please try again."
+msgstr "See ei õnnestunud — palun proovige uuesti."
+
+msgid "This option can't be chosen right now."
+msgstr "Seda valikut ei saa praegu valida."
+
+msgid "We can't find the internet"
+msgstr "Internetiühendus puudub"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "Teie otsus on lukus — muutmiseks pöörduge mängujuhi poole."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "Teie rühm ei saa seda hiljem muuta — ainult mängujuht saab."
+
+msgid "close"
+msgstr "sulge"
+
+msgid "closed"
+msgstr "suletud"
+
+msgid "decided"
+msgstr "otsustatud"
+
+msgid "draft"
+msgstr "mustand"
+
+msgid "ended"
+msgstr "lõppenud"
+
+msgid "live"
+msgstr "käimas"
+
+msgid "paused"
+msgstr "peatatud"
