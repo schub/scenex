@@ -77,7 +77,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
       <div class="mt-6">
         <%!-- Settings --%>
         <div :if={@section == :settings}>
-          <.form for={@settings_form} phx-submit="save_settings" class="max-w-xl space-y-4">
+          <.form
+            for={@settings_form}
+            phx-change="track_localized"
+            phx-submit="save_settings"
+            class="max-w-xl space-y-4"
+          >
             <.input
               field={@settings_form[:handle]}
               label="Handle (internal, not translated)"
@@ -310,7 +315,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
           <div :if={@can_edit?} class="card bg-base-200">
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_group, do: "Edit group", else: "New group"}</h3>
-              <.form for={@group_form} phx-submit="save_group" class="grid gap-3 sm:grid-cols-2">
+              <.form
+                for={@group_form}
+                phx-change="track_localized"
+                phx-submit="save_group"
+                class="grid gap-3 sm:grid-cols-2"
+              >
                 <.input field={@group_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
@@ -458,7 +468,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
               <h3 class="font-semibold">
                 {if @editing_event, do: "Edit element", else: "New element"}
               </h3>
-              <.form for={@event_form} phx-submit="save_event" class="grid gap-3 sm:grid-cols-2">
+              <.form
+                for={@event_form}
+                phx-change="track_localized"
+                phx-submit="save_event"
+                class="grid gap-3 sm:grid-cols-2"
+              >
                 <.input field={@event_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
@@ -620,7 +635,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   {if @editing_option, do: "Edit option", else: "New option"}
                   <span :if={@option_outcome} class="badge badge-sm ml-1">{@option_outcome}</span>
                 </h4>
-                <.form for={@option_form} phx-submit="save_option" class="space-y-3">
+                <.form
+                  for={@option_form}
+                  phx-change="track_localized"
+                  phx-submit="save_option"
+                  class="space-y-3"
+                >
                   <input
                     :if={@option_outcome}
                     type="hidden"
@@ -821,7 +841,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
           <div :if={@can_edit?} class="card bg-base-200">
             <div class="card-body">
               <h3 class="font-semibold">{if @editing_label, do: "Edit label", else: "New label"}</h3>
-              <.form for={@label_form} phx-submit="save_label" class="grid gap-3 sm:grid-cols-2">
+              <.form
+                for={@label_form}
+                phx-change="track_localized"
+                phx-submit="save_label"
+                class="grid gap-3 sm:grid-cols-2"
+              >
                 <.input field={@label_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
@@ -917,7 +942,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
               <h3 class="font-semibold">
                 {if @editing_ending, do: "Edit ending", else: "New ending"}
               </h3>
-              <.form for={@ending_form} phx-submit="save_ending" class="grid gap-3 sm:grid-cols-2">
+              <.form
+                for={@ending_form}
+                phx-change="track_localized"
+                phx-submit="save_ending"
+                class="grid gap-3 sm:grid-cols-2"
+              >
                 <.input field={@ending_form[:handle]} label="Handle (internal)" />
                 <.input
                   type="text"
@@ -1222,6 +1252,23 @@ defmodule ScenexWeb.ScenarioLive.Show do
     {:noreply, assign(socket, :locale, locale)}
   end
 
+  # ── Draft tracking (localized forms) ──────────────────────────────────
+  # Every keystroke lands in the form's params, so switching the working
+  # locale renders the right per-locale draft instead of leaving stale text
+  # in the inputs — and one save persists every locale touched.
+
+  def handle_event("track_localized", params, socket) do
+    socket =
+      Enum.reduce(tracked_forms(), socket, fn {param_key, assign_key}, acc ->
+        case params[param_key] do
+          %{} = form_params -> track_form(acc, assign_key, form_params)
+          _ -> acc
+        end
+      end)
+
+    {:noreply, socket}
+  end
+
   # ── Media library ─────────────────────────────────────────────────────
 
   def handle_event("validate_media", _params, socket), do: {:noreply, socket}
@@ -1271,6 +1318,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_settings", %{"scenario" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :settings_form, params)
+
       attrs =
         LocalizedForm.merge(params, socket.assigns.scenario, [
           :name,
@@ -1370,7 +1419,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # Rebuild the form from params so typed values survive the re-render.
   def handle_event("value_form_changed", %{"value_dimension" => params}, socket) do
     data = socket.assigns.editing_value || %ValueDimension{}
-    attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
+    params = tracked_params(socket, :value_form, params)
     scope = if params["input_scope"] == "per_participant", do: :per_participant, else: :per_group
 
     {:noreply,
@@ -1378,12 +1427,13 @@ defmodule ScenexWeb.ScenarioLive.Show do
      |> assign(:value_scope, scope)
      |> assign(
        :value_form,
-       to_form(Authoring.change_value_dimension(data, attrs), as: :value_dimension)
+       to_form(Authoring.change_value_dimension(data, params), as: :value_dimension)
      )}
   end
 
   def handle_event("save_value", %{"value_dimension" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :value_form, params)
       data = socket.assigns.editing_value || %ValueDimension{}
       attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
 
@@ -1425,6 +1475,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_group", %{"group" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :group_form, params)
       data = socket.assigns.editing_group || %Group{}
       attrs = LocalizedForm.merge(params, data, [:name, :description, :director_notes])
 
@@ -1485,6 +1536,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_event", %{"timeline_element" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :event_form, params)
       data = socket.assigns.editing_event || %TimelineElement{}
       attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
 
@@ -1566,6 +1618,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_option", %{"option" => params} = raw, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :option_form, params)
       timeline_element = socket.assigns.selected_timeline_element
       group = Enum.find(socket.assigns.groups, &(&1.id == socket.assigns.option_group_id))
       data = socket.assigns.editing_option || %DecisionOption{}
@@ -1622,6 +1675,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_label", %{"label" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :label_form, params)
       data = socket.assigns.editing_label || %Label{}
       attrs = LocalizedForm.merge(params, data, [:name, :director_notes])
 
@@ -1660,6 +1714,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("save_ending", %{"ending" => params}, socket) do
     with_edit(socket, fn ->
+      params = tracked_params(socket, :ending_form, params)
       data = socket.assigns.editing_ending || %Ending{}
       attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
 
@@ -1694,6 +1749,62 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp assign_settings_form(socket, scenario),
     do:
       assign(socket, :settings_form, to_form(Authoring.change_scenario(scenario), as: :scenario))
+
+  # ── Draft tracking helpers ────────────────────────────────────────────
+
+  defp tracked_forms do
+    [
+      {"scenario", :settings_form},
+      {"group", :group_form},
+      {"timeline_element", :event_form},
+      {"option", :option_form},
+      {"label", :label_form},
+      {"ending", :ending_form}
+    ]
+  end
+
+  # Rebuild one form with the new change-event params deep-merged into the
+  # previously tracked ones (drafts for other locales live in form.params).
+  defp track_form(socket, assign_key, new_params) do
+    params = LocalizedForm.track(socket.assigns[assign_key].params, new_params)
+    assign(socket, assign_key, rebuild_form(socket, assign_key, params))
+  end
+
+  defp rebuild_form(socket, :settings_form, params),
+    do: to_form(Authoring.change_scenario(socket.assigns.scenario, params), as: :scenario)
+
+  defp rebuild_form(socket, :group_form, params) do
+    data = socket.assigns.editing_group || %Group{}
+    to_form(Authoring.change_group(data, params), as: :group)
+  end
+
+  defp rebuild_form(socket, :event_form, params) do
+    data = socket.assigns.editing_event || %TimelineElement{}
+    to_form(Authoring.change_timeline_element(data, params), as: :timeline_element)
+  end
+
+  defp rebuild_form(socket, :option_form, params) do
+    data = socket.assigns.editing_option || %DecisionOption{}
+
+    to_form(
+      Authoring.change_decision_option(data, params, socket.assigns.selected_timeline_element),
+      as: :option
+    )
+  end
+
+  defp rebuild_form(socket, :label_form, params) do
+    data = socket.assigns.editing_label || %Label{}
+    to_form(Authoring.change_label(data, params), as: :label)
+  end
+
+  defp rebuild_form(socket, :ending_form, params) do
+    data = socket.assigns.editing_ending || %Ending{}
+    to_form(Authoring.change_ending(data, params), as: :ending)
+  end
+
+  # The tracked params (all locales typed so far), for the save handlers.
+  defp tracked_params(socket, assign_key, submitted),
+    do: LocalizedForm.track(socket.assigns[assign_key].params, submitted)
 
   defp assign_value_form(socket, value) do
     socket

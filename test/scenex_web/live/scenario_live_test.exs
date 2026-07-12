@@ -37,6 +37,58 @@ defmodule ScenexWeb.ScenarioLiveTest do
       %{scenario: scenario_fixture(user)}
     end
 
+    test "locale switch shows each locale's own draft, and one save persists all",
+         %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+
+      # Type an English draft (not saved yet)...
+      lv
+      |> form(~s(form[phx-submit="save_settings"]))
+      |> render_change(%{"scenario" => %{"description" => %{"en" => "English draft"}}})
+
+      # ...switch to Polish: the field must look empty, not keep the EN text.
+      html =
+        lv |> element(~s(button[phx-click="set_locale"][phx-value-locale="pl"])) |> render_click()
+
+      refute html =~ "English draft"
+
+      # Type the Polish draft, then switch back: the EN draft is still there.
+      lv
+      |> form(~s(form[phx-submit="save_settings"]))
+      |> render_change(%{"scenario" => %{"description" => %{"pl" => "Polski szkic"}}})
+
+      html =
+        lv |> element(~s(button[phx-click="set_locale"][phx-value-locale="en"])) |> render_click()
+
+      assert html =~ "English draft"
+      refute html =~ "Polski szkic"
+
+      # One save persists both locales.
+      lv
+      |> form(~s(form[phx-submit="save_settings"]), %{
+        "scenario" => %{"handle" => scenario.handle}
+      })
+      |> render_submit()
+
+      assert Authoring.get_scenario!(scenario.id).description == %{
+               "en" => "English draft",
+               "pl" => "Polski szkic"
+             }
+    end
+
+    test "an empty locale never shows another locale's saved text", %{conn: conn, user: user} do
+      scenario =
+        scenario_fixture(user, description: %{"en" => "Saved English description"})
+
+      {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      assert html =~ "Saved English description"
+
+      html =
+        lv |> element(~s(button[phx-click="set_locale"][phx-value-locale="pl"])) |> render_click()
+
+      refute html =~ "Saved English description"
+    end
+
     test "saves settings with a localized tagline", %{conn: conn, scenario: scenario} do
       {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}")
 
