@@ -41,6 +41,7 @@ defmodule Scenex.MixProject do
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
+      {:earmark, "~> 1.4"},
       {:eqrcode, "~> 0.2"},
       {:phoenix, "~> 1.8.3"},
       {:phoenix_ecto, "~> 4.5"},

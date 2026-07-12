@@ -97,12 +97,7 @@ defmodule ScenexWeb.PlayLive.Group do
             </span>
           </div>
 
-          <p
-            :if={narrative = I18n.t(element.narrative, @locale)}
-            class="whitespace-pre-line text-base"
-          >
-            {narrative}
-          </p>
+          <.markdown text={I18n.t(element.narrative, @locale)} class="text-base" />
 
           <div class="flex flex-col gap-3">
             <button
@@ -123,8 +118,11 @@ defmodule ScenexWeb.PlayLive.Group do
                 not Play.gate_open?(@snap, element.id, option) && "btn-disabled opacity-60"
               ]}
             >
-              <span>
-                {I18n.t!(option.text, @locale, default: option.handle)}
+              <span class="w-full">
+                <.markdown
+                  text={I18n.t!(option.text, @locale, default: option.handle)}
+                  class="text-base font-normal"
+                />
                 <span :for={l <- option.labels} class={["badge badge-xs ml-1", label_class(l.color)]}>
                   {l.icon || I18n.t!(l.name, @locale, default: "?")}
                 </span>
@@ -158,9 +156,12 @@ defmodule ScenexWeb.PlayLive.Group do
       <div :if={option = pending_option(@snap, @pending)} class="modal modal-open" role="dialog">
         <div class="modal-box space-y-4">
           <h3 class="text-xl font-bold">{gettext("Lock in your decision?")}</h3>
-          <p class="rounded-box bg-base-200 p-3 text-base font-medium">
-            {I18n.t!(option.text, @locale, default: option.handle)}
-          </p>
+          <div class="rounded-box bg-base-200 p-3">
+            <.markdown
+              text={I18n.t!(option.text, @locale, default: option.handle)}
+              class="text-base"
+            />
+          </div>
           <p class="text-sm opacity-70">
             {gettext("Your group cannot change this afterwards — only the game master can.")}
           </p>

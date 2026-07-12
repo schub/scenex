@@ -82,7 +82,7 @@ defmodule ScenexWeb.PlayLive.Display do
         <%!-- The finale, once chosen --%>
         <section :if={ending = chosen_ending(@snap)} class="rounded-box bg-base-200 p-6 space-y-3">
           <h2 class="text-3xl font-bold">{I18n.t!(ending.title, @locale, default: ending.handle)}</h2>
-          <p class="whitespace-pre-line text-xl">{I18n.t(ending.narrative, @locale)}</p>
+          <.markdown text={I18n.t(ending.narrative, @locale)} class="text-xl" />
         </section>
 
         <%!-- The current beat --%>
@@ -106,7 +106,7 @@ defmodule ScenexWeb.PlayLive.Display do
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
             </span>
           </h2>
-          <p class="whitespace-pre-line text-xl">{I18n.t(element.narrative, @locale)}</p>
+          <.markdown text={I18n.t(element.narrative, @locale)} class="text-xl" />
 
           <%!-- Election result, once declared --%>
           <div
