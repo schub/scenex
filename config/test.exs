@@ -42,3 +42,8 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Media uploads land in a throwaway tmp dir during tests.
+config :scenex, Scenex.Media,
+  dir: Path.join(System.tmp_dir!(), "scenex_media_test"),
+  max_upload_mb: 250
