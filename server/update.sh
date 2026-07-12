@@ -12,9 +12,12 @@ if [ ! -d "$APP_DIR/src/.git" ]; then
   git clone "$REPO_URL" "$APP_DIR/src"
 fi
 cd "$APP_DIR/src"
-git fetch origin
+git fetch origin --tags
 git checkout "$BRANCH"
-git pull origin "$BRANCH"
+# Tags check out detached — nothing to pull. Only branches track a remote.
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  git pull origin "$BRANCH"
+fi
 
 echo "==> Building image..."
 docker build -t scenex:latest .

@@ -80,4 +80,4 @@ git push origin dev
 
 echo
 echo "==> Released v$RELEASE (tagged on main). dev is now at $NEXT-dev."
-echo "==> Deploy when ready: ./deploy.sh v$RELEASE"
+echo "==> Deploy when ready: ./deploy.sh   (deploys main = v$RELEASE)"
