@@ -134,6 +134,7 @@ defmodule ScenexWeb.SessionLiveTest do
       |> render_click()
 
     assert html =~ "7"
+    assert html =~ "(+2)"
 
     # Election: tally + winner -> gov 9
     lv

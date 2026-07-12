@@ -297,6 +297,41 @@ defmodule ScenexWeb.CoreComponents do
     """
   end
 
+  @doc """
+  A transient board-change marker: renders `(+2)` / `(−1)` after a value, in
+  a neutral accent color (deliberately not green/red — a rising Risk is not
+  good news). Renders nothing when `change` is nil, so it can be dropped
+  inline behind any value:
+
+      {fmt_num(value)}<.value_delta change={Play.recent_delta(@snap, vd.id, g.id)} />
+
+  Sized relative to its surroundings (`em`), so it works in table cells and
+  on the projected display alike.
+  """
+  attr :change, :any, default: nil, doc: "the numeric delta, or nil for nothing"
+
+  def value_delta(assigns) do
+    ~H"""
+    <span
+      :if={@change}
+      class="ml-1 align-baseline text-[0.75em] font-semibold text-accent tabular-nums whitespace-nowrap"
+    >
+      ({fmt_delta(@change)})
+    </span>
+    """
+  end
+
+  defp fmt_delta(n) do
+    rounded = Float.round(n / 1, 1)
+
+    formatted =
+      if rounded == trunc(rounded),
+        do: Integer.to_string(trunc(rounded)),
+        else: Float.to_string(rounded)
+
+    if rounded > 0, do: "+" <> formatted, else: formatted
+  end
+
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""

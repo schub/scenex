@@ -156,6 +156,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       html = lv |> element(~s{.modal button[phx-click=choose]}) |> render_click()
       assert html =~ "7"
+      # The fresh change is marked next to the value.
+      assert html =~ "(+2)"
       refute html =~ "Lock in your decision?"
 
       snap = Play.snapshot(ctx.session.id)
@@ -254,12 +256,14 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _} =
         Play.resolve_election(ctx.session.id, ctx.election.id, ctx.yes.id, %{ctx.yes.id => 23})
 
-      # Declared: result + votes appear, the countdown gives way to "decided".
+      # Declared: result + votes appear, the countdown gives way to "decided",
+      # and the board marks the fresh +2 on the government row.
       html = render(lv)
       assert html =~ "Result"
       assert html =~ "Yes to the plan"
       assert html =~ "23"
       assert html =~ "decided"
+      assert html =~ "(+2)"
       refute html =~ "⏱"
     end
 

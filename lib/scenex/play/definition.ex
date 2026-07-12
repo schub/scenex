@@ -20,7 +20,8 @@ defmodule Scenex.Play.Definition do
             element_order: [],
             options: %{},
             options_by_element: %{},
-            endings: []
+            endings: [],
+            change_highlight_ms: 30_000
 
   @type t :: %__MODULE__{}
 
@@ -57,7 +58,8 @@ defmodule Scenex.Play.Definition do
       element_order: Enum.map(elements, & &1.id),
       options: options,
       options_by_element: options_by_element,
-      endings: Authoring.list_endings(scenario)
+      endings: Authoring.list_endings(scenario),
+      change_highlight_ms: (scenario.change_highlight_seconds || 30) * 1000
     }
   end
 

@@ -79,13 +79,15 @@ defmodule ScenexWeb.SessionLive.Console do
                 :for={vd <- value_dims(@snap)}
                 class={["text-right tabular-nums", cell_class(@snap.sim, vd, g.id)]}
               >
-                {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}
+                {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}<.value_delta change={
+                  Play.recent_delta(@snap, vd.id, g.id)
+                } />
               </td>
             </tr>
             <tr class="border-t-2 border-base-300 font-semibold">
               <td>Global</td>
               <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
-                {fmt_num(@snap.globals[vd.id])}
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
               </td>
             </tr>
           </tbody>
@@ -105,7 +107,7 @@ defmodule ScenexWeb.SessionLive.Console do
             class="ml-auto text-xl font-bold tabular-nums"
             title="Latest tally average"
           >
-            {tally_face(avg)} {fmt_num(avg)}
+            {tally_face(avg)} {fmt_num(avg)}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
           </span>
         </div>
 

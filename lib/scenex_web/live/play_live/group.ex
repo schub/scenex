@@ -55,13 +55,15 @@ defmodule ScenexWeb.PlayLive.Group do
                 :for={vd <- value_dims(@snap)}
                 class="text-right text-lg tabular-nums font-semibold"
               >
-                {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}
+                {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}<.value_delta change={
+                  Play.recent_delta(@snap, vd.id, @group.id)
+                } />
               </td>
             </tr>
             <tr class="opacity-70">
               <td>Global</td>
               <td :for={vd <- value_dims(@snap)} class="text-right text-lg tabular-nums">
-                {fmt_num(@snap.globals[vd.id])}
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
               </td>
             </tr>
           </tbody>

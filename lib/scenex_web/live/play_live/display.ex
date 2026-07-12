@@ -44,13 +44,17 @@ defmodule ScenexWeb.PlayLive.Display do
                   :for={vd <- value_dims(@snap)}
                   class={["text-right text-xl tabular-nums", cell_class(@snap.sim, vd, g.id)]}
                 >
-                  {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}
+                  {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}<.value_delta change={
+                    Play.recent_delta(@snap, vd.id, g.id)
+                  } />
                 </td>
               </tr>
               <tr class="border-t-2 border-base-300 text-2xl font-bold">
                 <td>Global</td>
                 <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
-                  {fmt_num(@snap.globals[vd.id])}
+                  {fmt_num(@snap.globals[vd.id])}<.value_delta change={
+                    Play.recent_delta(@snap, vd.id)
+                  } />
                 </td>
               </tr>
             </tbody>
@@ -66,7 +70,9 @@ defmodule ScenexWeb.PlayLive.Display do
             <div class="text-sm opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
             <div class="flex items-baseline justify-center gap-3">
               <span class="text-3xl">{tally_face(@snap.globals[vd.id])}</span>
-              <span class="text-3xl font-bold tabular-nums">{fmt_num(@snap.globals[vd.id])}</span>
+              <span class="text-3xl font-bold tabular-nums">
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
+              </span>
             </div>
           </div>
         </section>
