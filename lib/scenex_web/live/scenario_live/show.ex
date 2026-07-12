@@ -88,6 +88,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
               label={"Name (#{@locale})"}
             />
             <.input
+              type="text"
+              name={"scenario[tagline][#{@locale}]"}
+              value={LocalizedForm.value(@settings_form, :tagline, @locale)}
+              label={"Tagline (#{@locale}, one line)"}
+            />
+            <.input
               type="textarea"
               name={"scenario[description][#{@locale}]"}
               value={LocalizedForm.value(@settings_form, :description, @locale)}
@@ -1121,6 +1127,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
       attrs =
         LocalizedForm.merge(params, socket.assigns.scenario, [
           :name,
+          :tagline,
           :description,
           :director_notes
         ])
