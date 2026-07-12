@@ -28,6 +28,10 @@ docker run --rm \
   --network postgres_default \
   scenex:latest /app/bin/migrate
 
+echo "==> Ensuring media volume (writable by the container's 'nobody' user)..."
+mkdir -p "$APP_DIR/media"
+chown 65534:65534 "$APP_DIR/media"
+
 echo "==> Restarting container..."
 cd "$APP_DIR"
 docker compose up -d --remove-orphans
