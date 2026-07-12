@@ -37,6 +37,25 @@ defmodule ScenexWeb.ScenarioLiveTest do
       %{scenario: scenario_fixture(user)}
     end
 
+    test "saves settings with a localized tagline", %{conn: conn, scenario: scenario} do
+      {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}")
+
+      assert html =~ "Tagline"
+
+      lv
+      |> form(~s(form[phx-submit="save_settings"]), %{
+        "scenario" => %{
+          "handle" => scenario.handle,
+          "tagline" => %{"en" => "Democracy under pressure"}
+        }
+      })
+      |> render_submit()
+
+      assert Authoring.get_scenario!(scenario.id).tagline == %{
+               "en" => "Democracy under pressure"
+             }
+    end
+
     test "adds a value definition", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
 

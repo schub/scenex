@@ -17,6 +17,7 @@ defmodule Scenex.Authoring.Scenario do
   schema "scenarios" do
     field :handle, :string
     field :name, :map, default: %{}
+    field :tagline, :map, default: %{}
     field :description, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :source_locale, :string, default: "en"
@@ -38,6 +39,7 @@ defmodule Scenex.Authoring.Scenario do
     |> cast(attrs, [
       :handle,
       :name,
+      :tagline,
       :description,
       :director_notes,
       :source_locale,
