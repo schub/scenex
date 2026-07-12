@@ -129,134 +129,129 @@ defmodule ScenexWeb.ScenarioLive.Show do
         </div>
 
         <%!-- Values --%>
-        <div :if={@section == :values} class="space-y-6">
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Name</th>
-                  <th>Scope</th>
-                  <th>Aggregation</th>
-                  <th>Range</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={v <- @value_dimensions}>
-                  <td class="font-mono text-xs">{v.key}</td>
-                  <td>{I18n.t!(v.name, @locale, default: "—")}</td>
-                  <td>{v.input_scope}</td>
-                  <td class="font-mono text-xs">{v.aggregation}</td>
-                  <td class="text-xs">{fmt_range(v)}</td>
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_value"
-                      phx-value-id={v.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_value"
-                      phx-value-id={v.id}
-                      data-confirm="Delete this value?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                <tr :if={@value_dimensions == []}>
-                  <td colspan="6" class="opacity-70">No values yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div :if={@section == :values} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_value"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New value
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={v <- @value_dimensions}>
+                <button
+                  type="button"
+                  phx-click="edit_value"
+                  phx-value-id={v.id}
+                  class={selected_item(@editing_value, v)}
+                >
+                  <span class="truncate font-mono text-xs">{v.key}</span>
+                  <span :if={v.input_scope == :per_participant} class="badge badge-xs badge-ghost">
+                    per participant
+                  </span>
+                </button>
+              </li>
+              <li :if={@value_dimensions == []} class="menu-disabled"><span>No values yet.</span></li>
+            </ul>
+          </aside>
 
-          <div :if={@can_edit?} class="card bg-base-200">
+          <div class="min-w-0 card bg-base-200">
             <div class="card-body">
-              <h3 class="font-semibold">{if @editing_value, do: "Edit value", else: "New value"}</h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">
+                  {if @editing_value, do: "Edit value — #{@editing_value.key}", else: "New value"}
+                </h3>
+                <button
+                  :if={@can_edit? and @editing_value}
+                  type="button"
+                  phx-click="delete_value"
+                  phx-value-id={@editing_value.id}
+                  data-confirm="Delete this value?"
+                  class="btn btn-xs btn-error btn-soft"
+                >
+                  Delete
+                </button>
+              </div>
               <.form
                 for={@value_form}
                 phx-change="value_form_changed"
                 phx-submit="save_value"
                 class="grid gap-3 sm:grid-cols-2"
               >
-                <.input field={@value_form[:key]} label="Key (slug)" />
-                <.input
-                  field={@value_form[:input_scope]}
-                  type="select"
-                  label="Input scope"
-                  options={[{"Per group", :per_group}, {"Per participant", :per_participant}]}
-                />
-                <.input
-                  type="text"
-                  name={"value_dimension[name][#{@locale}]"}
-                  value={LocalizedForm.value(@value_form, :name, @locale)}
-                  label={"Name (#{@locale})"}
-                />
-                <.input field={@value_form[:aggregation]} label="Aggregation formula" />
-                <div class="sm:col-span-2">
+                <fieldset disabled={not @can_edit?} class="contents">
+                  <.input field={@value_form[:key]} label="Key (slug)" />
                   <.input
-                    type="textarea"
-                    name={"value_dimension[description][#{@locale}]"}
-                    value={LocalizedForm.value(@value_form, :description, @locale)}
-                    label={"Description (#{@locale}, Markdown)"}
+                    field={@value_form[:input_scope]}
+                    type="select"
+                    label="Input scope"
+                    options={[{"Per group", :per_group}, {"Per participant", :per_participant}]}
                   />
-                </div>
-                <div class="sm:col-span-2">
                   <.input
-                    type="textarea"
-                    name={"value_dimension[director_notes][#{@locale}]"}
-                    value={LocalizedForm.value(@value_form, :director_notes, @locale)}
-                    label={"Director's notes (#{@locale}, GM only)"}
+                    type="text"
+                    name={"value_dimension[name][#{@locale}]"}
+                    value={LocalizedForm.value(@value_form, :name, @locale)}
+                    label={"Name (#{@locale})"}
                   />
-                </div>
-                <.input
-                  :if={@value_scope != :per_participant}
-                  field={@value_form[:min]}
-                  type="number"
-                  step="any"
-                  label="Min"
-                />
-                <.input
-                  :if={@value_scope != :per_participant}
-                  field={@value_form[:max]}
-                  type="number"
-                  step="any"
-                  label="Max"
-                />
-                <.input
-                  :if={@value_scope != :per_participant}
-                  field={@value_form[:default_value]}
-                  type="number"
-                  step="any"
-                  label="Default"
-                />
-                <p
-                  :if={@value_scope == :per_participant}
-                  class="self-center text-xs opacity-60 sm:col-span-2"
-                >
-                  Per-participant values are collected from individuals and aren't clamped,
-                  so they have no min/max/default.
-                </p>
-                <.input field={@value_form[:position]} type="number" label="Position" />
-                <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save value</.button>
-                  <button
-                    :if={@editing_value}
-                    type="button"
-                    phx-click="new_value"
-                    class="btn btn-ghost"
+                  <.input field={@value_form[:aggregation]} label="Aggregation formula" />
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"value_dimension[description][#{@locale}]"}
+                      value={LocalizedForm.value(@value_form, :description, @locale)}
+                      label={"Description (#{@locale}, Markdown)"}
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"value_dimension[director_notes][#{@locale}]"}
+                      value={LocalizedForm.value(@value_form, :director_notes, @locale)}
+                      label={"Director's notes (#{@locale}, GM only)"}
+                    />
+                  </div>
+                  <.input
+                    :if={@value_scope != :per_participant}
+                    field={@value_form[:min]}
+                    type="number"
+                    step="any"
+                    label="Min"
+                  />
+                  <.input
+                    :if={@value_scope != :per_participant}
+                    field={@value_form[:max]}
+                    type="number"
+                    step="any"
+                    label="Max"
+                  />
+                  <.input
+                    :if={@value_scope != :per_participant}
+                    field={@value_form[:default_value]}
+                    type="number"
+                    step="any"
+                    label="Default"
+                  />
+                  <p
+                    :if={@value_scope == :per_participant}
+                    class="self-center text-xs opacity-60 sm:col-span-2"
                   >
-                    Cancel
-                  </button>
-                </div>
+                    Per-participant values are collected from individuals and aren't clamped,
+                    so they have no min/max/default.
+                  </p>
+                  <.input field={@value_form[:position]} type="number" label="Position" />
+                  <div class="flex gap-2 sm:col-span-2">
+                    <.button variant="primary">Save value</.button>
+                    <button
+                      :if={@editing_value}
+                      type="button"
+                      phx-click="new_value"
+                      class="btn btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </fieldset>
               </.form>
               <p class="text-xs opacity-60">
                 Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
@@ -267,95 +262,91 @@ defmodule ScenexWeb.ScenarioLive.Show do
         </div>
 
         <%!-- Groups --%>
-        <div :if={@section == :groups} class="space-y-6">
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Handle</th>
-                  <th>Name ({@locale})</th>
-                  <th>Position</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={g <- @groups}>
-                  <td class="font-medium">{g.handle}</td>
-                  <td>{I18n.t!(g.name, @locale, default: "—")}</td>
-                  <td>{g.position}</td>
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_group"
-                      phx-value-id={g.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_group"
-                      phx-value-id={g.id}
-                      data-confirm="Delete this group?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                <tr :if={@groups == []}>
-                  <td colspan="4" class="opacity-70">No groups yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div :if={@section == :groups} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_group"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New group
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={g <- @groups}>
+                <button
+                  type="button"
+                  phx-click="edit_group"
+                  phx-value-id={g.id}
+                  class={selected_item(@editing_group, g)}
+                >
+                  <span class="truncate">{g.handle}</span>
+                </button>
+              </li>
+              <li :if={@groups == []} class="menu-disabled"><span>No groups yet.</span></li>
+            </ul>
+          </aside>
 
-          <div :if={@can_edit?} class="card bg-base-200">
+          <div class="min-w-0 card bg-base-200">
             <div class="card-body">
-              <h3 class="font-semibold">{if @editing_group, do: "Edit group", else: "New group"}</h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">
+                  {if @editing_group, do: "Edit group — #{@editing_group.handle}", else: "New group"}
+                </h3>
+                <button
+                  :if={@can_edit? and @editing_group}
+                  type="button"
+                  phx-click="delete_group"
+                  phx-value-id={@editing_group.id}
+                  data-confirm="Delete this group?"
+                  class="btn btn-xs btn-error btn-soft"
+                >
+                  Delete
+                </button>
+              </div>
               <.form
                 for={@group_form}
                 phx-change="track_localized"
                 phx-submit="save_group"
                 class="grid gap-3 sm:grid-cols-2"
               >
-                <.input field={@group_form[:handle]} label="Handle (internal)" />
-                <.input
-                  type="text"
-                  name={"group[name][#{@locale}]"}
-                  value={LocalizedForm.value(@group_form, :name, @locale)}
-                  label={"Name (#{@locale})"}
-                />
-                <.input field={@group_form[:position]} type="number" label="Position" />
-                <div class="sm:col-span-2">
+                <fieldset disabled={not @can_edit?} class="contents">
+                  <.input field={@group_form[:handle]} label="Handle (internal)" />
                   <.input
-                    type="textarea"
-                    name={"group[description][#{@locale}]"}
-                    value={LocalizedForm.value(@group_form, :description, @locale)}
-                    label={"Description (#{@locale}, Markdown)"}
+                    type="text"
+                    name={"group[name][#{@locale}]"}
+                    value={LocalizedForm.value(@group_form, :name, @locale)}
+                    label={"Name (#{@locale})"}
                   />
-                </div>
-                <div class="sm:col-span-2">
-                  <.input
-                    type="textarea"
-                    name={"group[director_notes][#{@locale}]"}
-                    value={LocalizedForm.value(@group_form, :director_notes, @locale)}
-                    label={"Director's notes (#{@locale}, GM only)"}
-                  />
-                </div>
-                <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save group</.button>
-                  <button
-                    :if={@editing_group}
-                    type="button"
-                    phx-click="new_group"
-                    class="btn btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                  <.input field={@group_form[:position]} type="number" label="Position" />
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"group[description][#{@locale}]"}
+                      value={LocalizedForm.value(@group_form, :description, @locale)}
+                      label={"Description (#{@locale}, Markdown)"}
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"group[director_notes][#{@locale}]"}
+                      value={LocalizedForm.value(@group_form, :director_notes, @locale)}
+                      label={"Director's notes (#{@locale}, GM only)"}
+                    />
+                  </div>
+                  <div class="flex gap-2 sm:col-span-2">
+                    <.button variant="primary">Save group</.button>
+                    <button
+                      :if={@editing_group}
+                      type="button"
+                      phx-click="new_group"
+                      class="btn btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </fieldset>
               </.form>
             </div>
           </div>
@@ -402,234 +393,232 @@ defmodule ScenexWeb.ScenarioLive.Show do
           </.form>
         </div>
 
-        <%!-- Events --%>
-        <div :if={@section == :timeline} class="space-y-6">
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Handle</th>
-                  <th>Title ({@locale})</th>
-                  <th>Kind</th>
-                  <th>Deadline</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  :for={e <- @timeline_elements}
-                  class={e.id == @selected_timeline_element_id && "bg-base-200"}
+        <%!-- Timeline --%>
+        <div :if={@section == :timeline} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_event"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New element
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={e <- @timeline_elements}>
+                <button
+                  type="button"
+                  phx-click="open_event"
+                  phx-value-id={e.id}
+                  class={e.id == @selected_timeline_element_id && "menu-active"}
                 >
-                  <td>{e.position}</td>
-                  <td class="font-medium">{e.handle}</td>
-                  <td>{I18n.t!(e.title, @locale, default: "—")}</td>
-                  <td>{e.kind}</td>
-                  <td class="text-xs">{fmt_deadline(e.deadline_seconds)}</td>
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      phx-click="open_event"
-                      phx-value-id={e.id}
-                      class="btn btn-xs"
-                    >
-                      Options
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_event"
-                      phx-value-id={e.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_timeline_element"
-                      phx-value-id={e.id}
-                      data-confirm="Delete this timeline element and all its options?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                <tr :if={@timeline_elements == []}>
-                  <td colspan="6" class="opacity-70">No timeline elements yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  <span class="opacity-50">{e.position}.</span>
+                  <span class="truncate">{e.handle}</span>
+                  <span class="badge badge-xs badge-ghost">{e.kind}</span>
+                  <span :if={e.deadline_seconds} title={fmt_deadline(e.deadline_seconds)}>⏱</span>
+                </button>
+              </li>
+              <li :if={@timeline_elements == []} class="menu-disabled">
+                <span>No timeline elements yet.</span>
+              </li>
+            </ul>
+          </aside>
 
-          <div :if={@can_edit?} class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="font-semibold">
-                {if @editing_event, do: "Edit element", else: "New element"}
-              </h3>
-              <.form
-                for={@event_form}
-                phx-change="track_localized"
-                phx-submit="save_event"
-                class="grid gap-3 sm:grid-cols-2"
-              >
-                <.input field={@event_form[:handle]} label="Handle (internal)" />
-                <.input
-                  type="text"
-                  name={"timeline_element[title][#{@locale}]"}
-                  value={LocalizedForm.value(@event_form, :title, @locale)}
-                  label={"Title (#{@locale})"}
-                />
-                <.input field={@event_form[:position]} type="number" label="Position" />
-                <div class="sm:col-span-2">
-                  <.input
-                    type="textarea"
-                    name={"timeline_element[narrative][#{@locale}]"}
-                    value={LocalizedForm.value(@event_form, :narrative, @locale)}
-                    label={"Narrative (#{@locale}, Markdown)"}
-                  />
-                </div>
-                <div class="sm:col-span-2">
-                  <.input
-                    type="textarea"
-                    name={"timeline_element[director_notes][#{@locale}]"}
-                    value={LocalizedForm.value(@event_form, :director_notes, @locale)}
-                    label={"Director's notes (#{@locale}, GM only)"}
-                  />
-                </div>
-                <.input
-                  field={@event_form[:kind]}
-                  type="select"
-                  label="Kind"
-                  options={Enum.map(TimelineElement.kinds(), &{Phoenix.Naming.humanize(&1), &1})}
-                />
-                <.input
-                  field={@event_form[:deadline_seconds]}
-                  type="number"
-                  label="Deadline (seconds, optional)"
-                />
-                <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save element</.button>
+          <div :if={not @option_editor?} class="min-w-0 space-y-6">
+            <div class="card bg-base-200">
+              <div class="card-body">
+                <div class="flex items-center justify-between">
+                  <h3 class="font-semibold">
+                    {if @editing_event,
+                      do: "Edit element — #{@editing_event.handle}",
+                      else: "New element"}
+                  </h3>
                   <button
-                    :if={@editing_event}
+                    :if={@can_edit? and @editing_event}
                     type="button"
-                    phx-click="new_event"
-                    class="btn btn-ghost"
+                    phx-click="delete_timeline_element"
+                    phx-value-id={@editing_event.id}
+                    data-confirm="Delete this timeline element and all its options?"
+                    class="btn btn-xs btn-error btn-soft"
                   >
-                    Cancel
+                    Delete
                   </button>
                 </div>
-              </.form>
+                <.form
+                  for={@event_form}
+                  phx-change="track_localized"
+                  phx-submit="save_event"
+                  class="grid gap-3 sm:grid-cols-2"
+                >
+                  <fieldset disabled={not @can_edit?} class="contents">
+                    <.input field={@event_form[:handle]} label="Handle (internal)" />
+                    <.input
+                      type="text"
+                      name={"timeline_element[title][#{@locale}]"}
+                      value={LocalizedForm.value(@event_form, :title, @locale)}
+                      label={"Title (#{@locale})"}
+                    />
+                    <.input field={@event_form[:position]} type="number" label="Position" />
+                    <div class="sm:col-span-2">
+                      <.input
+                        type="textarea"
+                        name={"timeline_element[narrative][#{@locale}]"}
+                        value={LocalizedForm.value(@event_form, :narrative, @locale)}
+                        label={"Narrative (#{@locale}, Markdown)"}
+                      />
+                    </div>
+                    <div class="sm:col-span-2">
+                      <.input
+                        type="textarea"
+                        name={"timeline_element[director_notes][#{@locale}]"}
+                        value={LocalizedForm.value(@event_form, :director_notes, @locale)}
+                        label={"Director's notes (#{@locale}, GM only)"}
+                      />
+                    </div>
+                    <.input
+                      field={@event_form[:kind]}
+                      type="select"
+                      label="Kind"
+                      options={Enum.map(TimelineElement.kinds(), &{Phoenix.Naming.humanize(&1), &1})}
+                    />
+                    <.input
+                      field={@event_form[:deadline_seconds]}
+                      type="number"
+                      label="Deadline (seconds, optional)"
+                    />
+                    <div class="flex gap-2 sm:col-span-2">
+                      <.button variant="primary">Save element</.button>
+                      <button
+                        :if={@editing_event}
+                        type="button"
+                        phx-click="new_event"
+                        class="btn btn-ghost"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </fieldset>
+                </.form>
+              </div>
             </div>
-          </div>
 
-          <%!-- Options for the opened timeline_element --%>
-          <div
-            :if={@selected_timeline_element}
-            class="rounded-box border border-base-300 p-4 space-y-6"
-          >
-            <div class="flex items-center justify-between">
+            <%!-- Options for the opened timeline_element --%>
+            <div
+              :if={@selected_timeline_element}
+              class="rounded-box border border-base-300 p-4 space-y-6"
+            >
               <h3 class="text-lg font-semibold">
                 Options — {I18n.t!(@selected_timeline_element.title, @locale, default: "element")}
                 <span class="badge badge-sm ml-2">{@selected_timeline_element.kind}</span>
               </h3>
-              <button type="button" phx-click="close_event" class="btn btn-xs btn-ghost">
-                Close
-              </button>
-            </div>
 
-            <%!-- Event: one option set per group --%>
-            <div :if={@selected_timeline_element.kind == :event} class="space-y-6">
-              <p :if={@groups == []} class="opacity-70">Add at least one group first.</p>
+              <%!-- Event: one option set per group --%>
+              <div :if={@selected_timeline_element.kind == :event} class="space-y-6">
+                <p :if={@groups == []} class="opacity-70">Add at least one group first.</p>
 
-              <div :for={group <- @groups} class="space-y-2">
+                <div :for={group <- @groups} class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-medium">{I18n.t!(group.name, @locale, default: group.handle)}</h4>
+                    <button
+                      :if={@can_edit?}
+                      type="button"
+                      phx-click="new_option"
+                      phx-value-group={group.id}
+                      class="btn btn-xs"
+                    >
+                      + Option
+                    </button>
+                  </div>
+
+                  <ul class="space-y-1">
+                    <.option_row
+                      :for={o <- options_for_group(@options, group.id)}
+                      option={o}
+                      locale={@locale}
+                      value_index={@value_index}
+                      groups_index={@groups_index}
+                      can_edit?={@can_edit?}
+                    />
+                    <li :if={options_for_group(@options, group.id) == []} class="text-xs opacity-60">
+                      No options for this group yet.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <%!-- Election: one ballot for the whole room --%>
+              <div :if={@selected_timeline_element.kind == :election} class="space-y-2">
                 <div class="flex items-center justify-between">
-                  <h4 class="font-medium">{I18n.t!(group.name, @locale, default: group.handle)}</h4>
-                  <button
-                    :if={@can_edit?}
-                    type="button"
-                    phx-click="new_option"
-                    phx-value-group={group.id}
-                    class="btn btn-xs"
-                  >
+                  <h4 class="font-medium">Ballot options (all players vote; majority wins)</h4>
+                  <button :if={@can_edit?} type="button" phx-click="new_option" class="btn btn-xs">
                     + Option
                   </button>
                 </div>
 
                 <ul class="space-y-1">
                   <.option_row
-                    :for={o <- options_for_group(@options, group.id)}
+                    :for={o <- @options}
                     option={o}
                     locale={@locale}
                     value_index={@value_index}
                     groups_index={@groups_index}
                     can_edit?={@can_edit?}
                   />
-                  <li :if={options_for_group(@options, group.id) == []} class="text-xs opacity-60">
-                    No options for this group yet.
-                  </li>
+                  <li :if={@options == []} class="text-xs opacity-60">No ballot options yet.</li>
                 </ul>
               </div>
-            </div>
 
-            <%!-- Election: one ballot for the whole room --%>
-            <div :if={@selected_timeline_element.kind == :election} class="space-y-2">
-              <div class="flex items-center justify-between">
-                <h4 class="font-medium">Ballot options (all players vote; majority wins)</h4>
-                <button :if={@can_edit?} type="button" phx-click="new_option" class="btn btn-xs">
-                  + Option
-                </button>
-              </div>
+              <%!-- Sidequest: success / failure outcome bundles --%>
+              <div :if={@selected_timeline_element.kind == :sidequest} class="space-y-4">
+                <div :for={outcome <- [:success, :failure]} class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-medium">{Phoenix.Naming.humanize(outcome)}</h4>
+                    <button
+                      :if={@can_edit? and outcome_option(@options, outcome) == nil}
+                      type="button"
+                      phx-click="new_outcome"
+                      phx-value-outcome={outcome}
+                      class="btn btn-xs"
+                    >
+                      + Define {outcome}
+                    </button>
+                  </div>
 
-              <ul class="space-y-1">
-                <.option_row
-                  :for={o <- @options}
-                  option={o}
-                  locale={@locale}
-                  value_index={@value_index}
-                  groups_index={@groups_index}
-                  can_edit?={@can_edit?}
-                />
-                <li :if={@options == []} class="text-xs opacity-60">No ballot options yet.</li>
-              </ul>
-            </div>
-
-            <%!-- Sidequest: success / failure outcome bundles --%>
-            <div :if={@selected_timeline_element.kind == :sidequest} class="space-y-4">
-              <div :for={outcome <- [:success, :failure]} class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <h4 class="font-medium">{Phoenix.Naming.humanize(outcome)}</h4>
-                  <button
-                    :if={@can_edit? and outcome_option(@options, outcome) == nil}
-                    type="button"
-                    phx-click="new_outcome"
-                    phx-value-outcome={outcome}
-                    class="btn btn-xs"
-                  >
-                    + Define {outcome}
-                  </button>
+                  <ul class="space-y-1">
+                    <.option_row
+                      :if={outcome_option(@options, outcome)}
+                      option={outcome_option(@options, outcome)}
+                      locale={@locale}
+                      value_index={@value_index}
+                      groups_index={@groups_index}
+                      can_edit?={@can_edit?}
+                    />
+                    <li :if={outcome_option(@options, outcome) == nil} class="text-xs opacity-60">
+                      Not defined yet{if outcome == :failure,
+                        do: " (optional — failing may simply cost the opportunity)"}.
+                    </li>
+                  </ul>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <ul class="space-y-1">
-                  <.option_row
-                    :if={outcome_option(@options, outcome)}
-                    option={outcome_option(@options, outcome)}
-                    locale={@locale}
-                    value_index={@value_index}
-                    groups_index={@groups_index}
-                    can_edit?={@can_edit?}
-                  />
-                  <li :if={outcome_option(@options, outcome) == nil} class="text-xs opacity-60">
-                    Not defined yet{if outcome == :failure,
-                      do: " (optional — failing may simply cost the opportunity)"}.
+          <%!-- Option editor (replaces the pane — variant A) --%>
+          <div :if={@option_editor?} class="min-w-0 space-y-4">
+            <div class="flex items-center gap-3">
+              <button type="button" phx-click="cancel_option" class="btn btn-xs">← Back</button>
+              <div class="breadcrumbs p-0 text-sm">
+                <ul>
+                  <li>{@selected_timeline_element && @selected_timeline_element.handle}</li>
+                  <li class="font-medium">
+                    {(@editing_option && @editing_option.handle) || "New option"}
                   </li>
                 </ul>
               </div>
             </div>
 
             <%!-- Option editor --%>
-            <div :if={@can_edit? and @option_editor?} class="card bg-base-100 border border-base-300">
+            <div :if={@can_edit?} class="card bg-base-200">
               <div class="card-body">
                 <h4 class="font-semibold">
                   {if @editing_option, do: "Edit option", else: "New option"}
@@ -785,209 +774,200 @@ defmodule ScenexWeb.ScenarioLive.Show do
         </div>
 
         <%!-- Labels --%>
-        <div :if={@section == :labels} class="space-y-6">
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Handle</th>
-                  <th>Name ({@locale})</th>
-                  <th>Color</th>
-                  <th>Icon</th>
-                  <th>Position</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={l <- @labels}>
-                  <td class="font-medium">{l.handle}</td>
-                  <td>
-                    <span class={["badge badge-sm", label_class(l.color)]}>
-                      {I18n.t!(l.name, @locale, default: "—")}
-                    </span>
-                  </td>
-                  <td class="text-xs">{l.color}</td>
-                  <td class="text-xs">{l.icon || "—"}</td>
-                  <td>{l.position}</td>
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_label"
-                      phx-value-id={l.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_label"
-                      phx-value-id={l.id}
-                      data-confirm="Delete this label?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                <tr :if={@labels == []}>
-                  <td colspan="6" class="opacity-70">No labels yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div :if={@section == :labels} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_label"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New label
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={l <- @labels}>
+                <button
+                  type="button"
+                  phx-click="edit_label"
+                  phx-value-id={l.id}
+                  class={selected_item(@editing_label, l)}
+                >
+                  <span :if={l.icon}>{l.icon}</span>
+                  <span class={["badge badge-sm", label_class(l.color)]}>
+                    {I18n.t!(l.name, @locale, default: l.handle)}
+                  </span>
+                </button>
+              </li>
+              <li :if={@labels == []} class="menu-disabled"><span>No labels yet.</span></li>
+            </ul>
+          </aside>
 
-          <div :if={@can_edit?} class="card bg-base-200">
+          <div class="min-w-0 card bg-base-200">
             <div class="card-body">
-              <h3 class="font-semibold">{if @editing_label, do: "Edit label", else: "New label"}</h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">
+                  {if @editing_label, do: "Edit label — #{@editing_label.handle}", else: "New label"}
+                </h3>
+                <button
+                  :if={@can_edit? and @editing_label}
+                  type="button"
+                  phx-click="delete_label"
+                  phx-value-id={@editing_label.id}
+                  data-confirm="Delete this label?"
+                  class="btn btn-xs btn-error btn-soft"
+                >
+                  Delete
+                </button>
+              </div>
               <.form
                 for={@label_form}
                 phx-change="track_localized"
                 phx-submit="save_label"
                 class="grid gap-3 sm:grid-cols-2"
               >
-                <.input field={@label_form[:handle]} label="Handle (internal)" />
-                <.input
-                  type="text"
-                  name={"label[name][#{@locale}]"}
-                  value={LocalizedForm.value(@label_form, :name, @locale)}
-                  label={"Name (#{@locale})"}
-                />
-                <.input
-                  field={@label_form[:color]}
-                  type="select"
-                  label="Color"
-                  options={Enum.map(Label.colors(), &{Phoenix.Naming.humanize(&1), &1})}
-                />
-                <.input field={@label_form[:icon]} label="Icon (optional)" />
-                <.input field={@label_form[:position]} type="number" label="Position" />
-                <div class="sm:col-span-2">
+                <fieldset disabled={not @can_edit?} class="contents">
+                  <.input field={@label_form[:handle]} label="Handle (internal)" />
                   <.input
-                    type="textarea"
-                    name={"label[director_notes][#{@locale}]"}
-                    value={LocalizedForm.value(@label_form, :director_notes, @locale)}
-                    label={"Director's notes (#{@locale}, GM only)"}
+                    type="text"
+                    name={"label[name][#{@locale}]"}
+                    value={LocalizedForm.value(@label_form, :name, @locale)}
+                    label={"Name (#{@locale})"}
                   />
-                </div>
-                <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save label</.button>
-                  <button
-                    :if={@editing_label}
-                    type="button"
-                    phx-click="new_label"
-                    class="btn btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                  <.input
+                    field={@label_form[:color]}
+                    type="select"
+                    label="Color"
+                    options={Enum.map(Label.colors(), &{Phoenix.Naming.humanize(&1), &1})}
+                  />
+                  <.input field={@label_form[:icon]} label="Icon (optional)" />
+                  <.input field={@label_form[:position]} type="number" label="Position" />
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"label[director_notes][#{@locale}]"}
+                      value={LocalizedForm.value(@label_form, :director_notes, @locale)}
+                      label={"Director's notes (#{@locale}, GM only)"}
+                    />
+                  </div>
+                  <div class="flex gap-2 sm:col-span-2">
+                    <.button variant="primary">Save label</.button>
+                    <button
+                      :if={@editing_label}
+                      type="button"
+                      phx-click="new_label"
+                      class="btn btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </fieldset>
               </.form>
             </div>
           </div>
         </div>
 
         <%!-- Endings --%>
-        <div :if={@section == :endings} class="space-y-6">
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Handle</th>
-                  <th>Title ({@locale})</th>
-                  <th>Condition</th>
-                  <th>Priority</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={e <- @endings}>
-                  <td class="font-medium">{e.handle}</td>
-                  <td>{I18n.t!(e.title, @locale, default: "—")}</td>
-                  <td class="font-mono text-xs">{e.condition || "—"}</td>
-                  <td>{e.priority}</td>
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="edit_ending"
-                      phx-value-id={e.id}
-                      class="btn btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      :if={@can_edit?}
-                      type="button"
-                      phx-click="delete_ending"
-                      phx-value-id={e.id}
-                      data-confirm="Delete this ending?"
-                      class="btn btn-xs btn-error btn-soft"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-                <tr :if={@endings == []}>
-                  <td colspan="5" class="opacity-70">
-                    No endings yet. Endings are the authored final scenes — the final global
-                    values recommend which ones fit, and the GM picks.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div :if={@section == :endings} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_ending"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New ending
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={e <- @endings}>
+                <button
+                  type="button"
+                  phx-click="edit_ending"
+                  phx-value-id={e.id}
+                  class={selected_item(@editing_ending, e)}
+                >
+                  <span class="truncate">{e.handle}</span>
+                  <span :if={e.condition} class="badge badge-xs badge-ghost font-mono">
+                    {e.priority}
+                  </span>
+                </button>
+              </li>
+              <li :if={@endings == []} class="menu-disabled">
+                <span>No endings yet — the authored final scenes.</span>
+              </li>
+            </ul>
+          </aside>
 
-          <div :if={@can_edit?} class="card bg-base-200">
+          <div class="min-w-0 card bg-base-200">
             <div class="card-body">
-              <h3 class="font-semibold">
-                {if @editing_ending, do: "Edit ending", else: "New ending"}
-              </h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">
+                  {if @editing_ending,
+                    do: "Edit ending — #{@editing_ending.handle}",
+                    else: "New ending"}
+                </h3>
+                <button
+                  :if={@can_edit? and @editing_ending}
+                  type="button"
+                  phx-click="delete_ending"
+                  phx-value-id={@editing_ending.id}
+                  data-confirm="Delete this ending?"
+                  class="btn btn-xs btn-error btn-soft"
+                >
+                  Delete
+                </button>
+              </div>
               <.form
                 for={@ending_form}
                 phx-change="track_localized"
                 phx-submit="save_ending"
                 class="grid gap-3 sm:grid-cols-2"
               >
-                <.input field={@ending_form[:handle]} label="Handle (internal)" />
-                <.input
-                  type="text"
-                  name={"ending[title][#{@locale}]"}
-                  value={LocalizedForm.value(@ending_form, :title, @locale)}
-                  label={"Title (#{@locale})"}
-                />
-                <div class="sm:col-span-2">
+                <fieldset disabled={not @can_edit?} class="contents">
+                  <.input field={@ending_form[:handle]} label="Handle (internal)" />
                   <.input
-                    type="textarea"
-                    name={"ending[narrative][#{@locale}]"}
-                    value={LocalizedForm.value(@ending_form, :narrative, @locale)}
-                    label={"Narrative (#{@locale}, Markdown)"}
+                    type="text"
+                    name={"ending[title][#{@locale}]"}
+                    value={LocalizedForm.value(@ending_form, :title, @locale)}
+                    label={"Title (#{@locale})"}
                   />
-                </div>
-                <div class="sm:col-span-2">
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"ending[narrative][#{@locale}]"}
+                      value={LocalizedForm.value(@ending_form, :narrative, @locale)}
+                      label={"Narrative (#{@locale}, Markdown)"}
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"ending[director_notes][#{@locale}]"}
+                      value={LocalizedForm.value(@ending_form, :director_notes, @locale)}
+                      label={"Director's notes (#{@locale}, GM only)"}
+                    />
+                  </div>
                   <.input
-                    type="textarea"
-                    name={"ending[director_notes][#{@locale}]"}
-                    value={LocalizedForm.value(@ending_form, :director_notes, @locale)}
-                    label={"Director's notes (#{@locale}, GM only)"}
+                    field={@ending_form[:condition]}
+                    label="Condition (optional — global(key) only)"
+                    placeholder="e.g. global(risk) >= 8"
                   />
-                </div>
-                <.input
-                  field={@ending_form[:condition]}
-                  label="Condition (optional — global(key) only)"
-                  placeholder="e.g. global(risk) >= 8"
-                />
-                <.input field={@ending_form[:priority]} type="number" label="Priority (higher first)" />
-                <div class="flex gap-2 sm:col-span-2">
-                  <.button variant="primary">Save ending</.button>
-                  <button
-                    :if={@editing_ending}
-                    type="button"
-                    phx-click="new_ending"
-                    class="btn btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                  <.input
+                    field={@ending_form[:priority]}
+                    type="number"
+                    label="Priority (higher first)"
+                  />
+                  <div class="flex gap-2 sm:col-span-2">
+                    <.button variant="primary">Save ending</.button>
+                    <button
+                      :if={@editing_ending}
+                      type="button"
+                      phx-click="new_ending"
+                      class="btn btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </fieldset>
               </.form>
             </div>
           </div>
@@ -1443,10 +1423,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
           else: Authoring.create_value_dimension(socket.assigns.scenario, attrs)
 
       case result do
-        {:ok, _vd} ->
+        {:ok, vd} ->
           {:noreply,
            socket
-           |> assign_value_form(%ValueDimension{})
+           |> assign_value_form(vd)
            |> reload()
            |> put_flash(:info, "Value saved.")}
 
@@ -1485,10 +1465,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
           else: Authoring.create_group(socket.assigns.scenario, attrs)
 
       case result do
-        {:ok, _group} ->
+        {:ok, group} ->
           {:noreply,
            socket
-           |> assign_group_form(%Group{})
+           |> assign_group_form(group)
            |> reload()
            |> put_flash(:info, "Group saved.")}
 
@@ -1531,7 +1511,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   end
 
   def handle_event("new_event", _params, socket) do
-    {:noreply, assign_event_form(socket, %TimelineElement{})}
+    {:noreply, socket |> close_event() |> assign_event_form(%TimelineElement{})}
   end
 
   def handle_event("save_event", %{"timeline_element" => params}, socket) do
@@ -1546,12 +1526,17 @@ defmodule ScenexWeb.ScenarioLive.Show do
           else: Authoring.create_timeline_element(socket.assigns.scenario, attrs)
 
       case result do
-        {:ok, _event} ->
+        {:ok, event} ->
           {:noreply,
            socket
-           |> assign_event_form(%TimelineElement{})
+           |> assign(
+             selected_timeline_element: event,
+             selected_timeline_element_id: event.id
+           )
+           |> assign_event_form(event)
+           |> reload_options(event)
            |> reload()
-           |> put_flash(:info, "TimelineElement saved.")}
+           |> put_flash(:info, "Timeline element saved.")}
 
         {:error, changeset} ->
           {:noreply, assign(socket, :event_form, to_form(changeset, as: :timeline_element))}
@@ -1582,6 +1567,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
        selected_timeline_element: timeline_element,
        selected_timeline_element_id: timeline_element.id
      )
+     |> assign_event_form(timeline_element)
      |> cancel_option()
      |> reload_options(timeline_element)}
   end
@@ -1685,9 +1671,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
           else: Authoring.create_label(socket.assigns.scenario, attrs)
 
       case result do
-        {:ok, _label} ->
+        {:ok, label} ->
           {:noreply,
-           socket |> assign_label_form(%Label{}) |> reload() |> put_flash(:info, "Label saved.")}
+           socket |> assign_label_form(label) |> reload() |> put_flash(:info, "Label saved.")}
 
         {:error, changeset} ->
           {:noreply, assign(socket, :label_form, to_form(changeset, as: :label))}
@@ -1724,10 +1710,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
           else: Authoring.create_ending(socket.assigns.scenario, attrs)
 
       case result do
-        {:ok, _ending} ->
+        {:ok, ending} ->
           {:noreply,
            socket
-           |> assign_ending_form(%Ending{})
+           |> assign_ending_form(ending)
            |> reload()
            |> put_flash(:info, "Ending saved.")}
 
@@ -1977,17 +1963,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp per_group_values(value_dimensions),
     do: Enum.filter(value_dimensions, &(&1.input_scope == :per_group))
 
-  defp fmt_range(%{min: min, max: max}) do
-    if is_nil(min) and is_nil(max), do: "—", else: "#{fmt_num(min)}–#{fmt_num(max)}"
-  end
-
   defp fmt_num(nil), do: "∗"
   defp fmt_num(number), do: to_string(number)
 
   defp options_for_group(options, group_id),
     do: Enum.filter(options, &(&1.group_id == group_id))
 
-  defp fmt_deadline(nil), do: "—"
   defp fmt_deadline(seconds), do: "#{seconds}s"
 
   defp fmt_effects([], _value_index, _groups_index, _locale), do: ""
@@ -2091,6 +2072,18 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # The members section (invitations, roles) is owner-only.
   def sections(:owner), do: @sections ++ [:members]
   def sections(_role), do: @sections
+
+  # ── Master-detail layout ──────────────────────────────────────────────
+  # Left: sticky, independently scrolling item list. Right: the editor pane,
+  # always starting at the top — selecting an item never requires scrolling.
+
+  defp master_detail_grid, do: "grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start"
+
+  defp sidebar_classes,
+    do: "space-y-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+
+  defp selected_item(%{id: id}, %{id: id}), do: "menu-active"
+  defp selected_item(_editing, _item), do: nil
 
   # ── Media helpers ─────────────────────────────────────────────────────
 

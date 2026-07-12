@@ -208,6 +208,41 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html =~ "Aggressive"
     end
 
+    test "the option editor replaces the element pane and Back returns", %{
+      conn: conn,
+      scenario: scenario
+    } do
+      group = group_fixture(scenario, name: %{"en" => "Government"})
+      element = timeline_element_fixture(scenario, title: %{"en" => "Blackout"})
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=timeline]") |> render_click()
+
+      # Selecting an element in the sidebar shows its editor + options.
+      html =
+        lv
+        |> element(~s{button[phx-click=open_event][phx-value-id="#{element.id}"]})
+        |> render_click()
+
+      assert html =~ "Edit element —"
+      assert html =~ "Options — Blackout"
+
+      # Opening an option swaps the pane: breadcrumb + back, element form gone.
+      html =
+        lv
+        |> element(~s{button[phx-click=new_option][phx-value-group="#{group.id}"]})
+        |> render_click()
+
+      assert html =~ "← Back"
+      assert html =~ "New option"
+      refute html =~ "Edit element —"
+
+      # Back restores the element pane.
+      html = lv |> element("button[phx-click=cancel_option]", "← Back") |> render_click()
+      refute html =~ "← Back"
+      assert html =~ "Edit element —"
+    end
+
     test "adds a decision option with an effect and a label", %{conn: conn, scenario: scenario} do
       value = value_dimension_fixture(scenario, key: "stability", name: %{"en" => "Stability"})
       group = group_fixture(scenario, name: %{"en" => "Government"})
