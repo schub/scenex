@@ -201,6 +201,26 @@ defmodule Scenex.Play do
     group_ids != [] and Enum.all?(group_ids, &get_in(snapshot.decisions, [id, &1]))
   end
 
+  @doc """
+  The still-fresh delta for a board cell (or, with `group_id` nil, a global),
+  or nil once the scenario's highlight window has passed. Freshness runs on
+  the game clock, so pausing keeps a fresh change visible.
+  """
+  def recent_delta(snapshot, value_id, group_id \\ nil) do
+    change =
+      case group_id do
+        nil -> snapshot.global_changes[value_id]
+        group_id -> snapshot.value_changes[{value_id, group_id}]
+      end
+
+    with {delta, at} <- change,
+         true <- snapshot.game_time_ms - at <= snapshot.definition.change_highlight_ms do
+      delta
+    else
+      _ -> nil
+    end
+  end
+
   # ── Gates (player-side) ───────────────────────────────────────────────
 
   @doc """

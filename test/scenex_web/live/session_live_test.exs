@@ -100,15 +100,23 @@ defmodule ScenexWeb.SessionLiveTest do
   test "creating a session from the index opens the console", %{conn: conn, scenario: scenario} do
     {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/sessions")
     assert html =~ "Premiere"
+    assert html =~ "Play language"
 
     assert {:ok, _console, html} =
              lv
-             |> form("#new-session", %{"session" => %{"label" => "Second night"}})
+             |> form("#new-session", %{
+               "session" => %{"label" => "Second night", "locale" => "de"}
+             })
              |> render_submit()
              |> follow_redirect(conn)
 
     assert html =~ "Second night"
     assert html =~ "GM console"
+
+    assert Enum.any?(
+             Play.list_sessions(scenario),
+             &(&1.label == "Second night" and &1.locale == "de")
+           )
   end
 
   test "running a full session through the console", ctx do
@@ -134,6 +142,7 @@ defmodule ScenexWeb.SessionLiveTest do
       |> render_click()
 
     assert html =~ "7"
+    assert html =~ "(+2)"
 
     # Election: tally + winner -> gov 9
     lv

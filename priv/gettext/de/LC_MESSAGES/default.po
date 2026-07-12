@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Aktionen"
+
+msgid "Attempting to reconnect"
+msgstr "Verbindung wird wiederhergestellt"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Confirm decision"
+msgstr "Entscheidung bestätigen"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "Entscheidung bestätigt — nur die Spielleitung kann sie jetzt noch ändern."
+
+msgid "Global"
+msgstr "Gesamt"
+
+msgid "Group"
+msgstr "Gruppe"
+
+msgid "Lock in your decision?"
+msgstr "Entscheidung verbindlich abgeben?"
+
+msgid "Result"
+msgstr "Ergebnis"
+
+msgid "Something went wrong!"
+msgstr "Etwas ist schiefgelaufen!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "Die Zeit ist abgelaufen — diese Entscheidung ist geschlossen."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "Die Session ist beendet. Danke fürs Mitspielen!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "Die Session hat noch nicht begonnen — einen Moment noch."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "Die Session ist pausiert — Entscheidungen sind wieder möglich, sobald es weitergeht."
+
+msgid "The show will begin shortly."
+msgstr "Die Show beginnt in Kürze."
+
+msgid "This code is not valid (anymore)."
+msgstr "Dieser Code ist nicht (mehr) gültig."
+
+msgid "This didn't go through — please try again."
+msgstr "Das hat nicht geklappt — bitte versucht es noch einmal."
+
+msgid "This option can't be chosen right now."
+msgstr "Diese Option kann gerade nicht gewählt werden."
+
+msgid "We can't find the internet"
+msgstr "Keine Internetverbindung"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "Eure Entscheidung ist verbindlich — wendet euch zum Ändern an die Spielleitung."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "Eure Gruppe kann das danach nicht mehr ändern — nur die Spielleitung."
+
+msgid "close"
+msgstr "schließen"
+
+msgid "closed"
+msgstr "geschlossen"
+
+msgid "decided"
+msgstr "entschieden"
+
+msgid "draft"
+msgstr "Entwurf"
+
+msgid "ended"
+msgstr "beendet"
+
+msgid "live"
+msgstr "live"
+
+msgid "paused"
+msgstr "pausiert"

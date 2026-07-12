@@ -23,6 +23,7 @@ defmodule Scenex.Play.Session do
 
   schema "sessions" do
     field :label, :string
+    field :locale, :string
     field :status, Ecto.Enum, values: @statuses, default: :draft
     field :game_time_ms, :integer, default: 0
     field :clock_started_at, :utc_datetime_usec
@@ -36,8 +37,11 @@ defmodule Scenex.Play.Session do
 
   def changeset(session, attrs) do
     session
-    |> cast(attrs, [:scenario_id, :label, :created_by_id])
+    |> cast(attrs, [:scenario_id, :label, :locale, :created_by_id])
     |> validate_required([:scenario_id, :label])
+    |> validate_format(:locale, ~r/^[a-z]{2}(-[A-Za-z]{2,})?$/,
+      message: "must be a locale code like \"en\" or \"pt-BR\""
+    )
     |> assoc_constraint(:scenario)
   end
 end

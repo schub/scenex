@@ -30,7 +30,7 @@ defmodule ScenexWeb.PlayLive.Group do
           {I18n.t!(@group.name, @locale, default: @group.handle)}
         </h1>
         <div class="flex items-center gap-3">
-          <span class={["badge", status_badge(@snap.status)]}>{@snap.status}</span>
+          <span class={["badge", status_badge(@snap.status)]}>{status_label(@snap.status)}</span>
           <span class="font-mono text-2xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
         </div>
       </div>
@@ -55,13 +55,15 @@ defmodule ScenexWeb.PlayLive.Group do
                 :for={vd <- value_dims(@snap)}
                 class="text-right text-lg tabular-nums font-semibold"
               >
-                {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}
+                {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}<.value_delta change={
+                  Play.recent_delta(@snap, vd.id, @group.id)
+                } />
               </td>
             </tr>
             <tr class="opacity-70">
-              <td>Global</td>
+              <td>{gettext("Global")}</td>
               <td :for={vd <- value_dims(@snap)} class="text-right text-lg tabular-nums">
-                {fmt_num(@snap.globals[vd.id])}
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
               </td>
             </tr>
           </tbody>
@@ -69,15 +71,15 @@ defmodule ScenexWeb.PlayLive.Group do
       </div>
 
       <p :if={@snap.status == :draft} class="mt-8 text-center text-lg opacity-70">
-        The session hasn't started yet — hold tight.
+        {gettext("The session hasn't started yet — hold tight.")}
       </p>
 
       <p :if={@snap.status == :paused} class="mt-8 text-center text-lg opacity-70">
-        ⏸ The session is paused — decisions reopen when play resumes.
+        ⏸ {gettext("The session is paused — decisions reopen when play resumes.")}
       </p>
 
       <p :if={@snap.status == :ended} class="mt-8 text-center text-lg opacity-70">
-        The session has ended. Thank you for playing.
+        {gettext("The session has ended. Thank you for playing.")}
       </p>
 
       <%!-- Open decisions, newest first --%>
@@ -140,14 +142,14 @@ defmodule ScenexWeb.PlayLive.Group do
             :if={locked?(@snap, element.id, @group.id)}
             class="text-sm font-medium text-success"
           >
-            ✓ Decision confirmed — only the game master can change it now.
+            ✓ {gettext("Decision confirmed — only the game master can change it now.")}
           </p>
 
           <p
             :if={expired?(@snap, element) and not locked?(@snap, element.id, @group.id)}
             class="text-xs opacity-60"
           >
-            The deadline has passed — this decision is closed.
+            {gettext("The deadline has passed — this decision is closed.")}
           </p>
         </section>
       </div>
@@ -155,22 +157,22 @@ defmodule ScenexWeb.PlayLive.Group do
       <%!-- Styled confirm dialog for the pending choice --%>
       <div :if={option = pending_option(@snap, @pending)} class="modal modal-open" role="dialog">
         <div class="modal-box space-y-4">
-          <h3 class="text-xl font-bold">Lock in your decision?</h3>
+          <h3 class="text-xl font-bold">{gettext("Lock in your decision?")}</h3>
           <p class="rounded-box bg-base-200 p-3 text-base font-medium">
             {I18n.t!(option.text, @locale, default: option.handle)}
           </p>
           <p class="text-sm opacity-70">
-            Your group cannot change this afterwards — only the game master can.
+            {gettext("Your group cannot change this afterwards — only the game master can.")}
           </p>
           <div class="modal-action">
-            <button phx-click="cancel_choice" class="btn btn-lg">Cancel</button>
+            <button phx-click="cancel_choice" class="btn btn-lg">{gettext("Cancel")}</button>
             <button
               phx-click="choose"
               phx-value-element={@pending.element_id}
               phx-value-option={@pending.option_id}
               class="btn btn-lg btn-primary"
             >
-              Confirm decision
+              {gettext("Confirm decision")}
             </button>
           </div>
         </div>
@@ -190,7 +192,8 @@ defmodule ScenexWeb.PlayLive.Group do
         end
 
         snap = Play.snapshot(token.session_id)
-        scenario_locale = snap.definition.value_dimensions |> locale_from(token)
+        locale = play_locale(token)
+        Gettext.put_locale(ScenexWeb.Gettext, locale)
 
         {:ok,
          socket
@@ -198,7 +201,7 @@ defmodule ScenexWeb.PlayLive.Group do
            token: token,
            group: token.group,
            session_id: token.session_id,
-           locale: scenario_locale,
+           locale: locale,
            page_title: token.group.handle,
            snap: snap,
            pending: nil
@@ -207,14 +210,15 @@ defmodule ScenexWeb.PlayLive.Group do
       _ ->
         {:ok,
          socket
-         |> put_flash(:error, "This code is not valid (anymore).")
+         |> put_flash(:error, gettext("This code is not valid (anymore)."))
          |> push_navigate(to: ~p"/")}
     end
   end
 
-  # v1: play in the session's source locale.
-  defp locale_from(_value_dimensions, token) do
-    Scenex.Authoring.get_scenario!(token.session.scenario_id).source_locale
+  # The session's play language; falls back to the scenario's source locale.
+  defp play_locale(token) do
+    token.session.locale ||
+      Scenex.Authoring.get_scenario!(token.session.scenario_id).source_locale
   end
 
   # Step 1: the tap — hold the choice as pending and open the confirm modal.
@@ -252,8 +256,9 @@ defmodule ScenexWeb.PlayLive.Group do
           {:ok, snap} ->
             {:noreply, assign(socket, :snap, snap)}
 
-          {:error, reason} ->
-            {:noreply, put_flash(socket, :error, "Rejected: #{inspect(reason)}")}
+          {:error, _reason} ->
+            {:noreply,
+             put_flash(socket, :error, gettext("This didn't go through — please try again."))}
         end
 
       :ignore ->
@@ -315,10 +320,10 @@ defmodule ScenexWeb.PlayLive.Group do
         :ignore
 
       locked?(snap, element_id, group_id) ->
-        "Your decision is locked — ask the game master to change it."
+        gettext("Your decision is locked — ask the game master to change it.")
 
       not choosable?(snap, element, option, group_id) ->
-        "This option can't be chosen right now."
+        gettext("This option can't be chosen right now.")
 
       true ->
         nil
@@ -376,7 +381,7 @@ defmodule ScenexWeb.PlayLive.Group do
     end
   end
 
-  defp fmt_deadline_left(ms) when ms <= 0, do: "closed"
+  defp fmt_deadline_left(ms) when ms <= 0, do: gettext("closed")
   defp fmt_deadline_left(ms), do: fmt_clock(ms)
 
   # ── Formatting ────────────────────────────────────────────────────────
@@ -385,6 +390,11 @@ defmodule ScenexWeb.PlayLive.Group do
   defp status_badge(:live), do: "badge-success"
   defp status_badge(:paused), do: "badge-warning"
   defp status_badge(:ended), do: "badge-neutral"
+
+  defp status_label(:draft), do: gettext("draft")
+  defp status_label(:live), do: gettext("live")
+  defp status_label(:paused), do: gettext("paused")
+  defp status_label(:ended), do: gettext("ended")
 
   defp fmt_clock(ms) do
     total_seconds = div(max(ms, 0), 1000)

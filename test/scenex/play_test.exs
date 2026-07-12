@@ -241,6 +241,52 @@ defmodule Scenex.PlayTest do
     assert after_restart.sim.group_values == before.sim.group_values
     assert after_restart.tallies == before.tallies
     assert after_restart.globals == before.globals
+    assert after_restart.value_changes == before.value_changes
+    assert after_restart.global_changes == before.global_changes
+  end
+
+  test "board changes are tracked per cell with game-time stamps (latest wins)", ctx do
+    %{session: session} = ctx
+
+    {:ok, _} = Play.start_session(session.id)
+    {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+    {:ok, snap} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+    # Crack: gov stability 5 -> 7, global avg 5 -> 6; media untouched.
+    assert {2.0, _at} = snap.value_changes[{ctx.stability.id, ctx.gov.id}]
+    assert Play.recent_delta(snap, ctx.stability.id, ctx.gov.id) == 2.0
+    assert Play.recent_delta(snap, ctx.stability.id) == 1.0
+    assert Play.recent_delta(snap, ctx.stability.id, ctx.media.id) == nil
+
+    # Correction: Talk replaces Crack (gov 7 -> 4); only the latest change shows.
+    {:ok, snap} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.talk.id)
+    assert Play.recent_delta(snap, ctx.stability.id, ctx.gov.id) == -3.0
+
+    # Tallies move the per-participant global too; a first reading appears
+    # out of nowhere and gets no delta.
+    {:ok, snap} = Play.record_tally(session.id, ctx.wellbeing.id, %{"4" => 4})
+    assert Play.recent_delta(snap, ctx.wellbeing.id) == nil
+
+    {:ok, snap} = Play.record_tally(session.id, ctx.wellbeing.id, %{"2" => 4})
+    assert Play.recent_delta(snap, ctx.wellbeing.id) == -2.0
+  end
+
+  test "change markers expire after the scenario's highlight window", ctx do
+    # A 0-second window: the marker is stale as soon as the clock moves.
+    {:ok, _} = Authoring.update_scenario(ctx.scenario, %{change_highlight_seconds: 0})
+    {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Short window"})
+    on_exit(fn -> Play.stop_running(session.id) end)
+
+    {:ok, _} = Play.start_session(session.id)
+    {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+    {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+    wait_until(fn ->
+      Play.recent_delta(Play.snapshot(session.id), ctx.stability.id, ctx.gov.id) == nil
+    end)
+
+    # The change itself stays recorded — only the marker faded.
+    assert {2.0, _at} = Play.snapshot(session.id).value_changes[{ctx.stability.id, ctx.gov.id}]
   end
 
   test "two sessions of the same scenario are isolated", ctx do

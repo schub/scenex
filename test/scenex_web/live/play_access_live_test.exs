@@ -156,6 +156,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       html = lv |> element(~s{.modal button[phx-click=choose]}) |> render_click()
       assert html =~ "7"
+      # The fresh change is marked next to the value.
+      assert html =~ "(+2)"
       refute html =~ "Lock in your decision?"
 
       snap = Play.snapshot(ctx.session.id)
@@ -254,12 +256,14 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _} =
         Play.resolve_election(ctx.session.id, ctx.election.id, ctx.yes.id, %{ctx.yes.id => 23})
 
-      # Declared: result + votes appear, the countdown gives way to "decided".
+      # Declared: result + votes appear, the countdown gives way to "decided",
+      # and the board marks the fresh +2 on the government row.
       html = render(lv)
       assert html =~ "Result"
       assert html =~ "Yes to the plan"
       assert html =~ "23"
       assert html =~ "decided"
+      assert html =~ "(+2)"
       refute html =~ "⏱"
     end
 
@@ -278,6 +282,20 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Well-being"
       assert html =~ "3.8"
       assert html =~ "😀"
+    end
+
+    test "audience screens speak the session's play language", ctx do
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Berlin", locale: "de"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      # Chrome in German; untranslated content falls back to English.
+      assert html =~ "Die Show beginnt in Kürze."
+      assert html =~ "Gruppe"
+      assert html =~ "Entwurf"
+      assert html =~ "Government"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do

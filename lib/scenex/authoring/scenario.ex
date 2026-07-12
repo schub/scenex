@@ -21,6 +21,7 @@ defmodule Scenex.Authoring.Scenario do
     field :director_notes, :map, default: %{}
     field :source_locale, :string, default: "en"
     field :visibility, Ecto.Enum, values: @visibilities, default: :draft
+    field :change_highlight_seconds, :integer, default: 30
 
     has_many :memberships, ScenarioMembership
     has_many :endings, Scenex.Authoring.Ending
@@ -34,8 +35,17 @@ defmodule Scenex.Authoring.Scenario do
 
   def changeset(scenario, attrs) do
     scenario
-    |> cast(attrs, [:handle, :name, :description, :director_notes, :source_locale, :visibility])
-    |> validate_required([:handle, :source_locale])
+    |> cast(attrs, [
+      :handle,
+      :name,
+      :description,
+      :director_notes,
+      :source_locale,
+      :visibility,
+      :change_highlight_seconds
+    ])
+    |> validate_required([:handle, :source_locale, :change_highlight_seconds])
+    |> validate_number(:change_highlight_seconds, greater_than_or_equal_to: 0)
     |> validate_localized_required(:name)
     |> validate_format(:source_locale, ~r/^[a-z]{2}(-[A-Za-z]{2,})?$/,
       message: "must be a locale code like \"en\" or \"pt-BR\""

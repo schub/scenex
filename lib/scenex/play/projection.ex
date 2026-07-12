@@ -11,6 +11,12 @@ defmodule Scenex.Play.Projection do
 
   Pure — no Ecto, no processes. The same fold runs in the session process and
   in its replay-on-restart.
+
+  Every event that moves a board value also records the move in
+  `value_changes` / `global_changes` (latest change per cell, stamped with
+  the event's game time), so all screens can show a transient "(+2)" without
+  timers — freshness is a render-time comparison against the game clock, and
+  replay rebuilds the same deltas.
   """
 
   alias Scenex.Engine.Sim
@@ -26,6 +32,8 @@ defmodule Scenex.Play.Projection do
     decisions: %{},
     tallies: %{},
     vote_tallies: %{},
+    value_changes: %{},
+    global_changes: %{},
     ending_id: nil
   ]
 
@@ -39,7 +47,11 @@ defmodule Scenex.Play.Projection do
   @doc "Fold one session event (struct or map with `type`/`payload`/`game_time_ms`)."
   def apply_event(%__MODULE__{} = projection, %{type: type, payload: payload} = event) do
     game_time_ms = Map.get(event, :game_time_ms, 0)
-    projection |> handle(type, payload, game_time_ms) |> recompute()
+
+    projection
+    |> handle(type, payload, game_time_ms)
+    |> recompute()
+    |> record_changes(projection, game_time_ms)
   end
 
   def globals(%__MODULE__{sim: sim}), do: Sim.globals(sim)
@@ -186,6 +198,41 @@ defmodule Scenex.Play.Projection do
 
     %{p | sim: sim, sims_before: sims_before}
   end
+
+  # ── Change tracking ───────────────────────────────────────────────────
+  # Diff the board before/after one event; keep the latest change per cell
+  # (a newer change replaces an older one), stamped with the event's game
+  # time. Corrections diff against the *recomputed* history, so they show
+  # exactly what the correction did to the visible board.
+
+  defp record_changes(%__MODULE__{} = new, %__MODULE__{} = old, game_time_ms) do
+    value_changes =
+      for spec <- new.definition.specs,
+          spec.input_scope == :per_group,
+          group_id <- new.definition.group_ids,
+          delta =
+            cell_delta(Sim.get(old.sim, spec.key, group_id), Sim.get(new.sim, spec.key, group_id)),
+          reduce: new.value_changes do
+        acc -> Map.put(acc, {spec.key, group_id}, {delta, game_time_ms})
+      end
+
+    old_globals = Sim.globals(old.sim)
+    new_globals = Sim.globals(new.sim)
+
+    global_changes =
+      for spec <- new.definition.specs,
+          delta = cell_delta(old_globals[spec.key], new_globals[spec.key]),
+          reduce: new.global_changes do
+        acc -> Map.put(acc, spec.key, {delta, game_time_ms})
+      end
+
+    %{new | value_changes: value_changes, global_changes: global_changes}
+  end
+
+  # The delta between two cell readings, or nil when nothing (relevant)
+  # changed. A value appearing out of nowhere (first tally) has no delta.
+  defp cell_delta(old, new) when is_number(old) and is_number(new) and old != new, do: new - old
+  defp cell_delta(_old, _new), do: nil
 
   defp apply_option(sim, nil, _per_group_ids), do: sim
 

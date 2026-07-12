@@ -21,7 +21,9 @@ defmodule ScenexWeb.PlayLive.Display do
         <div class="flex items-baseline justify-between">
           <h1 class="text-4xl font-bold">{@session_label}</h1>
           <div class="flex items-center gap-3">
-            <span class={["badge badge-lg", status_badge(@snap.status)]}>{@snap.status}</span>
+            <span class={["badge badge-lg", status_badge(@snap.status)]}>
+              {status_label(@snap.status)}
+            </span>
             <span class="font-mono text-3xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
           </div>
         </div>
@@ -31,7 +33,7 @@ defmodule ScenexWeb.PlayLive.Display do
           <table class="table table-lg">
             <thead>
               <tr>
-                <th class="text-lg">Group</th>
+                <th class="text-lg">{gettext("Group")}</th>
                 <th :for={vd <- value_dims(@snap)} class="text-right text-lg">
                   {I18n.t!(vd.name, @locale, default: vd.key)}
                 </th>
@@ -44,13 +46,17 @@ defmodule ScenexWeb.PlayLive.Display do
                   :for={vd <- value_dims(@snap)}
                   class={["text-right text-xl tabular-nums", cell_class(@snap.sim, vd, g.id)]}
                 >
-                  {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}
+                  {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}<.value_delta change={
+                    Play.recent_delta(@snap, vd.id, g.id)
+                  } />
                 </td>
               </tr>
               <tr class="border-t-2 border-base-300 text-2xl font-bold">
-                <td>Global</td>
+                <td>{gettext("Global")}</td>
                 <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
-                  {fmt_num(@snap.globals[vd.id])}
+                  {fmt_num(@snap.globals[vd.id])}<.value_delta change={
+                    Play.recent_delta(@snap, vd.id)
+                  } />
                 </td>
               </tr>
             </tbody>
@@ -66,7 +72,9 @@ defmodule ScenexWeb.PlayLive.Display do
             <div class="text-sm opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
             <div class="flex items-baseline justify-center gap-3">
               <span class="text-3xl">{tally_face(@snap.globals[vd.id])}</span>
-              <span class="text-3xl font-bold tabular-nums">{fmt_num(@snap.globals[vd.id])}</span>
+              <span class="text-3xl font-bold tabular-nums">
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
+              </span>
             </div>
           </div>
         </section>
@@ -89,7 +97,7 @@ defmodule ScenexWeb.PlayLive.Display do
               :if={Play.element_decided?(@snap, element)}
               class="badge badge-lg badge-success ml-2 align-middle"
             >
-              ✓ decided
+              ✓ {gettext("decided")}
             </span>
             <span
               :if={!Play.element_decided?(@snap, element) && deadline_left(@snap, element)}
@@ -106,7 +114,7 @@ defmodule ScenexWeb.PlayLive.Display do
             class="rounded-box bg-base-100 p-4 space-y-2"
           >
             <div class="flex flex-wrap items-baseline gap-3">
-              <span class="badge badge-lg badge-success">Result</span>
+              <span class="badge badge-lg badge-success">{gettext("Result")}</span>
               <span class="text-2xl font-bold">
                 {I18n.t!(winner.text, @locale, default: winner.handle)}
               </span>
@@ -124,7 +132,7 @@ defmodule ScenexWeb.PlayLive.Display do
         </section>
 
         <p :if={@snap.status == :draft} class="text-center text-2xl opacity-60">
-          The show will begin shortly.
+          {gettext("The show will begin shortly.")}
         </p>
       </div>
     </Layouts.play>
@@ -141,13 +149,15 @@ defmodule ScenexWeb.PlayLive.Display do
         end
 
         scenario = Scenex.Authoring.get_scenario!(token.session.scenario_id)
+        locale = token.session.locale || scenario.source_locale
+        Gettext.put_locale(ScenexWeb.Gettext, locale)
 
         {:ok,
          socket
          |> assign(
            session_id: token.session_id,
            session_label: token.session.label,
-           locale: scenario.source_locale,
+           locale: locale,
            page_title: token.session.label,
            snap: Play.snapshot(token.session_id)
          )}
@@ -155,7 +165,7 @@ defmodule ScenexWeb.PlayLive.Display do
       _ ->
         {:ok,
          socket
-         |> put_flash(:error, "This code is not valid (anymore).")
+         |> put_flash(:error, gettext("This code is not valid (anymore)."))
          |> push_navigate(to: ~p"/")}
     end
   end
@@ -235,6 +245,11 @@ defmodule ScenexWeb.PlayLive.Display do
   defp status_badge(:live), do: "badge-success"
   defp status_badge(:paused), do: "badge-warning"
   defp status_badge(:ended), do: "badge-neutral"
+
+  defp status_label(:draft), do: gettext("draft")
+  defp status_label(:live), do: gettext("live")
+  defp status_label(:paused), do: gettext("paused")
+  defp status_label(:ended), do: gettext("ended")
 
   defp fmt_clock(ms) do
     total_seconds = div(max(ms, 0), 1000)

@@ -399,6 +399,8 @@ defmodule Scenex.Play.SessionServer do
       decisions: state.projection.decisions,
       tallies: state.projection.tallies,
       vote_tallies: state.projection.vote_tallies,
+      value_changes: state.projection.value_changes,
+      global_changes: state.projection.global_changes,
       ending_id: state.projection.ending_id,
       game_time_ms: current_game_time(state.session),
       definition: state.definition

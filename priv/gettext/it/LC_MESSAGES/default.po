@@ -1,0 +1,90 @@
+## "msgid"s in this file come from POT (.pot) files.
+## Run "mix gettext.extract --merge" to keep it up to date.
+msgid ""
+msgstr ""
+"Language: it\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Actions"
+msgstr "Azioni"
+
+msgid "Attempting to reconnect"
+msgstr "Tentativo di riconnessione in corso"
+
+msgid "Cancel"
+msgstr "Annulla"
+
+msgid "Confirm decision"
+msgstr "Conferma la decisione"
+
+msgid "Decision confirmed — only the game master can change it now."
+msgstr "Decisione confermata — ora solo il game master può modificarla."
+
+msgid "Global"
+msgstr "Globale"
+
+msgid "Group"
+msgstr "Gruppo"
+
+msgid "Lock in your decision?"
+msgstr "Confermare definitivamente la decisione?"
+
+msgid "Result"
+msgstr "Risultato"
+
+msgid "Something went wrong!"
+msgstr "Qualcosa è andato storto!"
+
+msgid "The deadline has passed — this decision is closed."
+msgstr "Il tempo è scaduto — questa decisione è chiusa."
+
+msgid "The session has ended. Thank you for playing."
+msgstr "La sessione è terminata. Grazie per aver giocato!"
+
+msgid "The session hasn't started yet — hold tight."
+msgstr "La sessione non è ancora iniziata — un attimo di pazienza."
+
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr "La sessione è in pausa — le decisioni riapriranno alla ripresa del gioco."
+
+msgid "The show will begin shortly."
+msgstr "Lo spettacolo inizierà a breve."
+
+msgid "This code is not valid (anymore)."
+msgstr "Questo codice non è (più) valido."
+
+msgid "This didn't go through — please try again."
+msgstr "Non è andata a buon fine — riprovate."
+
+msgid "This option can't be chosen right now."
+msgstr "Questa opzione non può essere scelta al momento."
+
+msgid "We can't find the internet"
+msgstr "Nessuna connessione a internet"
+
+msgid "Your decision is locked — ask the game master to change it."
+msgstr "La vostra decisione è bloccata — chiedete al game master di modificarla."
+
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr "Il vostro gruppo non potrà più cambiarla — solo il game master."
+
+msgid "close"
+msgstr "chiudi"
+
+msgid "closed"
+msgstr "chiusa"
+
+msgid "decided"
+msgstr "deciso"
+
+msgid "draft"
+msgstr "bozza"
+
+msgid "ended"
+msgstr "terminata"
+
+msgid "live"
+msgstr "in corso"
+
+msgid "paused"
+msgstr "in pausa"

@@ -15,7 +15,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   alias ScenexWeb.LocalizedForm
 
   @sections ~w(settings values groups initial timeline labels endings)a
-  @locale_choices ~w(en de pt es it)
+  @locale_choices Scenex.I18n.locales()
 
   @impl true
   def render(assigns) do
@@ -106,6 +106,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
               options={[{"Draft", :draft}, {"Invite only", :invite_only}, {"Published", :published}]}
             />
             <.input field={@settings_form[:source_locale]} label="Source locale" />
+            <.input
+              field={@settings_form[:change_highlight_seconds]}
+              type="number"
+              min="0"
+              label="Change highlight (seconds a value change stays marked on the boards)"
+            />
             <.button :if={@can_edit?} variant="primary">Save settings</.button>
           </.form>
         </div>

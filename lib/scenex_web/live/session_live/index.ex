@@ -21,6 +21,13 @@ defmodule ScenexWeb.SessionLive.Index do
 
       <.form for={@form} id="new-session" phx-submit="create" class="mt-6 flex items-end gap-3">
         <.input field={@form[:label]} label="New session (venue / date)" class="w-72" />
+        <.input
+          field={@form[:locale]}
+          type="select"
+          label="Play language (audience screens)"
+          options={I18n.locale_options()}
+          class="w-44"
+        />
         <.button variant="primary" phx-disable-with="Creating…">Create session</.button>
       </.form>
 
@@ -59,7 +66,10 @@ defmodule ScenexWeb.SessionLive.Index do
         {:ok,
          socket
          |> assign(scenario: scenario, role: role, page_title: "Sessions")
-         |> assign(:form, to_form(%{"label" => ""}, as: :session))
+         |> assign(
+           :form,
+           to_form(%{"label" => "", "locale" => scenario.source_locale}, as: :session)
+         )
          |> reload()}
 
       _ ->
@@ -71,10 +81,11 @@ defmodule ScenexWeb.SessionLive.Index do
   end
 
   @impl true
-  def handle_event("create", %{"session" => %{"label" => label}}, socket) do
+  def handle_event("create", %{"session" => %{"label" => label} = params}, socket) do
     user = socket.assigns.current_scope.user
+    attrs = %{label: label, locale: params["locale"] || socket.assigns.scenario.source_locale}
 
-    case Play.create_session(user, socket.assigns.scenario, %{label: label}) do
+    case Play.create_session(user, socket.assigns.scenario, attrs) do
       {:ok, session} ->
         {:noreply, push_navigate(socket, to: ~p"/sessions/#{session.id}/console")}
 

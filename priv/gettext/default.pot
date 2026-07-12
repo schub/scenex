@@ -1,0 +1,159 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/scenex_web/components/core_components.ex:405
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr ""
+
+#: lib/scenex_web/components/layouts.ex:122
+#: lib/scenex_web/components/layouts.ex:134
+#, elixir-autogen, elixir-format
+msgid "Attempting to reconnect"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:168
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:175
+#, elixir-autogen, elixir-format
+msgid "Confirm decision"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:145
+#, elixir-autogen, elixir-format
+msgid "Decision confirmed — only the game master can change it now."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:55
+#: lib/scenex_web/live/play_live/group.ex:64
+#, elixir-autogen, elixir-format
+msgid "Global"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:36
+#, elixir-autogen, elixir-format
+msgid "Group"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:160
+#, elixir-autogen, elixir-format
+msgid "Lock in your decision?"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:117
+#, elixir-autogen, elixir-format
+msgid "Result"
+msgstr ""
+
+#: lib/scenex_web/components/layouts.ex:129
+#, elixir-autogen, elixir-format
+msgid "Something went wrong!"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:152
+#, elixir-autogen, elixir-format
+msgid "The deadline has passed — this decision is closed."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:82
+#, elixir-autogen, elixir-format
+msgid "The session has ended. Thank you for playing."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:74
+#, elixir-autogen, elixir-format
+msgid "The session hasn't started yet — hold tight."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:78
+#, elixir-autogen, elixir-format
+msgid "The session is paused — decisions reopen when play resumes."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:135
+#, elixir-autogen, elixir-format
+msgid "The show will begin shortly."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:168
+#: lib/scenex_web/live/play_live/group.ex:213
+#, elixir-autogen, elixir-format
+msgid "This code is not valid (anymore)."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:261
+#, elixir-autogen, elixir-format
+msgid "This didn't go through — please try again."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:326
+#, elixir-autogen, elixir-format
+msgid "This option can't be chosen right now."
+msgstr ""
+
+#: lib/scenex_web/components/layouts.ex:117
+#, elixir-autogen, elixir-format
+msgid "We can't find the internet"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:323
+#, elixir-autogen, elixir-format
+msgid "Your decision is locked — ask the game master to change it."
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:165
+#, elixir-autogen, elixir-format
+msgid "Your group cannot change this afterwards — only the game master can."
+msgstr ""
+
+#: lib/scenex_web/components/core_components.ex:74
+#, elixir-autogen, elixir-format
+msgid "close"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/group.ex:384
+#, elixir-autogen, elixir-format
+msgid "closed"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:100
+#, elixir-autogen, elixir-format
+msgid "decided"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:249
+#: lib/scenex_web/live/play_live/group.ex:394
+#, elixir-autogen, elixir-format
+msgid "draft"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:252
+#: lib/scenex_web/live/play_live/group.ex:397
+#, elixir-autogen, elixir-format
+msgid "ended"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:250
+#: lib/scenex_web/live/play_live/group.ex:395
+#, elixir-autogen, elixir-format
+msgid "live"
+msgstr ""
+
+#: lib/scenex_web/live/play_live/display.ex:251
+#: lib/scenex_web/live/play_live/group.ex:396
+#, elixir-autogen, elixir-format
+msgid "paused"
+msgstr ""
