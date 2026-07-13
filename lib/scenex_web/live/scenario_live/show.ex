@@ -1388,7 +1388,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # ── Values ────────────────────────────────────────────────────────────
 
   def handle_event("edit_value", %{"id" => id}, socket) do
-    {:noreply, assign_value_form(socket, Authoring.get_value_dimension!(id))}
+    case Authoring.get_value_dimension(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      value -> {:noreply, assign_value_form(socket, value)}
+    end
   end
 
   def handle_event("new_value", _params, socket) do
@@ -1438,15 +1441,24 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_value", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_value_dimension!() |> Authoring.delete_value_dimension()
-      {:noreply, socket |> assign_value_form(%ValueDimension{}) |> reload()}
+      case Authoring.get_value_dimension(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        value ->
+          Authoring.delete_value_dimension(value)
+          {:noreply, socket |> assign_value_form(%ValueDimension{}) |> reload()}
+      end
     end)
   end
 
   # ── Groups ────────────────────────────────────────────────────────────
 
   def handle_event("edit_group", %{"id" => id}, socket) do
-    {:noreply, assign_group_form(socket, Authoring.get_group!(id))}
+    case Authoring.get_group(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      group -> {:noreply, assign_group_form(socket, group)}
+    end
   end
 
   def handle_event("new_group", _params, socket) do
@@ -1480,8 +1492,14 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_group", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_group!() |> Authoring.delete_group()
-      {:noreply, socket |> assign_group_form(%Group{}) |> reload()}
+      case Authoring.get_group(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        group ->
+          Authoring.delete_group(group)
+          {:noreply, socket |> assign_group_form(%Group{}) |> reload()}
+      end
     end)
   end
 
@@ -1507,7 +1525,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
   # ── Events ────────────────────────────────────────────────────────────
 
   def handle_event("edit_event", %{"id" => id}, socket) do
-    {:noreply, assign_event_form(socket, Authoring.get_timeline_element!(id))}
+    case Authoring.get_timeline_element(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      element -> {:noreply, assign_event_form(socket, element)}
+    end
   end
 
   def handle_event("new_event", _params, socket) do
@@ -1546,30 +1567,39 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_timeline_element", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      timeline_element = Authoring.get_timeline_element!(id)
-      Authoring.delete_timeline_element(timeline_element)
+      case Authoring.get_timeline_element(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
 
-      socket =
-        if socket.assigns.selected_timeline_element_id == id,
-          do: close_event(socket),
-          else: socket
+        timeline_element ->
+          Authoring.delete_timeline_element(timeline_element)
 
-      {:noreply, socket |> assign_event_form(%TimelineElement{}) |> reload()}
+          socket =
+            if socket.assigns.selected_timeline_element_id == id,
+              do: close_event(socket),
+              else: socket
+
+          {:noreply, socket |> assign_event_form(%TimelineElement{}) |> reload()}
+      end
     end)
   end
 
   def handle_event("open_event", %{"id" => id}, socket) do
-    timeline_element = Authoring.get_timeline_element!(id)
+    case Authoring.get_timeline_element(socket.assigns.scenario, id) do
+      nil ->
+        {:noreply, socket}
 
-    {:noreply,
-     socket
-     |> assign(
-       selected_timeline_element: timeline_element,
-       selected_timeline_element_id: timeline_element.id
-     )
-     |> assign_event_form(timeline_element)
-     |> cancel_option()
-     |> reload_options(timeline_element)}
+      timeline_element ->
+        {:noreply,
+         socket
+         |> assign(
+           selected_timeline_element: timeline_element,
+           selected_timeline_element_id: timeline_element.id
+         )
+         |> assign_event_form(timeline_element)
+         |> cancel_option()
+         |> reload_options(timeline_element)}
+    end
   end
 
   def handle_event("close_event", _params, socket) do
@@ -1594,8 +1624,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
   end
 
   def handle_event("edit_option", %{"id" => id}, socket) do
-    option = Authoring.get_decision_option!(id)
-    {:noreply, assign_option_form(socket, option, option.group_id)}
+    case Authoring.get_decision_option(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      option -> {:noreply, assign_option_form(socket, option, option.group_id)}
+    end
   end
 
   def handle_event("cancel_option", _params, socket) do
@@ -1644,15 +1676,24 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_option", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_decision_option!() |> Authoring.delete_decision_option()
-      {:noreply, socket |> cancel_option() |> reload()}
+      case Authoring.get_decision_option(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        option ->
+          Authoring.delete_decision_option(option)
+          {:noreply, socket |> cancel_option() |> reload()}
+      end
     end)
   end
 
   # ── Labels ────────────────────────────────────────────────────────────
 
   def handle_event("edit_label", %{"id" => id}, socket) do
-    {:noreply, assign_label_form(socket, Authoring.get_label!(id))}
+    case Authoring.get_label(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      label -> {:noreply, assign_label_form(socket, label)}
+    end
   end
 
   def handle_event("new_label", _params, socket) do
@@ -1683,15 +1724,24 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_label", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_label!() |> Authoring.delete_label()
-      {:noreply, socket |> assign_label_form(%Label{}) |> reload()}
+      case Authoring.get_label(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        label ->
+          Authoring.delete_label(label)
+          {:noreply, socket |> assign_label_form(%Label{}) |> reload()}
+      end
     end)
   end
 
   # ── Endings ───────────────────────────────────────────────────────────
 
   def handle_event("edit_ending", %{"id" => id}, socket) do
-    {:noreply, assign_ending_form(socket, Authoring.get_ending!(id))}
+    case Authoring.get_ending(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      ending -> {:noreply, assign_ending_form(socket, ending)}
+    end
   end
 
   def handle_event("new_ending", _params, socket) do
@@ -1725,8 +1775,14 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("delete_ending", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      id |> Authoring.get_ending!() |> Authoring.delete_ending()
-      {:noreply, socket |> assign_ending_form(%Ending{}) |> reload()}
+      case Authoring.get_ending(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        ending ->
+          Authoring.delete_ending(ending)
+          {:noreply, socket |> assign_ending_form(%Ending{}) |> reload()}
+      end
     end)
   end
 

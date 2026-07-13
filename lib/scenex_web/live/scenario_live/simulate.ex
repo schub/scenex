@@ -19,7 +19,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
   alias Scenex.Engine.{Condition, Sim}
   alias Scenex.I18n
 
-  @locale_choices ~w(en de pt es it)
+  @locale_choices Scenex.I18n.locales()
 
   @impl true
   def render(assigns) do
