@@ -260,6 +260,12 @@ defmodule Scenex.Authoring do
 
   def get_value_dimension!(id), do: Repo.get!(ValueDimension, id)
 
+  @doc "Fetch a value dimension **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_value_dimension(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id),
+      do: Repo.get_by(ValueDimension, id: uuid, scenario_id: scenario.id)
+  end
+
   def create_value_dimension(%Scenario{} = scenario, attrs) do
     scenario
     |> Ecto.build_assoc(:value_dimensions)
@@ -293,6 +299,11 @@ defmodule Scenex.Authoring do
   end
 
   def get_group!(id), do: Repo.get!(Group, id)
+
+  @doc "Fetch a group **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_group(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id), do: Repo.get_by(Group, id: uuid, scenario_id: scenario.id)
+  end
 
   def create_group(%Scenario{} = scenario, attrs) do
     scenario
@@ -338,6 +349,12 @@ defmodule Scenex.Authoring do
 
   def get_timeline_element!(id), do: Repo.get!(TimelineElement, id)
 
+  @doc "Fetch a timeline element **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_timeline_element(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id),
+      do: Repo.get_by(TimelineElement, id: uuid, scenario_id: scenario.id)
+  end
+
   def create_timeline_element(%Scenario{} = scenario, attrs) do
     scenario
     |> Ecto.build_assoc(:timeline_elements)
@@ -375,6 +392,22 @@ defmodule Scenex.Authoring do
 
   def get_decision_option!(id),
     do: Repo.get!(DecisionOption, id) |> Repo.preload([:labels, :effects])
+
+  @doc """
+  Fetch a decision option **within** `scenario` (joined through its timeline
+  element), labels and effects preloaded, or nil. Use for request-scoped reads.
+  """
+  def get_decision_option(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id) do
+      Repo.one(
+        from o in DecisionOption,
+          join: e in TimelineElement,
+          on: e.id == o.timeline_element_id,
+          where: o.id == ^uuid and e.scenario_id == ^scenario.id,
+          preload: [:labels, :effects]
+      )
+    end
+  end
 
   @doc """
   Create an option on a timeline element. `group` is the deciding group for
@@ -488,6 +521,11 @@ defmodule Scenex.Authoring do
 
   def get_label!(id), do: Repo.get!(Label, id)
 
+  @doc "Fetch a label **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_label(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id), do: Repo.get_by(Label, id: uuid, scenario_id: scenario.id)
+  end
+
   def create_label(%Scenario{} = scenario, attrs) do
     scenario
     |> Ecto.build_assoc(:labels)
@@ -514,6 +552,11 @@ defmodule Scenex.Authoring do
 
   def get_ending!(id), do: Repo.get!(Ending, id)
 
+  @doc "Fetch an ending **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_ending(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id), do: Repo.get_by(Ending, id: uuid, scenario_id: scenario.id)
+  end
+
   def create_ending(%Scenario{} = scenario, attrs) do
     scenario
     |> Ecto.build_assoc(:endings)
@@ -530,4 +573,15 @@ defmodule Scenex.Authoring do
   def delete_ending(%Ending{} = ending), do: Repo.delete(ending)
 
   def change_ending(%Ending{} = ending, attrs \\ %{}), do: Ending.changeset(ending, attrs)
+
+  # ── Internal ──────────────────────────────────────────────────────────────
+
+  # Cast a client-supplied id to a canonical UUID, or nil when malformed — so
+  # scenario-scoped getters return "not found" instead of raising on garbage.
+  defp valid_uuid(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
 end
