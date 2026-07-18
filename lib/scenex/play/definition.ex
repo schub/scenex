@@ -33,7 +33,15 @@ defmodule Scenex.Play.Definition do
   """
   def load(%Scenario{} = scenario, group_ids \\ nil) do
     value_dimensions = Authoring.list_value_dimensions(scenario)
-    groups = Authoring.list_groups(scenario) |> filter_groups(group_ids)
+
+    # Archived groups stay loadable here: a session that selected (or, for
+    # legacy full-pool sessions, historically played with) a since-archived
+    # group must replay and render identically forever.
+    groups =
+      scenario
+      |> Authoring.list_groups(include_archived: true)
+      |> filter_groups(group_ids)
+
     selected = MapSet.new(groups, & &1.id)
     elements = Authoring.list_timeline_elements(scenario)
 

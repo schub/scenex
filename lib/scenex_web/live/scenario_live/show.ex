@@ -1498,16 +1498,26 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
         group ->
           case Authoring.delete_group(group) do
-            {:ok, _} ->
-              {:noreply, socket |> assign_group_form(%Group{}) |> reload()}
+            {:ok, %Group{archived_at: nil}} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, "Group deleted.")
+               |> assign_group_form(%Group{})
+               |> reload()}
+
+            {:ok, %Group{}} ->
+              {:noreply,
+               socket
+               |> put_flash(
+                 :info,
+                 "This group was used in a session, so it was archived instead of " <>
+                   "deleted — existing sessions keep it, new ones won't see it."
+               )
+               |> assign_group_form(%Group{})
+               |> reload()}
 
             {:error, _changeset} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 "This group is part of a session and cannot be deleted."
-               )}
+              {:noreply, put_flash(socket, :error, "This group could not be deleted right now.")}
           end
       end
     end)

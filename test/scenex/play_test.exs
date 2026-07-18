@@ -471,7 +471,15 @@ defmodule Scenex.PlayTest do
       refute fringe.id in snap.sim.groups
     end
 
-    test "a session without a selection plays with the full pool", ctx do
+    test "no explicit selection snapshots the active pool as rows", ctx do
+      assert Enum.sort(Play.session_group_ids(ctx.session)) ==
+               Enum.sort([ctx.gov.id, ctx.media.id])
+    end
+
+    test "legacy sessions (no rows at all) play with the full pool", ctx do
+      # Sessions from before group selection existed have no session_groups.
+      Repo.delete_all(Scenex.Play.SessionGroup)
+
       assert Play.session_group_ids(ctx.session) == nil
 
       snap = Play.snapshot(ctx.session.id)
@@ -508,22 +516,49 @@ defmodule Scenex.PlayTest do
       assert {:error, :group_not_in_session} = Play.create_group_token(session, fringe)
       assert {:ok, _} = Play.create_group_token(session, ctx.gov)
 
-      # Full-pool sessions (no selection) issue tokens for any group.
+      # Legacy full-pool sessions (no rows) issue tokens for any group.
+      Repo.delete_all(Scenex.Play.SessionGroup)
       assert {:ok, _} = Play.create_group_token(ctx.session, fringe)
     end
 
-    test "a group a session plays with cannot be deleted from the pool", ctx do
-      {:ok, _session} =
-        Play.create_session(ctx.user, ctx.scenario, %{
-          label: "Small venue",
-          group_ids: [ctx.gov.id, ctx.media.id]
-        })
+    test "deleting a group a session plays with archives it instead", ctx do
+      # ctx.session snapshotted [gov, media] at creation — gov is in use.
+      assert {:ok, %{archived_at: %DateTime{}} = archived} = Authoring.delete_group(ctx.gov)
 
-      assert {:error, changeset} = Authoring.delete_group(ctx.gov)
-      assert "is used by a session and cannot be deleted" in errors_on(changeset).id
+      # Invisible to the editor pool and not selectable for new sessions…
+      refute Enum.any?(Authoring.list_groups(ctx.scenario), &(&1.id == archived.id))
 
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "After archive",
+                 group_ids: [archived.id, ctx.media.id]
+               })
+
+      assert "must belong to this scenario" in errors_on(changeset).groups
+
+      # …but the running session keeps playing with it.
+      snap = Play.snapshot(ctx.session.id)
+      assert Map.has_key?(snap.definition.groups, archived.id)
+
+      # The freed handle is reusable (uniqueness applies to active groups only).
+      assert {:ok, _} =
+               Authoring.create_group(ctx.scenario, %{handle: "Gov", name: %{"en" => "New Gov"}})
+    end
+
+    test "a group never used by a session is deleted outright", ctx do
+      # The setup session predates Temp, so no session references it.
       unreferenced = group_fixture(ctx.scenario, handle: "Temp")
-      assert {:ok, _} = Authoring.delete_group(unreferenced)
+
+      assert {:ok, %{archived_at: nil}} = Authoring.delete_group(unreferenced)
+      assert Authoring.get_group(ctx.scenario, unreferenced.id) == nil
+    end
+
+    test "with legacy full-pool sessions around, every group counts as in use", ctx do
+      Repo.delete_all(Scenex.Play.SessionGroup)
+      late = group_fixture(ctx.scenario, handle: "Late")
+
+      # The legacy session's history could involve any of the pool.
+      assert {:ok, %{archived_at: %DateTime{}}} = Authoring.delete_group(late)
     end
   end
 end

@@ -61,9 +61,6 @@ defmodule Scenex.Play do
       )
 
     case selected_groups(scenario, group_ids) do
-      :all ->
-        Repo.insert(changeset)
-
       {:ok, groups} ->
         changeset |> Ecto.Changeset.put_assoc(:groups, groups) |> Repo.insert()
 
@@ -73,7 +70,10 @@ defmodule Scenex.Play do
     end
   end
 
-  defp selected_groups(_scenario, nil), do: :all
+  # No explicit selection: snapshot the current *active* pool as real rows,
+  # so archiving a group later can't change what this session plays with.
+  # Only pre-selection legacy rows have no session_groups at all.
+  defp selected_groups(scenario, nil), do: {:ok, Authoring.list_groups(scenario)}
 
   defp selected_groups(scenario, group_ids) when is_list(group_ids) do
     pool = Map.new(Authoring.list_groups(scenario), &{&1.id, &1})
