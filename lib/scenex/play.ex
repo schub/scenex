@@ -12,9 +12,10 @@ defmodule Scenex.Play do
   import Ecto.Query, warn: false
 
   alias Scenex.Accounts.User
+  alias Scenex.Authoring
   alias Scenex.Authoring.{Group, Scenario}
   alias Scenex.Engine.{Condition, Sim}
-  alias Scenex.Play.{CapabilityToken, Session, SessionEvent, SessionServer}
+  alias Scenex.Play.{CapabilityToken, Session, SessionEvent, SessionGroup, SessionServer}
   alias Scenex.Repo
 
   # ── Sessions (rows) ───────────────────────────────────────────────────
@@ -41,15 +42,61 @@ defmodule Scenex.Play do
     role == :owner or (role == :author and session.created_by_id == user.id)
   end
 
-  @doc "Create a session (status `:draft`); the creator acts as its GM."
+  @doc """
+  Create a session (status `:draft`); the creator acts as its GM.
+
+  `attrs` may carry `group_ids` — the subset of the scenario's group pool
+  playing in this show (minimum two, venues seat different head counts).
+  Without it the session plays with all groups. The selection is fixed at
+  creation: the event log replays against it, so it must never change.
+  """
   def create_session(%User{} = user, %Scenario{} = scenario, attrs) do
-    %Session{}
-    |> Session.changeset(
-      attrs
-      |> Map.new(fn {k, v} -> {to_string(k), v} end)
-      |> Map.merge(%{"scenario_id" => scenario.id, "created_by_id" => user.id})
-    )
-    |> Repo.insert()
+    attrs = Map.new(attrs, fn {k, v} -> {to_string(k), v} end)
+    {group_ids, attrs} = Map.pop(attrs, "group_ids")
+
+    changeset =
+      Session.changeset(
+        %Session{},
+        Map.merge(attrs, %{"scenario_id" => scenario.id, "created_by_id" => user.id})
+      )
+
+    case selected_groups(scenario, group_ids) do
+      :all ->
+        Repo.insert(changeset)
+
+      {:ok, groups} ->
+        changeset |> Ecto.Changeset.put_assoc(:groups, groups) |> Repo.insert()
+
+      {:error, message} ->
+        {:error,
+         changeset |> Ecto.Changeset.add_error(:groups, message) |> Map.put(:action, :insert)}
+    end
+  end
+
+  defp selected_groups(_scenario, nil), do: :all
+
+  defp selected_groups(scenario, group_ids) when is_list(group_ids) do
+    pool = Map.new(Authoring.list_groups(scenario), &{&1.id, &1})
+    ids = Enum.uniq(group_ids)
+
+    cond do
+      not Enum.all?(ids, &Map.has_key?(pool, &1)) -> {:error, "must belong to this scenario"}
+      length(ids) < 2 -> {:error, "select at least two groups"}
+      true -> {:ok, Enum.map(ids, &pool[&1])}
+    end
+  end
+
+  @doc """
+  The ids of the groups playing in this session, or `nil` when the session
+  plays with the scenario's full pool (no selection recorded).
+  """
+  def session_group_ids(%Session{} = session) do
+    case Repo.all(
+           from sg in SessionGroup, where: sg.session_id == ^session.id, select: sg.group_id
+         ) do
+      [] -> nil
+      ids -> ids
+    end
   end
 
   def change_session(%Session{} = session, attrs \\ %{}), do: Session.changeset(session, attrs)
@@ -123,14 +170,20 @@ defmodule Scenex.Play do
 
   @doc "Write access for exactly one group in exactly one session."
   def create_group_token(%Session{} = session, %Group{} = group) do
-    %CapabilityToken{}
-    |> CapabilityToken.changeset(%{
-      session_id: session.id,
-      kind: :group,
-      group_id: group.id,
-      token: CapabilityToken.generate()
-    })
-    |> Repo.insert()
+    ids = session_group_ids(session)
+
+    if is_list(ids) and group.id not in ids do
+      {:error, :group_not_in_session}
+    else
+      %CapabilityToken{}
+      |> CapabilityToken.changeset(%{
+        session_id: session.id,
+        kind: :group,
+        group_id: group.id,
+        token: CapabilityToken.generate()
+      })
+      |> Repo.insert()
+    end
   end
 
   @doc "Read-only access for the projected board."

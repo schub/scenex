@@ -47,7 +47,12 @@ defmodule Scenex.Play.SessionServer do
   @impl true
   def init(session_id) do
     session = Repo.get!(Session, session_id)
-    definition = Definition.load(Authoring.get_scenario!(session.scenario_id))
+
+    definition =
+      Definition.load(
+        Authoring.get_scenario!(session.scenario_id),
+        Scenex.Play.session_group_ids(session)
+      )
 
     events =
       Repo.all(from e in SessionEvent, where: e.session_id == ^session_id, order_by: e.sequence)

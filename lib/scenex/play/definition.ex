@@ -25,13 +25,27 @@ defmodule Scenex.Play.Definition do
 
   @type t :: %__MODULE__{}
 
-  def load(%Scenario{} = scenario) do
+  @doc """
+  Load the snapshot, optionally restricted to a session's group selection
+  (`group_ids` nil = the full pool). Excluded groups vanish entirely: no
+  board row, no seeded values, no decision options — and effects aimed at
+  them no-op because their cells never exist in the sim.
+  """
+  def load(%Scenario{} = scenario, group_ids \\ nil) do
     value_dimensions = Authoring.list_value_dimensions(scenario)
-    groups = Authoring.list_groups(scenario)
+    groups = Authoring.list_groups(scenario) |> filter_groups(group_ids)
+    selected = MapSet.new(groups, & &1.id)
     elements = Authoring.list_timeline_elements(scenario)
 
     options_by_element =
-      Map.new(elements, fn e -> {e.id, Authoring.list_decision_options(e)} end)
+      Map.new(elements, fn e ->
+        options =
+          e
+          |> Authoring.list_decision_options()
+          |> Enum.filter(&(is_nil(&1.group_id) or MapSet.member?(selected, &1.group_id)))
+
+        {e.id, options}
+      end)
 
     options =
       for {_eid, opts} <- options_by_element, o <- opts, into: %{}, do: {o.id, o}
@@ -66,5 +80,12 @@ defmodule Scenex.Play.Definition do
   @doc "A fresh sim seeded with the scenario's starting values."
   def initial_sim(%__MODULE__{} = definition) do
     Sim.new(definition.specs, definition.group_ids, definition.initial)
+  end
+
+  defp filter_groups(groups, nil), do: groups
+
+  defp filter_groups(groups, group_ids) do
+    selected = MapSet.new(group_ids)
+    Enum.filter(groups, &MapSet.member?(selected, &1.id))
   end
 end

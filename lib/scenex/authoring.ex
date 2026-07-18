@@ -315,7 +315,17 @@ defmodule Scenex.Authoring do
   def update_group(%Group{} = group, attrs),
     do: group |> Group.changeset(attrs) |> Repo.update()
 
-  def delete_group(%Group{} = group), do: Repo.delete(group)
+  # Sessions reference their selected groups (`session_groups`, on_delete:
+  # :restrict) — a group a show plays with must survive; delete the shows first.
+  def delete_group(%Group{} = group) do
+    group
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :session_groups_group_id_fkey,
+      message: "is used by a session and cannot be deleted"
+    )
+    |> Repo.delete()
+  end
 
   def change_group(%Group{} = group, attrs \\ %{}), do: Group.changeset(group, attrs)
 

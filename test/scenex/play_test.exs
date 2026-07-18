@@ -425,4 +425,105 @@ defmodule Scenex.PlayTest do
     session_id = session.id
     assert_receive {:session_updated, ^session_id}
   end
+
+  describe "group selection per session" do
+    test "a session runs with only its selected groups; excluded groups vanish", ctx do
+      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+      Authoring.set_group_initial_value(fringe, ctx.stability, 5.0)
+      # An event option for the excluded group and an election effect on it —
+      # both must be invisible / inert in this session.
+      {:ok, fringe_opt} =
+        Authoring.create_decision_option(ctx.event, fringe, %{
+          handle: "FringeMove",
+          text: %{"en" => "Fringe move"}
+        })
+
+      Authoring.set_option_effect(ctx.yes, ctx.stability, fringe, 5.0)
+
+      {:ok, session} =
+        Play.create_session(ctx.user, ctx.scenario, %{
+          label: "Small venue",
+          group_ids: [ctx.gov.id, ctx.media.id]
+        })
+
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      assert Enum.sort(Play.session_group_ids(session)) ==
+               Enum.sort([ctx.gov.id, ctx.media.id])
+
+      snap = Play.snapshot(session.id)
+      assert Enum.sort(snap.definition.group_ids) == Enum.sort([ctx.gov.id, ctx.media.id])
+      refute Map.has_key?(snap.definition.groups, fringe.id)
+
+      refute Enum.any?(
+               snap.definition.options_by_element[ctx.event.id],
+               &(&1.id == fringe_opt.id)
+             )
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
+      {:ok, snap} = Play.resolve_election(session.id, ctx.election.id, ctx.yes.id)
+
+      # gov 5+3=8, media 5-2=3; the +5 aimed at excluded fringe no-ops.
+      assert Sim.get(snap.sim, ctx.stability.id, ctx.gov.id) == 8.0
+      assert Sim.get(snap.sim, ctx.stability.id, ctx.media.id) == 3.0
+      assert Sim.get(snap.sim, ctx.stability.id, fringe.id) == nil
+      refute fringe.id in snap.sim.groups
+    end
+
+    test "a session without a selection plays with the full pool", ctx do
+      assert Play.session_group_ids(ctx.session) == nil
+
+      snap = Play.snapshot(ctx.session.id)
+      assert Enum.sort(snap.definition.group_ids) == Enum.sort([ctx.gov.id, ctx.media.id])
+    end
+
+    test "selections need at least two groups from this scenario", ctx do
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "Solo",
+                 group_ids: [ctx.gov.id]
+               })
+
+      assert "select at least two groups" in errors_on(changeset).groups
+
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "Alien",
+                 group_ids: [ctx.gov.id, Ecto.UUID.generate()]
+               })
+
+      assert "must belong to this scenario" in errors_on(changeset).groups
+    end
+
+    test "group tokens are only issued for selected groups", ctx do
+      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+
+      {:ok, session} =
+        Play.create_session(ctx.user, ctx.scenario, %{
+          label: "Small venue",
+          group_ids: [ctx.gov.id, ctx.media.id]
+        })
+
+      assert {:error, :group_not_in_session} = Play.create_group_token(session, fringe)
+      assert {:ok, _} = Play.create_group_token(session, ctx.gov)
+
+      # Full-pool sessions (no selection) issue tokens for any group.
+      assert {:ok, _} = Play.create_group_token(ctx.session, fringe)
+    end
+
+    test "a group a session plays with cannot be deleted from the pool", ctx do
+      {:ok, _session} =
+        Play.create_session(ctx.user, ctx.scenario, %{
+          label: "Small venue",
+          group_ids: [ctx.gov.id, ctx.media.id]
+        })
+
+      assert {:error, changeset} = Authoring.delete_group(ctx.gov)
+      assert "is used by a session and cannot be deleted" in errors_on(changeset).id
+
+      unreferenced = group_fixture(ctx.scenario, handle: "Temp")
+      assert {:ok, _} = Authoring.delete_group(unreferenced)
+    end
+  end
 end
