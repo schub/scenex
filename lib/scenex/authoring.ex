@@ -294,8 +294,18 @@ defmodule Scenex.Authoring do
 
   # ── Groups ──────────────────────────────────────────────────────────────
 
-  def list_groups(%Scenario{} = scenario) do
-    Repo.all(from g in Group, where: g.scenario_id == ^scenario.id, order_by: g.position)
+  @doc """
+  The scenario's active group pool, in position order. Archived groups are
+  invisible everywhere except to running sessions that play with them —
+  pass `include_archived: true` (the play layer's definition snapshot does).
+  """
+  def list_groups(%Scenario{} = scenario, opts \\ []) do
+    query = from g in Group, where: g.scenario_id == ^scenario.id, order_by: g.position
+
+    query =
+      if opts[:include_archived], do: query, else: from(g in query, where: is_nil(g.archived_at))
+
+    Repo.all(query)
   end
 
   def get_group!(id), do: Repo.get!(Group, id)
@@ -315,7 +325,49 @@ defmodule Scenex.Authoring do
   def update_group(%Group{} = group, attrs),
     do: group |> Group.changeset(attrs) |> Repo.update()
 
-  def delete_group(%Group{} = group), do: Repo.delete(group)
+  @doc """
+  Remove a group from the pool. Groups no session ever played with are
+  deleted outright; the rest are **archived** (`archived_at` set) — invisible
+  to the editor and to new sessions, but existing sessions keep replaying
+  with them. Check `archived_at` on the returned group to tell which
+  happened. Archived handles are reusable (partial unique index).
+  """
+  # Already archived (e.g. a double-clicked Delete): nothing left to do.
+  def delete_group(%Group{archived_at: %DateTime{}} = group), do: {:ok, group}
+
+  def delete_group(%Group{archived_at: nil} = group) do
+    if group_in_session?(group) do
+      group
+      |> Ecto.Changeset.change(archived_at: DateTime.truncate(DateTime.utc_now(), :second))
+      |> Repo.update()
+    else
+      group
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: :session_groups_group_id_fkey,
+        message: "is used by a session and cannot be deleted"
+      )
+      |> Repo.delete()
+    end
+  end
+
+  # Selected by a session — or the scenario has legacy sessions (created
+  # before per-session selections) that play the full pool, which may
+  # include this group in their history.
+  defp group_in_session?(%Group{} = group) do
+    selected? =
+      Repo.exists?(from sg in Scenex.Play.SessionGroup, where: sg.group_id == ^group.id)
+
+    legacy_full_pool? =
+      Repo.exists?(
+        from s in Scenex.Play.Session,
+          left_join: sg in Scenex.Play.SessionGroup,
+          on: sg.session_id == s.id,
+          where: s.scenario_id == ^group.scenario_id and is_nil(sg.session_id)
+      )
+
+    selected? or legacy_full_pool?
+  end
 
   def change_group(%Group{} = group, attrs \\ %{}), do: Group.changeset(group, attrs)
 

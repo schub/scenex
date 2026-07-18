@@ -97,11 +97,17 @@ defmodule ScenexWeb.SessionLiveTest do
     Map.put(fixtures, :session, session)
   end
 
-  test "creating a session from the index opens the console", %{conn: conn, scenario: scenario} do
+  test "creating a session from the index opens the console", ctx do
+    %{conn: conn, scenario: scenario} = ctx
+    opp = group_fixture(scenario, handle: "Opp", name: %{"en" => "Opposition"})
+
     {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/sessions")
     assert html =~ "Premiere"
     assert html =~ "Play language"
+    assert html =~ "Groups in this show"
+    assert html =~ "Opposition"
 
+    # Both groups are pre-checked; the default submission selects them all.
     assert {:ok, _console, html} =
              lv
              |> form("#new-session", %{
@@ -113,10 +119,23 @@ defmodule ScenexWeb.SessionLiveTest do
     assert html =~ "Second night"
     assert html =~ "GM console"
 
-    assert Enum.any?(
-             Play.list_sessions(scenario),
-             &(&1.label == "Second night" and &1.locale == "de")
-           )
+    session = Enum.find(Play.list_sessions(scenario), &(&1.label == "Second night"))
+    assert session.locale == "de"
+    assert Enum.sort(Play.session_group_ids(session)) == Enum.sort([ctx.gov.id, opp.id])
+  end
+
+  test "creating a session with fewer than two groups is refused", ctx do
+    # The fixture scenario has a single group — the pre-checked lone
+    # checkbox is below the minimum, so creation must flash, not crash.
+    {:ok, lv, _html} = live(ctx.conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
+
+    html =
+      lv
+      |> form("#new-session", %{"session" => %{"label" => "Solo night"}})
+      |> render_submit()
+
+    assert html =~ "select at least two groups"
+    refute Enum.any?(Play.list_sessions(ctx.scenario), &(&1.label == "Solo night"))
   end
 
   test "running a full session through the console", ctx do

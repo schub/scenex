@@ -513,9 +513,14 @@ defmodule ScenexWeb.SessionLive.Console do
     do: run(socket, &Play.select_ending(&1, ending_id))
 
   def handle_event("gen_group_token", %{"group" => group_id}, socket) do
-    group = socket.assigns.snap.definition.groups[group_id]
-    {:ok, _token} = Play.create_group_token(socket.assigns.session, group)
-    {:noreply, reload_tokens(socket)}
+    case socket.assigns.snap.definition.groups[group_id] do
+      nil ->
+        {:noreply, put_flash(socket, :error, "This group is not part of this session.")}
+
+      group ->
+        {:ok, _token} = Play.create_group_token(socket.assigns.session, group)
+        {:noreply, reload_tokens(socket)}
+    end
   end
 
   def handle_event("gen_display_token", _params, socket) do

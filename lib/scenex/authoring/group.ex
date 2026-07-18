@@ -17,6 +17,8 @@ defmodule Scenex.Authoring.Group do
     field :description, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :position, :integer, default: 0
+    # Soft delete (see Authoring.delete_group/1) — not castable via changeset.
+    field :archived_at, :utc_datetime
 
     belongs_to :scenario, Scenario
     has_many :initial_values, GroupInitialValue

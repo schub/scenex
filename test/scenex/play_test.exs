@@ -425,4 +425,140 @@ defmodule Scenex.PlayTest do
     session_id = session.id
     assert_receive {:session_updated, ^session_id}
   end
+
+  describe "group selection per session" do
+    test "a session runs with only its selected groups; excluded groups vanish", ctx do
+      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+      Authoring.set_group_initial_value(fringe, ctx.stability, 5.0)
+      # An event option for the excluded group and an election effect on it —
+      # both must be invisible / inert in this session.
+      {:ok, fringe_opt} =
+        Authoring.create_decision_option(ctx.event, fringe, %{
+          handle: "FringeMove",
+          text: %{"en" => "Fringe move"}
+        })
+
+      Authoring.set_option_effect(ctx.yes, ctx.stability, fringe, 5.0)
+
+      {:ok, session} =
+        Play.create_session(ctx.user, ctx.scenario, %{
+          label: "Small venue",
+          group_ids: [ctx.gov.id, ctx.media.id]
+        })
+
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      assert Enum.sort(Play.session_group_ids(session)) ==
+               Enum.sort([ctx.gov.id, ctx.media.id])
+
+      snap = Play.snapshot(session.id)
+      assert Enum.sort(snap.definition.group_ids) == Enum.sort([ctx.gov.id, ctx.media.id])
+      refute Map.has_key?(snap.definition.groups, fringe.id)
+
+      refute Enum.any?(
+               snap.definition.options_by_element[ctx.event.id],
+               &(&1.id == fringe_opt.id)
+             )
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
+      {:ok, snap} = Play.resolve_election(session.id, ctx.election.id, ctx.yes.id)
+
+      # gov 5+3=8, media 5-2=3; the +5 aimed at excluded fringe no-ops.
+      assert Sim.get(snap.sim, ctx.stability.id, ctx.gov.id) == 8.0
+      assert Sim.get(snap.sim, ctx.stability.id, ctx.media.id) == 3.0
+      assert Sim.get(snap.sim, ctx.stability.id, fringe.id) == nil
+      refute fringe.id in snap.sim.groups
+    end
+
+    test "no explicit selection snapshots the active pool as rows", ctx do
+      assert Enum.sort(Play.session_group_ids(ctx.session)) ==
+               Enum.sort([ctx.gov.id, ctx.media.id])
+    end
+
+    test "legacy sessions (no rows at all) play with the full pool", ctx do
+      # Sessions from before group selection existed have no session_groups.
+      Repo.delete_all(Scenex.Play.SessionGroup)
+
+      assert Play.session_group_ids(ctx.session) == nil
+
+      snap = Play.snapshot(ctx.session.id)
+      assert Enum.sort(snap.definition.group_ids) == Enum.sort([ctx.gov.id, ctx.media.id])
+    end
+
+    test "selections need at least two groups from this scenario", ctx do
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "Solo",
+                 group_ids: [ctx.gov.id]
+               })
+
+      assert "select at least two groups" in errors_on(changeset).groups
+
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "Alien",
+                 group_ids: [ctx.gov.id, Ecto.UUID.generate()]
+               })
+
+      assert "must belong to this scenario" in errors_on(changeset).groups
+    end
+
+    test "group tokens are only issued for selected groups", ctx do
+      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+
+      {:ok, session} =
+        Play.create_session(ctx.user, ctx.scenario, %{
+          label: "Small venue",
+          group_ids: [ctx.gov.id, ctx.media.id]
+        })
+
+      assert {:error, :group_not_in_session} = Play.create_group_token(session, fringe)
+      assert {:ok, _} = Play.create_group_token(session, ctx.gov)
+
+      # Legacy full-pool sessions (no rows) issue tokens for any group.
+      Repo.delete_all(Scenex.Play.SessionGroup)
+      assert {:ok, _} = Play.create_group_token(ctx.session, fringe)
+    end
+
+    test "deleting a group a session plays with archives it instead", ctx do
+      # ctx.session snapshotted [gov, media] at creation — gov is in use.
+      assert {:ok, %{archived_at: %DateTime{}} = archived} = Authoring.delete_group(ctx.gov)
+
+      # Invisible to the editor pool and not selectable for new sessions…
+      refute Enum.any?(Authoring.list_groups(ctx.scenario), &(&1.id == archived.id))
+
+      assert {:error, changeset} =
+               Play.create_session(ctx.user, ctx.scenario, %{
+                 label: "After archive",
+                 group_ids: [archived.id, ctx.media.id]
+               })
+
+      assert "must belong to this scenario" in errors_on(changeset).groups
+
+      # …but the running session keeps playing with it.
+      snap = Play.snapshot(ctx.session.id)
+      assert Map.has_key?(snap.definition.groups, archived.id)
+
+      # The freed handle is reusable (uniqueness applies to active groups only).
+      assert {:ok, _} =
+               Authoring.create_group(ctx.scenario, %{handle: "Gov", name: %{"en" => "New Gov"}})
+    end
+
+    test "a group never used by a session is deleted outright", ctx do
+      # The setup session predates Temp, so no session references it.
+      unreferenced = group_fixture(ctx.scenario, handle: "Temp")
+
+      assert {:ok, %{archived_at: nil}} = Authoring.delete_group(unreferenced)
+      assert Authoring.get_group(ctx.scenario, unreferenced.id) == nil
+    end
+
+    test "with legacy full-pool sessions around, every group counts as in use", ctx do
+      Repo.delete_all(Scenex.Play.SessionGroup)
+      late = group_fixture(ctx.scenario, handle: "Late")
+
+      # The legacy session's history could involve any of the pool.
+      assert {:ok, %{archived_at: %DateTime{}}} = Authoring.delete_group(late)
+    end
+  end
 end

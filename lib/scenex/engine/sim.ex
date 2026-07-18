@@ -72,9 +72,19 @@ defmodule Scenex.Engine.Sim do
   @doc """
   Apply a single delta to one group's value for one `per_group` value, clamped to
   the value's bounds. Raises if `key` is not a known `per_group` value.
+  Effects on groups not in the sim (e.g. excluded from this session) no-op —
+  they must not create a board cell out of nowhere.
   """
   @spec apply_effect(t(), key(), group_id(), number()) :: t()
   def apply_effect(%__MODULE__{} = sim, key, group_id, delta) do
+    if group_id in sim.groups do
+      do_apply_effect(sim, key, group_id, delta)
+    else
+      sim
+    end
+  end
+
+  defp do_apply_effect(sim, key, group_id, delta) do
     spec = Map.fetch!(sim.specs, key)
     group_map = Map.fetch!(sim.group_values, key)
     updated = Map.put(group_map, group_id, clamp(Map.get(group_map, group_id, 0) + delta, spec))

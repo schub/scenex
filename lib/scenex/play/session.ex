@@ -12,7 +12,8 @@ defmodule Scenex.Play.Session do
   import Ecto.Changeset
 
   alias Scenex.Accounts.User
-  alias Scenex.Authoring.{Ending, Scenario}
+  alias Scenex.Authoring.{Ending, Group, Scenario}
+  alias Scenex.Play.SessionGroup
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -31,6 +32,9 @@ defmodule Scenex.Play.Session do
     belongs_to :scenario, Scenario
     belongs_to :ending, Ending
     belongs_to :created_by, User
+
+    # Selected at creation, immutable afterwards; empty means "all groups".
+    many_to_many :groups, Group, join_through: SessionGroup
 
     timestamps()
   end
