@@ -353,4 +353,35 @@ defmodule ScenexWeb.SessionLiveTest do
     assert html =~ "Show numbers on displays"
     refute Play.snapshot(session.id).show_numbers
   end
+
+  test "the GM can close an event manually, deadline or not", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    lv |> element("button[phx-click=start]") |> render_click()
+    refute has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+
+    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
+    assert has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+
+    html =
+      lv
+      |> element(~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+      |> render_click()
+
+    assert html =~ "closed"
+    refute has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+    assert ctx.event.id in Play.snapshot(session.id).closed
+
+    # Still not locked — the GM can enter gov's decision after closing.
+    html =
+      lv
+      |> element(
+        ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+          ~s{[phx-value-option="#{ctx.crack.id}"]}
+      )
+      |> render_click()
+
+    assert html =~ "7"
+  end
 end

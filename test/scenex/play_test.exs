@@ -416,6 +416,91 @@ defmodule Scenex.PlayTest do
     assert Enum.count(types, &(&1 == "deadline_lapsed")) == 1
   end
 
+  describe "manually closing an element" do
+    test "applies no defaults — an undecided group just stays undecided", ctx do
+      %{session: session} = ctx
+
+      {:ok, media_opt} =
+        Authoring.create_decision_option(ctx.event, ctx.media, %{
+          handle: "MediaMove",
+          text: %{"en" => "Media move"}
+        })
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+      # ctx.media has no decision and no default option here — closing must
+      # not invent one.
+
+      assert {:ok, snap} = Play.close_element(session.id, ctx.event.id)
+      assert ctx.event.id in snap.closed
+      refute Map.has_key?(snap.decisions[ctx.event.id] || %{}, ctx.media.id)
+
+      # Nothing is locked: the GM can still decide for the group afterward.
+      assert {:ok, snap} =
+               Play.choose_option(session.id, ctx.event.id, ctx.media.id, media_opt.id)
+
+      assert snap.decisions[ctx.event.id][ctx.media.id] == media_opt.id
+    end
+
+    test "cancels the pending deadline — a race-delivered timer message still no-ops", ctx do
+      %{session: session, scenario: scenario, gov: gov} = ctx
+
+      {:ok, timed} =
+        Authoring.create_timeline_element(scenario, %{
+          handle: "Timed",
+          title: %{"en" => "Timed"},
+          position: 4,
+          deadline_seconds: 3600
+        })
+
+      {:ok, _gov_default} =
+        Authoring.create_decision_option(timed, gov, %{
+          handle: "Gov default",
+          text: %{"en" => "Gov default"},
+          is_default: true
+        })
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, timed.id)
+      assert {:ok, snap} = Play.close_element(session.id, timed.id)
+      assert timed.id in snap.closed
+
+      # Simulate a timer message that was already in the mailbox the instant
+      # the GM closed — fire_deadline must still refuse to apply defaults.
+      pid = Scenex.Play.SessionServer.whereis(session.id)
+      send(pid, {:deadline, timed.id})
+
+      snap = Play.snapshot(session.id)
+      refute Map.has_key?(snap.decisions[timed.id] || %{}, gov.id)
+
+      types = session |> Play.list_session_events() |> Enum.map(& &1.type)
+      refute "deadline_lapsed" in types
+    end
+
+    test "can't close what isn't triggered, and can't close twice", ctx do
+      %{session: session} = ctx
+
+      {:ok, _} = Play.start_session(session.id)
+      assert {:error, :not_triggered} = Play.close_element(session.id, ctx.event.id)
+
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      assert {:ok, _} = Play.close_element(session.id, ctx.event.id)
+      assert {:error, :already_closed} = Play.close_element(session.id, ctx.event.id)
+    end
+
+    test "survives a session-process restart (replay)", ctx do
+      %{session: session} = ctx
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _} = Play.close_element(session.id, ctx.event.id)
+
+      Play.stop_running(session.id)
+      assert ctx.event.id in Play.snapshot(session.id).closed
+    end
+  end
+
   test "session updates are broadcast", ctx do
     %{session: session} = ctx
     Play.subscribe(session.id)

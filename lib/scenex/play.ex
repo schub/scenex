@@ -140,6 +140,16 @@ defmodule Scenex.Play do
   def trigger_element(session_id, element_id),
     do: command(session_id, {:trigger_element, element_id})
 
+  @doc """
+  Manually close a triggered element — the GM deciding "we're done here",
+  deadline or not. Applies no defaults: a group that hasn't decided simply
+  stays undecided (the GM can still enter a decision for it afterward, same
+  as before closing — nothing is locked). Also cancels that element's
+  deadline timer, if any, so it can't still lapse and apply defaults later.
+  """
+  def close_element(session_id, element_id),
+    do: command(session_id, {:close_element, element_id})
+
   @doc "A group's decision on a triggered event element (last entry wins)."
   def choose_option(session_id, element_id, group_id, option_id),
     do: command(session_id, {:choose_option, element_id, group_id, option_id})

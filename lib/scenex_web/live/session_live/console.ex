@@ -7,7 +7,9 @@ defmodule ScenexWeb.SessionLive.Console do
   hand-count tally, adjudicate sidequests, and finally pick an ending from the
   recommendations. The board updates live via PubSub; a 1s tick keeps the game
   clock and deadline countdowns moving. Corrections are just re-entry (last
-  wins) — click a different option and the board recomputes.
+  wins) — click a different option and the board recomputes. The GM can also
+  close a triggered element manually, deadline or not — undecided groups
+  simply stay undecided, nothing is locked.
   """
   use ScenexWeb, :live_view
 
@@ -194,8 +196,14 @@ defmodule ScenexWeb.SessionLive.Console do
             >
               decided
             </span>
+            <span :if={element.id in @snap.closed} class="badge badge-sm badge-neutral badge-soft">
+              closed
+            </span>
             <span
-              :if={deadline_left(@snap, element) && !Play.element_decided?(@snap, element)}
+              :if={
+                deadline_left(@snap, element) && !Play.element_decided?(@snap, element) &&
+                  element.id not in @snap.closed
+              }
               class={deadline_class(@snap, element)}
             >
               ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
@@ -208,6 +216,16 @@ defmodule ScenexWeb.SessionLive.Console do
               class="btn btn-sm btn-primary ml-auto"
             >
               Trigger
+            </button>
+            <button
+              :if={element.id in @snap.triggered and element.id not in @snap.closed}
+              phx-click="close_element"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class="btn btn-sm btn-ghost ml-auto"
+              data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
+            >
+              ⏹ Close event
             </button>
           </div>
 
@@ -463,6 +481,9 @@ defmodule ScenexWeb.SessionLive.Console do
 
   def handle_event("trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.trigger_element(&1, element_id))
+
+  def handle_event("close_element", %{"id" => element_id}, socket),
+    do: run(socket, &Play.close_element(&1, element_id))
 
   def handle_event(
         "choose",
