@@ -34,7 +34,8 @@ defmodule Scenex.Play.Projection do
     vote_tallies: %{},
     value_changes: %{},
     global_changes: %{},
-    ending_id: nil
+    ending_id: nil,
+    show_numbers: false
   ]
 
   @type slot :: String.t() | :winner | :outcome
@@ -65,6 +66,11 @@ defmodule Scenex.Play.Projection do
 
   defp handle(p, "ending_selected", %{"ending_id" => ending_id}, _),
     do: %{p | ending_id: ending_id}
+
+  # A GM-side display preference, not a game decision — folded into the same
+  # log purely so it survives a session-process restart unchanged.
+  defp handle(p, "board_numbers_set", %{"visible" => visible}, _),
+    do: %{p | show_numbers: visible}
 
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do

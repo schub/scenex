@@ -426,6 +426,35 @@ defmodule Scenex.PlayTest do
     assert_receive {:session_updated, ^session_id}
   end
 
+  describe "audience board numbers toggle" do
+    test "off by default; the GM can turn it on and off, and it survives replay", ctx do
+      %{session: session} = ctx
+      refute Play.snapshot(session.id).show_numbers
+
+      assert {:ok, snap} = Play.set_board_numbers(session.id, true)
+      assert snap.show_numbers
+
+      assert {:ok, snap} = Play.set_board_numbers(session.id, false)
+      refute snap.show_numbers
+
+      # A crash (or deploy) restarts the process; replay must land on the
+      # same setting, not silently reset to the default.
+      {:ok, _} = Play.set_board_numbers(session.id, true)
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).show_numbers
+    end
+
+    test "toggling is broadcast to connected screens", ctx do
+      %{session: session} = ctx
+      Play.subscribe(session.id)
+
+      {:ok, _} = Play.set_board_numbers(session.id, true)
+
+      session_id = session.id
+      assert_receive {:session_updated, ^session_id}
+    end
+  end
+
   describe "group selection per session" do
     test "a session runs with only its selected groups; excluded groups vanish", ctx do
       fringe = group_fixture(ctx.scenario, handle: "Fringe")

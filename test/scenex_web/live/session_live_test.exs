@@ -337,4 +337,20 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "Rejected"
   end
+
+  test "the GM can toggle exact numbers on the audience displays", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "Show numbers on displays"
+    refute Play.snapshot(session.id).show_numbers
+
+    html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
+    assert html =~ "Hide numbers on displays"
+    assert Play.snapshot(session.id).show_numbers
+
+    html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
+    assert html =~ "Show numbers on displays"
+    refute Play.snapshot(session.id).show_numbers
+  end
 end

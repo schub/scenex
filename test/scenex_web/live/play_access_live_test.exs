@@ -122,6 +122,9 @@ defmodule ScenexWeb.PlayAccessLiveTest do
   describe "group view" do
     test "a group enters its decision via token — no login", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
+      # Numbers are off by default on audience screens (bars only) — turn
+      # them on to check the exact value and its delta marker below.
+      {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
 
       {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
@@ -223,6 +226,19 @@ defmodule ScenexWeb.PlayAccessLiveTest do
     test "an invalid token bounces to the landing page", _ctx do
       assert {:error, {:live_redirect, %{to: "/"}}} = live(build_conn(), ~p"/play/garbage")
     end
+
+    test "shows bars, not exact numbers, until the GM turns numbers on", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "rounded-full"
+      refute html =~ "tabular-nums leading-none"
+
+      # The GM's toggle reaches this screen live, via the same PubSub the
+      # board itself uses — no reload needed.
+      {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
+      assert render(lv) =~ "tabular-nums leading-none"
+    end
   end
 
   describe "display view" do
@@ -234,6 +250,9 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Premiere"
       assert html =~ "Government"
       assert html =~ "Stability"
+      # Bars, not bare numbers, by default — the GM opts in per session.
+      assert html =~ "rounded-full"
+      refute html =~ "tabular-nums leading-none"
 
       {:ok, _} = Play.end_session(ctx.session.id)
       {:ok, _} = Play.select_ending(ctx.session.id, ctx.ending.id)
@@ -244,6 +263,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
     test "shows a declared election result with the hand count", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.election.id)
 
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
