@@ -84,24 +84,19 @@ defmodule ScenexWeb.SessionLive.Console do
               <td class="font-medium whitespace-nowrap">
                 {I18n.t!(g.name, @locale, default: g.handle)}
               </td>
-              <td :for={vd <- value_dims(@snap)} class="text-right">
-                <.value_bar
-                  value={Sim.get(@snap.sim, vd.id, g.id)}
-                  min={vd.min}
-                  max={vd.max}
-                  change={Play.recent_delta(@snap, vd.id, g.id)}
-                />
+              <td
+                :for={vd <- value_dims(@snap)}
+                class={["text-right tabular-nums", cell_class(@snap.sim, vd, g.id)]}
+              >
+                {fmt_num(Sim.get(@snap.sim, vd.id, g.id))}<.value_delta change={
+                  Play.recent_delta(@snap, vd.id, g.id)
+                } />
               </td>
             </tr>
             <tr class="border-t-2 border-base-300 font-semibold">
               <td>Global</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right">
-                <.value_bar
-                  value={@snap.globals[vd.id]}
-                  min={vd.min}
-                  max={vd.max}
-                  change={Play.recent_delta(@snap, vd.id)}
-                />
+              <td :for={vd <- value_dims(@snap)} class="text-right tabular-nums">
+                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
               </td>
             </tr>
           </tbody>
@@ -711,6 +706,17 @@ defmodule ScenexWeb.SessionLive.Console do
     minutes = div(total_seconds, 60)
     seconds = rem(total_seconds, 60)
     :io_lib.format("~2..0B:~2..0B", [minutes, seconds]) |> to_string()
+  end
+
+  defp cell_class(sim, vd, group_id) do
+    value = Sim.get(sim, vd.id, group_id)
+
+    cond do
+      is_nil(value) -> "opacity-40"
+      not is_nil(vd.max) and value >= vd.max -> "text-warning font-semibold"
+      not is_nil(vd.min) and value <= vd.min -> "text-error font-semibold"
+      true -> ""
+    end
   end
 
   defp fmt_num(nil), do: "—"

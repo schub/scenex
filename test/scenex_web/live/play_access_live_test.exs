@@ -248,8 +248,9 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
 
       assert html =~ "Premiere"
-      assert html =~ "Government"
       assert html =~ "Stability"
+      # The wall shows only the global scoreboard — no per-group breakdown.
+      refute html =~ "Government"
       # Bars, not bare numbers, by default — the GM opts in per session.
       assert html =~ "rounded-full"
       refute html =~ "tabular-nums leading-none"
@@ -334,9 +335,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       # Chrome in German; untranslated content falls back to English.
       assert html =~ "Die Show beginnt in Kürze."
-      assert html =~ "Gruppe"
       assert html =~ "Entwurf"
-      assert html =~ "Government"
+      assert html =~ "Stability"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do
