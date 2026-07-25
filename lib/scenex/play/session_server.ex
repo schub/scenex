@@ -130,6 +130,7 @@ defmodule Scenex.Play.SessionServer do
     game_time = current_game_time(state.session)
 
     for element_id <- state.projection.triggered,
+        element_id not in state.projection.closed,
         element = state.definition.elements[element_id],
         is_integer(element.deadline_seconds),
         missing_defaults(state, element) != [],
@@ -163,27 +164,34 @@ defmodule Scenex.Play.SessionServer do
   end
 
   defp fire_deadline(state, element_id) do
-    element = state.definition.elements[element_id]
+    case state.definition.elements[element_id] do
+      nil ->
+        state
 
-    if state.projection.status == :live and element do
-      state =
-        Enum.reduce(missing_defaults(state, element), state, fn {slot, option_id}, acc ->
-          payload =
-            case slot do
-              :winner -> %{element_id: element_id, option_id: option_id}
-              group_id -> %{element_id: element_id, group_id: group_id, option_id: option_id}
-            end
+      element ->
+        # A timer already in flight when the GM closes the element can still
+        # deliver its message (cancellation isn't guaranteed) — guard here
+        # too, not just in the scheduling, so a manual close always wins.
+        if state.projection.status == :live and element_id not in state.projection.closed do
+          state =
+            Enum.reduce(missing_defaults(state, element), state, fn {slot, option_id}, acc ->
+              payload =
+                case slot do
+                  :winner -> %{element_id: element_id, option_id: option_id}
+                  group_id -> %{element_id: element_id, group_id: group_id, option_id: option_id}
+                end
 
-          case persist(acc, "deadline_lapsed", payload, %{}) do
-            {:ok, acc2} -> acc2
-            {:error, _reason} -> acc
-          end
-        end)
+              case persist(acc, "deadline_lapsed", payload, %{}) do
+                {:ok, acc2} -> acc2
+                {:error, _reason} -> acc
+              end
+            end)
 
-      broadcast(state)
-      schedule_deadlines(state)
-    else
-      state
+          broadcast(state)
+          schedule_deadlines(state)
+        else
+          state
+        end
     end
   end
 
@@ -229,6 +237,15 @@ defmodule Scenex.Play.SessionServer do
       if element_id in state.projection.triggered,
         do: {:error, :already_triggered},
         else: {:ok, "element_triggered", %{element_id: element_id}, %{}}
+    end
+  end
+
+  defp validate({:close_element, element_id}, state) do
+    with :ok <- running(state),
+         {:ok, _element} <- fetch_triggered(state, element_id) do
+      if element_id in state.projection.closed,
+        do: {:error, :already_closed},
+        else: {:ok, "element_closed", %{element_id: element_id}, %{}}
     end
   end
 
@@ -403,6 +420,7 @@ defmodule Scenex.Play.SessionServer do
       globals: Projection.globals(state.projection),
       triggered: state.projection.triggered,
       triggered_at: state.projection.triggered_at,
+      closed: state.projection.closed,
       sims_before: state.projection.sims_before,
       decisions: state.projection.decisions,
       tallies: state.projection.tallies,

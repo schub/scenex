@@ -28,6 +28,7 @@ defmodule Scenex.Play.Projection do
     status: :draft,
     triggered: [],
     triggered_at: %{},
+    closed: [],
     sims_before: %{},
     decisions: %{},
     tallies: %{},
@@ -82,6 +83,13 @@ defmodule Scenex.Play.Projection do
           triggered_at: Map.put(p.triggered_at, element_id, game_time_ms)
       }
     end
+  end
+
+  # The GM closing out an element manually — no defaults applied, no lock;
+  # groups left undecided simply stay undecided (the GM can still enter a
+  # decision for them afterward, same as before closing).
+  defp handle(p, "element_closed", %{"element_id" => element_id}, _) do
+    if element_id in p.closed, do: p, else: %{p | closed: p.closed ++ [element_id]}
   end
 
   defp handle(
