@@ -333,40 +333,48 @@ defmodule ScenexWeb.CoreComponents do
   end
 
   @doc """
-  A value shown as a small bar gauge across its `min`/`max` range, with the
-  exact number above it — a bare number means little to a player who has
-  never seen the scale, but "72% full and climbing" reads at a glance.
-  Falls back to the number alone when the value has no min/max to bar
-  against (nothing to scale a bar to).
+  A value shown as a small vertical bar gauge across its `min`/`max` range —
+  a bare number means little to a player who has never seen the scale, but a
+  column filling up (or draining) reads at a glance. The exact number is
+  optional (`show_numbers`, default true): sessions can hide it so the
+  audience reads the bars alone. Falls back to the number alone — ignoring
+  `show_numbers` — when the value has no min/max to bar against (nothing to
+  scale a bar to).
 
       <.value_bar value={Sim.get(@snap.sim, vd.id, g.id)} min={vd.min} max={vd.max}
-        change={Play.recent_delta(@snap, vd.id, g.id)} />
+        change={Play.recent_delta(@snap, vd.id, g.id)} show_numbers={@snap.show_numbers} />
   """
   attr :value, :any, required: true, doc: "the number, or nil"
   attr :min, :any, default: nil
   attr :max, :any, default: nil
   attr :change, :any, default: nil, doc: "the numeric delta, or nil for nothing"
+  attr :show_numbers, :boolean, default: true
   attr :class, :string, default: nil
 
   def value_bar(assigns) do
     ~H"""
-    <span class={["inline-flex flex-col items-end gap-1", @class]}>
-      <span class="tabular-nums leading-none">
+    <span class={["inline-flex flex-col items-center gap-1", @class]}>
+      <span
+        :if={@show_numbers or not has_range?(@min, @max)}
+        class="text-[0.9em] tabular-nums leading-none"
+      >
         {fmt_bar_value(@value)}<.value_delta change={@change} />
       </span>
       <span
-        :if={is_number(@min) and is_number(@max)}
-        class="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-base-300"
+        :if={has_range?(@min, @max)}
+        class="flex h-16 w-4 shrink-0 flex-col justify-end overflow-hidden rounded-full bg-base-300"
       >
         <span
           :if={is_number(@value)}
-          class={["block h-full rounded-full", bar_color(@value, @min, @max)]}
-          style={"width: #{bar_pct(@value, @min, @max)}%"}
+          class={["w-full", bar_color(@value, @min, @max)]}
+          style={"height: #{bar_pct(@value, @min, @max)}%"}
         />
       </span>
     </span>
     """
   end
+
+  defp has_range?(min, max), do: is_number(min) and is_number(max)
 
   defp bar_pct(value, lo, hi) when hi > lo do
     ((value - lo) / (hi - lo) * 100) |> Kernel.max(0) |> Kernel.min(100)

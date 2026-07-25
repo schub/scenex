@@ -153,6 +153,15 @@ defmodule Scenex.Play do
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})
 
   @doc """
+  Show (or hide) exact numbers alongside the bar gauges on the audience
+  screens (display + group views). The GM console always shows numbers
+  regardless of this setting — it's a presentation choice for the room, not
+  for the GM's own working view.
+  """
+  def set_board_numbers(session_id, visible) when is_boolean(visible),
+    do: command(session_id, {:set_board_numbers, visible})
+
+  @doc """
   Record a hand-count well-being tally for a `per_participant` value:
   `%{score => count}`. The latest tally sets the value's global (its
   count-weighted mean); history stays in the log and the snapshot's `tallies`.

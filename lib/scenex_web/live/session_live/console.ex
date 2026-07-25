@@ -53,6 +53,15 @@ defmodule ScenexWeb.SessionLive.Console do
           >
             ⏹ End
           </button>
+          <button
+            phx-click="toggle_board_numbers"
+            class="btn btn-sm btn-ghost"
+            title="Controls the projector and group screens — this console always shows numbers"
+          >
+            {if @snap.show_numbers,
+              do: "🔢 Hide numbers on displays",
+              else: "🔢 Show numbers on displays"}
+          </button>
           <.link navigate={~p"/scenarios/#{@scenario.id}/sessions"} class="btn btn-sm btn-ghost">
             ← Sessions
           </.link>
@@ -452,6 +461,10 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("pause", _params, socket), do: run(socket, &Play.pause_session/1)
   def handle_event("resume", _params, socket), do: run(socket, &Play.resume_session/1)
   def handle_event("end_session", _params, socket), do: run(socket, &Play.end_session/1)
+
+  def handle_event("toggle_board_numbers", _params, socket) do
+    run(socket, &Play.set_board_numbers(&1, not socket.assigns.snap.show_numbers))
+  end
 
   def handle_event("trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.trigger_element(&1, element_id))

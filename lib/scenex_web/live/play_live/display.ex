@@ -48,6 +48,7 @@ defmodule ScenexWeb.PlayLive.Display do
                     min={vd.min}
                     max={vd.max}
                     change={Play.recent_delta(@snap, vd.id, g.id)}
+                    show_numbers={@snap.show_numbers}
                   />
                 </td>
               </tr>
@@ -59,6 +60,7 @@ defmodule ScenexWeb.PlayLive.Display do
                     min={vd.min}
                     max={vd.max}
                     change={Play.recent_delta(@snap, vd.id)}
+                    show_numbers={@snap.show_numbers}
                   />
                 </td>
               </tr>

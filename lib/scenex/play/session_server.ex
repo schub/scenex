@@ -264,6 +264,9 @@ defmodule Scenex.Play.SessionServer do
     end
   end
 
+  defp validate({:set_board_numbers, visible}, _state) when is_boolean(visible),
+    do: {:ok, "board_numbers_set", %{visible: visible}, %{}}
+
   defp validate({:record_tally, value_id, counts}, state) do
     with :ok <- running(state),
          :ok <- fetch_per_participant(state, value_id),
@@ -407,6 +410,7 @@ defmodule Scenex.Play.SessionServer do
       value_changes: state.projection.value_changes,
       global_changes: state.projection.global_changes,
       ending_id: state.projection.ending_id,
+      show_numbers: state.projection.show_numbers,
       game_time_ms: current_game_time(state.session),
       definition: state.definition
     }
