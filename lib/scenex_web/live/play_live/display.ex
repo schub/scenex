@@ -2,7 +2,8 @@ defmodule ScenexWeb.PlayLive.Display do
   @moduledoc """
   The projected display — read-only, opened via a display token, no login.
 
-  Meant for the wall: the board (groups × values + globals), the game clock,
+  Meant for the wall: the scoreboard (global values only — a group's own
+  standing belongs on its own screen, not the shared one), the game clock,
   the latest triggered element's title and narrative, and — once the GM has
   chosen — the ending. Updates live via PubSub; keeps working after the
   session ends (the finale stays on the wall).
@@ -10,7 +11,6 @@ defmodule ScenexWeb.PlayLive.Display do
   use ScenexWeb, :live_view
 
   alias Scenex.Play
-  alias Scenex.Engine.Sim
   alias Scenex.I18n
 
   @impl true
@@ -28,44 +28,20 @@ defmodule ScenexWeb.PlayLive.Display do
           </div>
         </div>
 
-        <%!-- The board --%>
-        <div class="overflow-x-auto">
-          <table class="table table-lg">
-            <thead>
-              <tr>
-                <th class="text-lg">{gettext("Group")}</th>
-                <th :for={vd <- value_dims(@snap)} class="text-right text-lg">
-                  {I18n.t!(vd.name, @locale, default: vd.key)}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={g <- groups(@snap)}>
-                <td class="text-xl font-medium">{I18n.t!(g.name, @locale, default: g.handle)}</td>
-                <td :for={vd <- value_dims(@snap)} class="text-right text-xl">
-                  <.value_bar
-                    value={Sim.get(@snap.sim, vd.id, g.id)}
-                    min={vd.min}
-                    max={vd.max}
-                    change={Play.recent_delta(@snap, vd.id, g.id)}
-                    show_numbers={@snap.show_numbers}
-                  />
-                </td>
-              </tr>
-              <tr class="border-t-2 border-base-300 text-2xl font-bold">
-                <td>{gettext("Global")}</td>
-                <td :for={vd <- value_dims(@snap)} class="text-right">
-                  <.value_bar
-                    value={@snap.globals[vd.id]}
-                    min={vd.min}
-                    max={vd.max}
-                    change={Play.recent_delta(@snap, vd.id)}
-                    show_numbers={@snap.show_numbers}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <%!-- The scoreboard: global values only — the room's own values live
+        on their group screen, not on the shared wall. --%>
+        <div class="flex flex-wrap justify-center gap-10">
+          <div :for={vd <- value_dims(@snap)} class="text-center">
+            <div class="text-lg opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+            <.value_bar
+              value={@snap.globals[vd.id]}
+              min={vd.min}
+              max={vd.max}
+              change={Play.recent_delta(@snap, vd.id)}
+              show_numbers={@snap.show_numbers}
+              class="mt-2"
+            />
+          </div>
         </div>
 
         <%!-- Well-being: the latest hand-count tally per participant value --%>
@@ -198,8 +174,6 @@ defmodule ScenexWeb.PlayLive.Display do
   defp tally_face(avg) when avg >= 2.5, do: "🙂"
   defp tally_face(avg) when avg >= 1.5, do: "😐"
   defp tally_face(_avg), do: "🙁"
-
-  defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 
   defp current_element(snap) do
     case List.last(snap.triggered) do

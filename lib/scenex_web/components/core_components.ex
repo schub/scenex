@@ -362,7 +362,7 @@ defmodule ScenexWeb.CoreComponents do
       </span>
       <span
         :if={has_range?(@min, @max)}
-        class="flex h-16 w-4 shrink-0 flex-col justify-end overflow-hidden rounded-full bg-base-300"
+        class="flex h-32 w-8 shrink-0 flex-col justify-end overflow-hidden rounded-full bg-base-300"
       >
         <span
           :if={is_number(@value)}

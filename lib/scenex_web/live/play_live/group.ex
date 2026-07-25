@@ -35,46 +35,19 @@ defmodule ScenexWeb.PlayLive.Group do
         </div>
       </div>
 
-      <%!-- Own values + globals --%>
-      <div class="mt-4 overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th></th>
-              <th :for={vd <- value_dims(@snap)} class="text-right text-base">
-                {I18n.t!(vd.name, @locale, default: vd.key)}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-lg font-medium">
-                {I18n.t!(@group.name, @locale, default: @group.handle)}
-              </td>
-              <td :for={vd <- value_dims(@snap)} class="text-right text-lg font-semibold">
-                <.value_bar
-                  value={Sim.get(@snap.sim, vd.id, @group.id)}
-                  min={vd.min}
-                  max={vd.max}
-                  change={Play.recent_delta(@snap, vd.id, @group.id)}
-                  show_numbers={@snap.show_numbers}
-                />
-              </td>
-            </tr>
-            <tr class="opacity-70">
-              <td>{gettext("Global")}</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right text-lg">
-                <.value_bar
-                  value={@snap.globals[vd.id]}
-                  min={vd.min}
-                  max={vd.max}
-                  change={Play.recent_delta(@snap, vd.id)}
-                  show_numbers={@snap.show_numbers}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <%!-- Our own values — the wall shows the shared scoreboard, not this. --%>
+      <div class="mt-4 flex flex-wrap justify-center gap-8">
+        <div :for={vd <- value_dims(@snap)} class="text-center">
+          <div class="text-base opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+          <.value_bar
+            value={Sim.get(@snap.sim, vd.id, @group.id)}
+            min={vd.min}
+            max={vd.max}
+            change={Play.recent_delta(@snap, vd.id, @group.id)}
+            show_numbers={@snap.show_numbers}
+            class="mt-2"
+          />
+        </div>
       </div>
 
       <p :if={@snap.status == :draft} class="mt-8 text-center text-lg opacity-70">
