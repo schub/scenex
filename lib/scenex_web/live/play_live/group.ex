@@ -51,19 +51,24 @@ defmodule ScenexWeb.PlayLive.Group do
               <td class="text-lg font-medium">
                 {I18n.t!(@group.name, @locale, default: @group.handle)}
               </td>
-              <td
-                :for={vd <- value_dims(@snap)}
-                class="text-right text-lg tabular-nums font-semibold"
-              >
-                {fmt_num(Sim.get(@snap.sim, vd.id, @group.id))}<.value_delta change={
-                  Play.recent_delta(@snap, vd.id, @group.id)
-                } />
+              <td :for={vd <- value_dims(@snap)} class="text-right text-lg font-semibold">
+                <.value_bar
+                  value={Sim.get(@snap.sim, vd.id, @group.id)}
+                  min={vd.min}
+                  max={vd.max}
+                  change={Play.recent_delta(@snap, vd.id, @group.id)}
+                />
               </td>
             </tr>
             <tr class="opacity-70">
               <td>{gettext("Global")}</td>
-              <td :for={vd <- value_dims(@snap)} class="text-right text-lg tabular-nums">
-                {fmt_num(@snap.globals[vd.id])}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
+              <td :for={vd <- value_dims(@snap)} class="text-right text-lg">
+                <.value_bar
+                  value={@snap.globals[vd.id]}
+                  min={vd.min}
+                  max={vd.max}
+                  change={Play.recent_delta(@snap, vd.id)}
+                />
               </td>
             </tr>
           </tbody>
@@ -403,18 +408,6 @@ defmodule ScenexWeb.PlayLive.Group do
     :io_lib.format("~2..0B:~2..0B", [div(total_seconds, 60), rem(total_seconds, 60)])
     |> to_string()
   end
-
-  defp fmt_num(nil), do: "—"
-
-  defp fmt_num(n) when is_float(n) do
-    rounded = Float.round(n, 1)
-
-    if rounded == trunc(rounded),
-      do: Integer.to_string(trunc(rounded)),
-      else: Float.to_string(rounded)
-  end
-
-  defp fmt_num(n), do: to_string(n)
 
   defp label_class(:neutral), do: "badge-neutral"
   defp label_class(:primary), do: "badge-primary"

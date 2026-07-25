@@ -333,6 +333,68 @@ defmodule ScenexWeb.CoreComponents do
   end
 
   @doc """
+  A value shown as a small bar gauge across its `min`/`max` range, with the
+  exact number above it — a bare number means little to a player who has
+  never seen the scale, but "72% full and climbing" reads at a glance.
+  Falls back to the number alone when the value has no min/max to bar
+  against (nothing to scale a bar to).
+
+      <.value_bar value={Sim.get(@snap.sim, vd.id, g.id)} min={vd.min} max={vd.max}
+        change={Play.recent_delta(@snap, vd.id, g.id)} />
+  """
+  attr :value, :any, required: true, doc: "the number, or nil"
+  attr :min, :any, default: nil
+  attr :max, :any, default: nil
+  attr :change, :any, default: nil, doc: "the numeric delta, or nil for nothing"
+  attr :class, :string, default: nil
+
+  def value_bar(assigns) do
+    ~H"""
+    <span class={["inline-flex flex-col items-end gap-1", @class]}>
+      <span class="tabular-nums leading-none">
+        {fmt_bar_value(@value)}<.value_delta change={@change} />
+      </span>
+      <span
+        :if={is_number(@min) and is_number(@max)}
+        class="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-base-300"
+      >
+        <span
+          :if={is_number(@value)}
+          class={["block h-full rounded-full", bar_color(@value, @min, @max)]}
+          style={"width: #{bar_pct(@value, @min, @max)}%"}
+        />
+      </span>
+    </span>
+    """
+  end
+
+  defp bar_pct(value, lo, hi) when hi > lo do
+    ((value - lo) / (hi - lo) * 100) |> Kernel.max(0) |> Kernel.min(100)
+  end
+
+  defp bar_pct(_value, _lo, _hi), do: 0
+
+  defp bar_color(value, lo, hi) do
+    cond do
+      value >= hi -> "bg-warning"
+      value <= lo -> "bg-error"
+      true -> "bg-primary"
+    end
+  end
+
+  defp fmt_bar_value(nil), do: "—"
+
+  defp fmt_bar_value(n) when is_float(n) do
+    rounded = Float.round(n, 1)
+
+    if rounded == trunc(rounded),
+      do: Integer.to_string(trunc(rounded)),
+      else: Float.to_string(rounded)
+  end
+
+  defp fmt_bar_value(n), do: to_string(n)
+
+  @doc """
   Authored content (markdown) rendered as safe HTML with media embeds —
   see `ScenexWeb.Markdown`. Renders nothing for nil/blank text. Styling
   comes from the `markdown` CSS class (app.css).
