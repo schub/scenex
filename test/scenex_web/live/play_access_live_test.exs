@@ -227,6 +227,39 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert {:error, {:live_redirect, %{to: "/"}}} = live(build_conn(), ~p"/play/garbage")
     end
 
+    test "a closed, undecided event disappears from the group's screen", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Crack down"
+
+      # The GM closes it from the console side — no decision was ever made.
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      html = render(lv)
+      refute html =~ "Crack down"
+
+      # A stale client tapping through anyway is still refused server-side.
+      html = render_click(lv, "select", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "can&#39;t be chosen"
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      assert html =~ "can&#39;t be chosen"
+      assert Play.snapshot(ctx.session.id).decisions == %{}
+    end
+
+    test "a closed event the group already decided on stays, showing the confirmation", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Crack down"
+      assert html =~ "Decision confirmed"
+    end
+
     test "shows bars, not exact numbers, until the GM turns numbers on", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
 

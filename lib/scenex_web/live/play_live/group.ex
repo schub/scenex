@@ -282,8 +282,15 @@ defmodule ScenexWeb.PlayLive.Group do
     snap.status == :live and
       not locked?(snap, element.id, group_id) and
       not expired?(snap, element) and
+      not closed?(snap, element.id) and
       Play.gate_open?(snap, element.id, option)
   end
+
+  # The GM ending the event manually (console "Close event") — deadline or
+  # not. Unlike a deadline lapse, it applies no defaults; it just stops
+  # taking new player decisions. The GM's own console isn't gated by this
+  # (same split as everywhere else: gates are enforced here, not there).
+  defp closed?(snap, element_id), do: element_id in snap.closed
 
   # Confirmed once: any recorded decision (the group's, the GM's, or a
   # lapsed-deadline default) closes the element for this group.
@@ -326,12 +333,16 @@ defmodule ScenexWeb.PlayLive.Group do
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
 
-  # Triggered event-kind elements where this group has options, newest first.
+  # Triggered event-kind elements where this group has options, newest
+  # first. A closed element the group never decided on drops out entirely —
+  # the GM has moved on, there's nothing left for the group to see or do.
+  # One it did decide on stays, showing the confirmed choice.
   defp my_elements(snap, group_id) do
     for eid <- Enum.reverse(snap.triggered),
         element = snap.definition.elements[eid],
         element.kind == :event,
         my_options(snap, eid, group_id) != [],
+        not closed?(snap, eid) or locked?(snap, eid, group_id),
         do: element
   end
 
