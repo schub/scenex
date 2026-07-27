@@ -511,6 +511,60 @@ defmodule Scenex.PlayTest do
     assert_receive {:session_updated, ^session_id}
   end
 
+  describe "democracy score" do
+    test "not_configured until the scenario sets a formula and range", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      assert Play.democracy_score(Play.snapshot(ctx.session.id)) == :not_configured
+    end
+
+    test "evaluates the formula over per-group globals only, excluding well-being", ctx do
+      {:ok, _} =
+        Authoring.update_scenario(ctx.scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 10.0
+        })
+
+      {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Scored"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      {:ok, _} = Play.start_session(session.id)
+      # Both groups start at stability 5.0 -> avg of the one per-group
+      # dimension's global is 5.0, regardless of well-being (no tally yet).
+      assert Play.democracy_score(Play.snapshot(session.id)) == {:ok, 5.0}
+
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, snap} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+      # Gov cracks down: stability 5 -> 7 for gov, media stays 5 -> avg 6.0.
+      assert Play.democracy_score(snap) == {:ok, 6.0}
+    end
+
+    test "no per-group value dimensions -> the formula's own error, not a crash", ctx do
+      # A scenario with only a per-participant value: nothing feeds the
+      # formula even though it's configured.
+      scenario = scenario_fixture(ctx.user)
+
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant
+      )
+
+      {:ok, _} =
+        Authoring.update_scenario(scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 10.0
+        })
+
+      {:ok, session} = Play.create_session(ctx.user, scenario, %{label: "Empty"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, _} = Play.start_session(session.id)
+
+      assert Play.democracy_score(Play.snapshot(session.id)) == {:error, :empty}
+    end
+  end
+
   describe "audience board numbers toggle" do
     test "off by default; the GM can turn it on and off, and it survives replay", ctx do
       %{session: session} = ctx

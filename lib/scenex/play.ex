@@ -14,7 +14,7 @@ defmodule Scenex.Play do
   alias Scenex.Accounts.User
   alias Scenex.Authoring
   alias Scenex.Authoring.{Group, Scenario}
-  alias Scenex.Engine.{Condition, Sim}
+  alias Scenex.Engine.{Condition, Formula, Sim}
   alias Scenex.Play.{CapabilityToken, Session, SessionEvent, SessionGroup, SessionServer}
   alias Scenex.Repo
 
@@ -290,6 +290,30 @@ defmodule Scenex.Play do
       delta
     else
       _ -> nil
+    end
+  end
+
+  @doc """
+  The scenario's derived "Democracy Score": `democracy_formula` evaluated over
+  the globals of every `:per_group` value dimension (well-being and other
+  `:per_participant` values never feed in). `:not_configured` if the scenario
+  hasn't set a formula and a min/max range; otherwise `{:ok, number}` or the
+  formula's own `{:error, reason}` (e.g. no per-group values defined yet).
+  """
+  def democracy_score(snapshot) do
+    %{democracy_formula: formula, democracy_min: min, democracy_max: max} = snapshot.definition
+
+    if is_binary(formula) and is_number(min) and is_number(max) do
+      values =
+        for vd <- snapshot.definition.value_dimensions,
+            vd.input_scope == :per_group,
+            value = snapshot.globals[vd.id],
+            is_number(value),
+            do: value
+
+      Formula.evaluate(formula, values)
+    else
+      :not_configured
     end
   end
 

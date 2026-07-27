@@ -13,7 +13,6 @@ defmodule Scenex.Authoring.ValueDimension do
   import Scenex.Authoring.Validators
 
   alias Scenex.Authoring.{Scenario, GroupInitialValue}
-  alias Scenex.Engine
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -61,22 +60,13 @@ defmodule Scenex.Authoring.ValueDimension do
       message: "must be a lowercase slug (letters, digits, underscores)"
     )
     |> clear_bounds_for_participant()
-    |> validate_aggregation()
-    |> validate_min_max()
+    |> validate_formula(:aggregation)
+    |> validate_min_max(:min, :max)
     |> assoc_constraint(:scenario)
     |> unique_constraint(:key,
       name: :value_dimensions_scenario_id_key_index,
       message: "is already used in this scenario"
     )
-  end
-
-  defp validate_aggregation(changeset) do
-    validate_change(changeset, :aggregation, fn :aggregation, formula ->
-      case Engine.validate_formula(formula) do
-        :ok -> []
-        {:error, reason} -> [aggregation: "is not a valid formula (#{inspect(reason)})"]
-      end
-    end)
   end
 
   # min/max/default clamp per-group values; per-participant values are never
@@ -87,17 +77,6 @@ defmodule Scenex.Authoring.ValueDimension do
       |> put_change(:min, nil)
       |> put_change(:max, nil)
       |> put_change(:default_value, nil)
-    else
-      changeset
-    end
-  end
-
-  defp validate_min_max(changeset) do
-    min = get_field(changeset, :min)
-    max = get_field(changeset, :max)
-
-    if is_number(min) and is_number(max) and min > max do
-      add_error(changeset, :max, "must be greater than or equal to min")
     else
       changeset
     end

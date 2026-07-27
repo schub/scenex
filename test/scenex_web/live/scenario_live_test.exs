@@ -148,6 +148,40 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html =~ "not a valid formula"
     end
 
+    test "sets the democracy score formula and range", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_settings"]), %{
+        "scenario" => %{
+          "democracy_formula" => "(avg + min) / 2",
+          "democracy_min" => "0",
+          "democracy_max" => "100"
+        }
+      })
+      |> render_submit()
+
+      updated = Authoring.get_scenario!(scenario.id)
+      assert updated.democracy_formula == "(avg + min) / 2"
+      assert updated.democracy_min == 0.0
+      assert updated.democracy_max == 100.0
+    end
+
+    test "rejects an invalid democracy score formula", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_settings"]), %{
+          "scenario" => %{"democracy_formula" => "bogus("}
+        })
+        |> render_submit()
+
+      assert html =~ "not a valid formula"
+    end
+
     test "adds a group", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=groups]") |> render_click()

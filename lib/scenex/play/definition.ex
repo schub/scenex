@@ -21,7 +21,10 @@ defmodule Scenex.Play.Definition do
             options: %{},
             options_by_element: %{},
             endings: [],
-            change_highlight_ms: 30_000
+            change_highlight_ms: 30_000,
+            democracy_formula: nil,
+            democracy_min: nil,
+            democracy_max: nil
 
   @type t :: %__MODULE__{}
 
@@ -81,7 +84,10 @@ defmodule Scenex.Play.Definition do
       options: options,
       options_by_element: options_by_element,
       endings: Authoring.list_endings(scenario),
-      change_highlight_ms: (scenario.change_highlight_seconds || 30) * 1000
+      change_highlight_ms: (scenario.change_highlight_seconds || 30) * 1000,
+      democracy_formula: scenario.democracy_formula,
+      democracy_min: scenario.democracy_min,
+      democracy_max: scenario.democracy_max
     }
   end
 

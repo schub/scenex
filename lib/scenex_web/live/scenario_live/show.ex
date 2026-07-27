@@ -15,7 +15,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
   alias Scenex.Media
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values groups initial timeline labels endings media)a
+  @sections ~w(settings values democracy groups initial timeline labels endings media)a
   @locale_choices Scenex.I18n.locales()
 
   @impl true
@@ -259,6 +259,52 @@ defmodule ScenexWeb.ScenarioLive.Show do
               </p>
             </div>
           </div>
+        </div>
+
+        <%!-- Democracy score --%>
+        <div :if={@section == :democracy} class="max-w-xl space-y-4">
+          <p class="text-sm opacity-70">
+            A single derived score for the scoreboard, combining every per-group
+            value's current global (well-being and other per-participant values
+            never feed in). Uses the same formula language as a value's
+            aggregation — but evaluated over those globals, not per-group
+            numbers. Leave the formula blank to keep the score off the
+            scoreboard entirely.
+          </p>
+          <.form
+            for={@settings_form}
+            phx-change="track_localized"
+            phx-submit="save_settings"
+            class="space-y-4"
+          >
+            <fieldset disabled={not @can_edit?} class="contents">
+              <.input
+                field={@settings_form[:democracy_formula]}
+                label="Formula"
+                placeholder="e.g. (avg + min) / 2"
+              />
+              <div class="grid grid-cols-2 gap-3">
+                <.input
+                  field={@settings_form[:democracy_min]}
+                  type="number"
+                  step="any"
+                  label="Min"
+                />
+                <.input
+                  field={@settings_form[:democracy_max]}
+                  type="number"
+                  step="any"
+                  label="Max"
+                />
+              </div>
+              <.button :if={@can_edit?} variant="primary">Save</.button>
+            </fieldset>
+          </.form>
+          <p class="text-xs opacity-60">
+            Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
+            e.g. <code>(avg + min) / 2</code>. Shown on the scoreboard as a labeled band
+            (In Bloom / Resilient / Fragile / Critical / Breakdown), never as a raw number.
+          </p>
         </div>
 
         <%!-- Groups --%>
