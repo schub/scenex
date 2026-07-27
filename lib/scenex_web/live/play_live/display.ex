@@ -175,8 +175,11 @@ defmodule ScenexWeb.PlayLive.Display do
   defp tally_face(avg) when avg >= 1.5, do: "😐"
   defp tally_face(_avg), do: "🙁"
 
+  # The latest triggered element that isn't closed yet. Once the GM closes
+  # it, it drops off the wall entirely — closing means "we're done with
+  # this," not just "stop the countdown."
   defp current_element(snap) do
-    case List.last(snap.triggered) do
+    case Enum.find(Enum.reverse(snap.triggered), &(&1 not in snap.closed)) do
       nil -> nil
       eid -> snap.definition.elements[eid]
     end

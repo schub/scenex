@@ -249,15 +249,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert Play.snapshot(ctx.session.id).decisions == %{}
     end
 
-    test "a closed event the group already decided on stays, showing the confirmation", ctx do
+    test "a closed event disappears from the group's screen even if it decided", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
       {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
-      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
 
-      {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
       assert html =~ "Crack down"
       assert html =~ "Decision confirmed"
+
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      refute render(lv) =~ "Crack down"
     end
 
     test "shows bars, not exact numbers, until the GM turns numbers on", ctx do
@@ -370,6 +373,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Die Show beginnt in Kürze."
       assert html =~ "Entwurf"
       assert html =~ "Stability"
+    end
+
+    test "closing an event removes it from the wall's current beat", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      refute render(lv) =~ "Blackout"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do
