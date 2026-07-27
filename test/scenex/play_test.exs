@@ -565,6 +565,37 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "scoreboard section toggles" do
+    test "all visible by default; each toggles independently and survives replay", ctx do
+      %{session: session} = ctx
+
+      assert Play.snapshot(session.id).board_sections == %{
+               globals: true,
+               wellbeing: true,
+               democracy: true,
+               current_beat: true
+             }
+
+      assert {:ok, snap} = Play.set_board_section(session.id, :democracy, false)
+      assert snap.board_sections.democracy == false
+      assert snap.board_sections.globals == true
+
+      # A crash (or deploy) restarts the process; replay must land on the
+      # same settings, not silently reset to all-visible.
+      {:ok, _} = Play.set_board_section(session.id, :wellbeing, false)
+      Play.stop_running(session.id)
+      snap = Play.snapshot(session.id)
+      assert snap.board_sections.democracy == false
+      assert snap.board_sections.wellbeing == false
+      assert snap.board_sections.globals == true
+      assert snap.board_sections.current_beat == true
+    end
+
+    test "rejects an unknown section", ctx do
+      assert Play.set_board_section(ctx.session.id, :bogus, false) == {:error, :unknown_section}
+    end
+  end
+
   describe "audience board numbers toggle" do
     test "off by default; the GM can turn it on and off, and it survives replay", ctx do
       %{session: session} = ctx

@@ -354,6 +354,34 @@ defmodule ScenexWeb.SessionLiveTest do
     refute Play.snapshot(session.id).show_numbers
   end
 
+  test "the GM can toggle each scoreboard section independently", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "👁 Global values"
+    assert html =~ "👁 Well-being"
+    assert html =~ "👁 Democracy score"
+    assert html =~ "👁 Current event"
+
+    html =
+      lv
+      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=democracy]})
+      |> render_click()
+
+    assert html =~ "🚫 Democracy score"
+    assert Play.snapshot(session.id).board_sections.democracy == false
+    # Untouched sections stay visible — this is one flag per section.
+    assert Play.snapshot(session.id).board_sections.globals == true
+
+    html =
+      lv
+      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=democracy]})
+      |> render_click()
+
+    assert html =~ "👁 Democracy score"
+    assert Play.snapshot(session.id).board_sections.democracy == true
+  end
+
   test "the GM can close an event manually, deadline or not", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")

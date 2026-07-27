@@ -172,6 +172,16 @@ defmodule Scenex.Play do
     do: command(session_id, {:set_board_numbers, visible})
 
   @doc """
+  Show/hide one scoreboard section independently: `:globals`, `:wellbeing`,
+  `:democracy`, or `:current_beat` (the triggered element's narrative,
+  election result, and ending). All default visible; this only affects the
+  scoreboard, never the group screens or the GM console. `{:error,
+  :unknown_section}` for anything else.
+  """
+  def set_board_section(session_id, section, visible) when is_boolean(visible),
+    do: command(session_id, {:set_board_section, section, visible})
+
+  @doc """
   Record a hand-count well-being tally for a `per_participant` value:
   `%{score => count}`. The latest tally sets the value's global (its
   count-weighted mean); history stays in the log and the snapshot's `tallies`.

@@ -36,10 +36,12 @@ defmodule Scenex.Play.Projection do
     value_changes: %{},
     global_changes: %{},
     ending_id: nil,
-    show_numbers: false
+    show_numbers: false,
+    board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true}
   ]
 
   @type slot :: String.t() | :winner | :outcome
+  @type board_section :: :globals | :wellbeing | :democracy | :current_beat
   @type t :: %__MODULE__{}
 
   def new(%Definition{} = definition) do
@@ -72,6 +74,12 @@ defmodule Scenex.Play.Projection do
   # log purely so it survives a session-process restart unchanged.
   defp handle(p, "board_numbers_set", %{"visible" => visible}, _),
     do: %{p | show_numbers: visible}
+
+  # Independent show/hide per scoreboard section — also a GM display
+  # preference, not a game decision.
+  defp handle(p, "board_section_toggled", %{"section" => section, "visible" => visible}, _) do
+    %{p | board_sections: Map.put(p.board_sections, String.to_existing_atom(section), visible)}
+  end
 
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do

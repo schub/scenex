@@ -284,6 +284,16 @@ defmodule Scenex.Play.SessionServer do
   defp validate({:set_board_numbers, visible}, _state) when is_boolean(visible),
     do: {:ok, "board_numbers_set", %{visible: visible}, %{}}
 
+  @board_sections ~w(globals wellbeing democracy current_beat)a
+
+  defp validate({:set_board_section, section, visible}, _state)
+       when section in @board_sections and is_boolean(visible) do
+    {:ok, "board_section_toggled", %{section: Atom.to_string(section), visible: visible}, %{}}
+  end
+
+  defp validate({:set_board_section, _section, visible}, _state) when is_boolean(visible),
+    do: {:error, :unknown_section}
+
   defp validate({:record_tally, value_id, counts}, state) do
     with :ok <- running(state),
          :ok <- fetch_per_participant(state, value_id),
@@ -429,6 +439,7 @@ defmodule Scenex.Play.SessionServer do
       global_changes: state.projection.global_changes,
       ending_id: state.projection.ending_id,
       show_numbers: state.projection.show_numbers,
+      board_sections: state.projection.board_sections,
       game_time_ms: current_game_time(state.session),
       definition: state.definition
     }
