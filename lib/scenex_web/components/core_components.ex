@@ -29,6 +29,8 @@ defmodule ScenexWeb.CoreComponents do
   use Phoenix.Component
   use Gettext, backend: ScenexWeb.Gettext
 
+  alias Scenex.Engine.Scale
+
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -401,6 +403,38 @@ defmodule ScenexWeb.CoreComponents do
   end
 
   defp fmt_bar_value(n), do: to_string(n)
+
+  @doc """
+  A value's position on a `min`/`max` range shown as a horizontal track with
+  a tick — never a raw number, only where it falls and which labeled band
+  it's in (`labels`, given best to worst — see `Scenex.Engine.Scale`). For
+  values the audience should read as a state, not a figure: a well-being
+  mean, a democracy score.
+
+      <.scale_gauge value={7.2} min={0.0} max={10.0} labels={["Good", "Mid", "Bad"]} />
+  """
+  attr :value, :any, required: true, doc: "the number, or nil if not yet known"
+  attr :min, :float, required: true
+  attr :max, :float, required: true
+  attr :labels, :list, required: true, doc: "band labels, best to worst"
+  attr :class, :string, default: nil
+
+  def scale_gauge(assigns) do
+    ~H"""
+    <div class={["w-full max-w-4xl", @class]}>
+      <div class="relative h-4 w-full rounded-full bg-base-300">
+        <div
+          :if={is_number(@value)}
+          class="absolute top-1/2 size-9 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-base-100 bg-primary shadow"
+          style={"left: #{Scale.position(@value, @min, @max) * 100}%"}
+        />
+      </div>
+      <p class="mt-4 text-center text-4xl font-bold">
+        {if is_number(@value), do: Scale.label(@value, @min, @max, @labels), else: "—"}
+      </p>
+    </div>
+    """
+  end
 
   @doc """
   Authored content (markdown) rendered as safe HTML with media embeds —

@@ -324,7 +324,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "⏱"
     end
 
-    test "shows the latest well-being tally once one is recorded", ctx do
+    test "shows the latest well-being tally once one is recorded, as a label — never a number",
+         ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
 
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
@@ -334,11 +335,62 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, _} = Play.record_tally(ctx.session.id, ctx.wellbeing.id, %{"4" => 3, "3" => 1})
 
-      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub.
+      # Mean (4*3 + 3)/4 = 3.75 -> "Very happy" — arrives via PubSub. Never a
+      # raw number, even with the numbers toggle on.
+      {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       html = render(lv)
       assert html =~ "Well-being"
-      assert html =~ "3.8"
-      assert html =~ "😀"
+      assert html =~ "Very happy"
+      refute html =~ "3.8"
+      refute html =~ "3.75"
+    end
+
+    test "shows the democracy score as a label once configured — never a number", ctx do
+      {:ok, _} =
+        Authoring.update_scenario(ctx.scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 10.0
+        })
+
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Scored"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.set_board_numbers(session.id, true)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      # Stability starts at 5.0 on a 0..10 scale -> "Fragile" (the middle band).
+      assert html =~ "Democracy Score"
+      assert html =~ "Fragile"
+      refute html =~ "5.0"
+    end
+
+    test "no democracy score section when the scenario hasn't configured one", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      refute html =~ "Democracy Score"
+    end
+
+    test "the GM's per-section toggles hide/show scoreboard sections independently", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      assert html =~ "Stability"
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.set_board_section(ctx.session.id, :globals, false)
+      html = render(lv)
+      refute html =~ "Stability"
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.set_board_section(ctx.session.id, :current_beat, false)
+      html = render(lv)
+      refute html =~ "Blackout"
     end
 
     test "narratives render as markdown with media embeds", ctx do
