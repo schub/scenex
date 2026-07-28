@@ -71,9 +71,13 @@ defmodule ScenexWeb.Layouts do
   full width of the screen. `header={false}` drops even that (the projected
   scoreboard wants zero chrome on the wall; it still gets dark/light from
   the system preference, same as everywhere else — just no manual toggle).
+  `full_bleed={true}` also drops the padded `<main>` wrapper entirely, for
+  content that must reach every screen edge (a full-screen scoreboard page)
+  — otherwise its own padding stacks on top of whatever the content does.
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :header, :boolean, default: true
+  attr :full_bleed, :boolean, default: false
 
   slot :inner_block, required: true
 
@@ -88,11 +92,13 @@ defmodule ScenexWeb.Layouts do
       </div>
     </header>
 
-    <main class="px-4 pb-12 sm:px-6">
+    <main :if={not @full_bleed} class="px-4 pb-12 sm:px-6">
       <div class="space-y-4">
         {render_slot(@inner_block)}
       </div>
     </main>
+
+    <div :if={@full_bleed} class="contents">{render_slot(@inner_block)}</div>
 
     <.flash_group flash={@flash} />
     """

@@ -470,6 +470,9 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       # Full takeover: session name/clock/status and everything else on the
       # normal scoreboard are gone while the page is showing.
       refute html =~ "Onboarding"
+      # No padded <main> wrapper either — full-bleed content (an image or
+      # video) must be able to reach every screen edge.
+      refute html =~ "px-4 pb-12"
 
       {:ok, _} = Play.clear_page(session.id)
       html = render(lv)
