@@ -133,7 +133,7 @@ defmodule ScenexWeb.SessionLive.Console do
           type="button"
           phx-click="show_page"
           phx-value-id={page.id}
-          class={["btn btn-xs", (@snap.active_page_id == page.id && "btn-primary") || "btn-ghost"]}
+          class={["btn btn-xs", (@snap.active_page_id == page.id && "btn-primary") || "btn-soft"]}
         >
           {I18n.t!(page.title, @locale, default: page.handle)}
         </button>
