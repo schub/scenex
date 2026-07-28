@@ -60,10 +60,19 @@ defmodule ScenexWeb.Markdown do
     end)
   end
 
-  defp video_tag(src, :page), do: ~s(<video autoplay muted playsinline src="#{src}"></video>)
+  # A stable id (derived from src, so it's the same across renders of the
+  # same content) keeps LiveView's diffing from ever treating this as a new
+  # element on an unrelated re-render (e.g. a display's once-a-second clock
+  # tick) — without one, a periodic patch can silently replace the node,
+  # which restarts playback from zero and looks exactly like a manual loop.
+  defp video_tag(src, mode) do
+    id = "video-#{:erlang.phash2(src)}"
 
-  defp video_tag(src, :narrative),
-    do: ~s(<video controls preload="metadata" src="#{src}"></video>)
+    case mode do
+      :page -> ~s(<video id="#{id}" autoplay muted playsinline src="#{src}"></video>)
+      :narrative -> ~s(<video id="#{id}" controls preload="metadata" src="#{src}"></video>)
+    end
+  end
 
   defp media?(src, exts) do
     ext = src |> String.downcase() |> Path.extname()

@@ -35,7 +35,7 @@ defmodule ScenexWeb.PlayLive.Display do
     ~H"""
     <Layouts.play flash={@flash} header={false}>
       <% page = active_page(@snap) %>
-      <div :if={page} class="flex h-screen w-full items-center justify-center overflow-hidden p-10">
+      <div :if={page} class="flex h-screen w-full items-center justify-center overflow-hidden">
         <.markdown text={I18n.t(page.content, @locale)} mode={:page} class="markdown-page" />
       </div>
 

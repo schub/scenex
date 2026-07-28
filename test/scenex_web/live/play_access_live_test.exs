@@ -325,7 +325,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
 
       assert html =~ "<strong>Chaos</strong>"
-      assert html =~ ~s(<video controls)
+      assert html =~ "<video"
+      assert html =~ "controls"
     end
   end
 

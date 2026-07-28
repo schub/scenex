@@ -38,7 +38,7 @@ defmodule ScenexWeb.MarkdownTest do
     assert out =~ ~s(<img src="/media/abc/poster.png")
 
     out = html("![clip](/media/abc/clip.MP4)")
-    assert out =~ ~s(<video controls preload="metadata" src="/media/abc/clip.MP4">)
+    assert out =~ ~s(controls preload="metadata" src="/media/abc/clip.MP4">)
 
     out = html("![jingle](/media/abc/jingle.mp3)")
     assert out =~ ~s(<audio controls)
@@ -50,7 +50,7 @@ defmodule ScenexWeb.MarkdownTest do
       |> Markdown.to_html(mode: :page)
       |> Phoenix.HTML.safe_to_string()
 
-    assert out =~ ~s(<video autoplay muted playsinline src="/media/abc/clip.mp4">)
+    assert out =~ ~s(autoplay muted playsinline src="/media/abc/clip.mp4">)
     refute out =~ "controls"
   end
 
@@ -60,6 +60,18 @@ defmodule ScenexWeb.MarkdownTest do
       |> Markdown.to_html(mode: :narrative)
       |> Phoenix.HTML.safe_to_string()
 
-    assert out =~ ~s(<video controls preload="metadata" src="/media/abc/clip.mp4">)
+    assert out =~ ~s(controls preload="metadata" src="/media/abc/clip.mp4">)
+  end
+
+  test "video ids are stable across renders of the same source, and self-scoped to it" do
+    out1 = html("![clip](/media/abc/clip.mp4)")
+    out2 = html("![clip again](/media/abc/clip.mp4)")
+    [id1] = Regex.run(~r/id="(video-\d+)"/, out1, capture: :all_but_first)
+    [id2] = Regex.run(~r/id="(video-\d+)"/, out2, capture: :all_but_first)
+    assert id1 == id2
+
+    out3 = html("![other](/media/abc/other.mp4)")
+    [id3] = Regex.run(~r/id="(video-\d+)"/, out3, capture: :all_but_first)
+    refute id3 == id1
   end
 end
