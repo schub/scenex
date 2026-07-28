@@ -373,8 +373,7 @@ defmodule ScenexWeb.SessionLiveTest do
   end
 
   test "the GM can show and clear a full-screen page", ctx do
-    {:ok, page} =
-      Authoring.create_page(ctx.scenario, %{handle: "Welcome", title: %{"en" => "Welcome"}})
+    {:ok, page} = Authoring.create_page(ctx.scenario, %{handle: "Welcome"})
 
     {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
     on_exit(fn -> Play.stop_running(session.id) end)

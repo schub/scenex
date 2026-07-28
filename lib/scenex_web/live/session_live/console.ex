@@ -135,7 +135,7 @@ defmodule ScenexWeb.SessionLive.Console do
           phx-value-id={page.id}
           class={["btn btn-xs", (@snap.active_page_id == page.id && "btn-primary") || "btn-soft"]}
         >
-          {I18n.t!(page.title, @locale, default: page.handle)}
+          {page.handle}
         </button>
         <button
           :if={@snap.active_page_id}

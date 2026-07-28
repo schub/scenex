@@ -686,11 +686,7 @@ defmodule Scenex.PlayTest do
   describe "pages" do
     test "the GM can show a page at any session status, and clear it", ctx do
       {:ok, page} =
-        Authoring.create_page(ctx.scenario, %{
-          handle: "Welcome",
-          title: %{"en" => "Welcome"},
-          content: %{"en" => "Hello"}
-        })
+        Authoring.create_page(ctx.scenario, %{handle: "Welcome", content: %{"en" => "Hello"}})
 
       {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
       on_exit(fn -> Play.stop_running(session.id) end)
@@ -715,8 +711,7 @@ defmodule Scenex.PlayTest do
     end
 
     test "survives a session-process restart (replay)", ctx do
-      {:ok, page} =
-        Authoring.create_page(ctx.scenario, %{handle: "Welcome", title: %{"en" => "Welcome"}})
+      {:ok, page} = Authoring.create_page(ctx.scenario, %{handle: "Welcome"})
 
       {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
       on_exit(fn -> Play.stop_running(session.id) end)

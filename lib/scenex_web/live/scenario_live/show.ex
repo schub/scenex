@@ -1081,13 +1081,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 class="grid gap-3 sm:grid-cols-2"
               >
                 <fieldset disabled={not @can_edit?} class="contents">
-                  <.input field={@page_form[:handle]} label="Handle (internal)" />
                   <.input
-                    type="text"
-                    name={"page[title][#{@locale}]"}
-                    value={LocalizedForm.value(@page_form, :title, @locale)}
-                    label={"Title (#{@locale}) — the GM's button label"}
+                    field={@page_form[:handle]}
+                    label="Handle — also the GM's button label in the console"
                   />
+                  <.input field={@page_form[:position]} type="number" label="Position" />
                   <div class="sm:col-span-2">
                     <.input
                       type="textarea"
@@ -1096,7 +1094,6 @@ defmodule ScenexWeb.ScenarioLive.Show do
                       label={"Content (#{@locale}, Markdown — text, and/or a single image or video from the media library)"}
                     />
                   </div>
-                  <.input field={@page_form[:position]} type="number" label="Position" />
                   <div class="flex gap-2 sm:col-span-2">
                     <.button variant="primary">Save page</.button>
                     <button
@@ -1970,7 +1967,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
     with_edit(socket, fn ->
       params = tracked_params(socket, :page_form, params)
       data = socket.assigns.editing_page || %Page{}
-      attrs = LocalizedForm.merge(params, data, [:title, :content])
+      attrs = LocalizedForm.merge(params, data, [:content])
 
       result =
         if socket.assigns.editing_page,

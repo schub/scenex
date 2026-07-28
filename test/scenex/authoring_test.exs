@@ -456,7 +456,6 @@ defmodule Scenex.AuthoringTest do
       assert {:ok, welcome} =
                Authoring.create_page(scenario, %{
                  handle: "Welcome",
-                 title: %{"en" => "Welcome"},
                  content: %{"en" => "# Welcome\n\nTake your seats."},
                  position: 0
                })
@@ -464,7 +463,6 @@ defmodule Scenex.AuthoringTest do
       assert {:ok, sponsors} =
                Authoring.create_page(scenario, %{
                  handle: "Sponsors",
-                 title: %{"en" => "Sponsors"},
                  content: %{"en" => "![logo](/media/abc/logo.png)"},
                  position: 1
                })
@@ -489,26 +487,18 @@ defmodule Scenex.AuthoringTest do
     test "content is optional — a page can be blank (e.g. a deliberate blackout)", %{
       scenario: scenario
     } do
-      assert {:ok, page} =
-               Authoring.create_page(scenario, %{handle: "Blank", title: %{"en" => "Blank"}})
-
+      assert {:ok, page} = Authoring.create_page(scenario, %{handle: "Blank"})
       assert page.content == %{}
     end
 
-    test "requires a title", %{scenario: scenario} do
-      assert {:error, cs} =
-               Authoring.create_page(scenario, %{handle: "No title", title: %{"en" => "  "}})
-
-      assert %{title: ["can't be blank"]} = errors_on(cs)
+    test "requires a handle", %{scenario: scenario} do
+      assert {:error, cs} = Authoring.create_page(scenario, %{})
+      assert %{handle: ["can't be blank"]} = errors_on(cs)
     end
 
     test "handles are unique per scenario", %{scenario: scenario} do
-      assert {:ok, _} =
-               Authoring.create_page(scenario, %{handle: "Dup", title: %{"en" => "Dup"}})
-
-      assert {:error, cs} =
-               Authoring.create_page(scenario, %{handle: "Dup", title: %{"en" => "Other"}})
-
+      assert {:ok, _} = Authoring.create_page(scenario, %{handle: "Dup"})
+      assert {:error, cs} = Authoring.create_page(scenario, %{handle: "Dup"})
       assert %{handle: [_]} = errors_on(cs)
     end
   end

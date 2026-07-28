@@ -452,7 +452,6 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, page} =
         Authoring.create_page(ctx.scenario, %{
           handle: "Welcome",
-          title: %{"en" => "Welcome"},
           content: %{"en" => "# Bem-vindos\n\nO jogo comeca em breve."}
         })
 

@@ -465,7 +465,6 @@ defmodule ScenexWeb.ScenarioLiveTest do
         |> form(~s(form[phx-submit="save_page"]), %{
           "page" => %{
             "handle" => "Welcome",
-            "title" => %{"en" => "Welcome"},
             "content" => %{"en" => "# Bem-vindos"},
             "position" => "0"
           }

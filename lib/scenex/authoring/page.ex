@@ -9,11 +9,14 @@ defmodule Scenex.Authoring.Page do
   GM picks a page from the console at any time — regardless of session
   status — and it takes over the scoreboard entirely until they switch back
   or clear it; it never affects game state.
+
+  `handle` is the only label a page has — it's never shown to players
+  (only `content` is), so it doubles as the GM console's button text with
+  no need for a separate, localized display name.
   """
   use Ecto.Schema
 
   import Ecto.Changeset
-  import Scenex.Authoring.Validators
 
   alias Scenex.Authoring.Scenario
 
@@ -23,7 +26,6 @@ defmodule Scenex.Authoring.Page do
 
   schema "pages" do
     field :handle, :string
-    field :title, :map, default: %{}
     field :content, :map, default: %{}
     field :position, :integer, default: 0
 
@@ -34,9 +36,8 @@ defmodule Scenex.Authoring.Page do
 
   def changeset(page, attrs) do
     page
-    |> cast(attrs, [:scenario_id, :handle, :title, :content, :position])
+    |> cast(attrs, [:scenario_id, :handle, :content, :position])
     |> validate_required([:scenario_id, :handle])
-    |> validate_localized_required(:title)
     |> assoc_constraint(:scenario)
     |> unique_constraint(:handle,
       name: :pages_scenario_id_handle_index,
