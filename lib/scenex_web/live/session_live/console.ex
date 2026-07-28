@@ -9,7 +9,9 @@ defmodule ScenexWeb.SessionLive.Console do
   clock and deadline countdowns moving. Corrections are just re-entry (last
   wins) — click a different option and the board recomputes. The GM can also
   close a triggered element manually, deadline or not — undecided groups
-  simply stay undecided, nothing is locked.
+  simply stay undecided, nothing is locked. Four independent toggles control
+  which sections appear on the scoreboard (projected display) — this
+  console's own board is never affected by any of them.
   """
   use ScenexWeb, :live_view
 
@@ -69,6 +71,21 @@ defmodule ScenexWeb.SessionLive.Console do
           </.link>
         </:actions>
       </.header>
+
+      <%!-- Scoreboard section visibility — the GM can black out any part of
+      the projected display independently; this console is never affected. --%>
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <span class="opacity-60">On the scoreboard:</span>
+        <button
+          :for={{section, label} <- board_sections()}
+          type="button"
+          phx-click="toggle_board_section"
+          phx-value-section={section}
+          class={["btn btn-xs", (@snap.board_sections[section] && "btn-primary") || "btn-ghost"]}
+        >
+          {if @snap.board_sections[section], do: "👁 #{label}", else: "🚫 #{label}"}
+        </button>
+      </div>
 
       <%!-- Live board --%>
       <div class="mt-6 overflow-x-auto">
@@ -186,7 +203,7 @@ defmodule ScenexWeb.SessionLive.Console do
               <span class="opacity-50">{element.position}.</span>
               {I18n.t!(element.title, @locale, default: element.handle)}
             </h3>
-            <span class="badge badge-sm">{element.kind}</span>
+            <span class="badge badge-sm">{kind_label(element.kind)}</span>
             <span :if={element.id in @snap.triggered} class="badge badge-sm badge-primary badge-soft">
               triggered
             </span>
@@ -479,6 +496,12 @@ defmodule ScenexWeb.SessionLive.Console do
     run(socket, &Play.set_board_numbers(&1, not socket.assigns.snap.show_numbers))
   end
 
+  def handle_event("toggle_board_section", %{"section" => section}, socket) do
+    section = String.to_existing_atom(section)
+    visible = not socket.assigns.snap.board_sections[section]
+    run(socket, &Play.set_board_section(&1, section, visible))
+  end
+
   def handle_event("trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.trigger_element(&1, element_id))
 
@@ -608,6 +631,15 @@ defmodule ScenexWeb.SessionLive.Console do
   end
 
   # ── Snapshot accessors ────────────────────────────────────────────────
+
+  defp board_sections do
+    [
+      globals: "Global values",
+      wellbeing: "Well-being",
+      democracy: "Democracy score",
+      current_beat: "Current event"
+    ]
+  end
 
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))

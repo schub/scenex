@@ -24,6 +24,14 @@ defmodule Scenex.Authoring.Scenario do
     field :visibility, Ecto.Enum, values: @visibilities, default: :draft
     field :change_highlight_seconds, :integer, default: 30
 
+    # The scoreboard's single derived "Democracy Score": a formula (same
+    # language as a value's aggregation) evaluated over the globals of every
+    # `:per_group` value dimension. Nil formula/min/max means unconfigured —
+    # the scoreboard section simply has nothing to show.
+    field :democracy_formula, :string
+    field :democracy_min, :float
+    field :democracy_max, :float
+
     has_many :memberships, ScenarioMembership
     has_many :endings, Scenex.Authoring.Ending
     has_many :value_dimensions, ValueDimension
@@ -44,7 +52,10 @@ defmodule Scenex.Authoring.Scenario do
       :director_notes,
       :source_locale,
       :visibility,
-      :change_highlight_seconds
+      :change_highlight_seconds,
+      :democracy_formula,
+      :democracy_min,
+      :democracy_max
     ])
     |> validate_required([:handle, :source_locale, :change_highlight_seconds])
     |> validate_number(:change_highlight_seconds, greater_than_or_equal_to: 0)
@@ -52,5 +63,13 @@ defmodule Scenex.Authoring.Scenario do
     |> validate_format(:source_locale, ~r/^[a-z]{2}(-[A-Za-z]{2,})?$/,
       message: "must be a locale code like \"en\" or \"pt-BR\""
     )
+    |> maybe_validate_formula(:democracy_formula)
+    |> validate_min_max(:democracy_min, :democracy_max)
+  end
+
+  defp maybe_validate_formula(changeset, field) do
+    if get_field(changeset, field) in [nil, ""],
+      do: changeset,
+      else: validate_formula(changeset, field)
   end
 end

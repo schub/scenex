@@ -59,6 +59,46 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
+  describe "democracy score fields" do
+    test "unset by default" do
+      scenario = scenario_fixture(user_fixture())
+      assert scenario.democracy_formula == nil
+      assert scenario.democracy_min == nil
+      assert scenario.democracy_max == nil
+    end
+
+    test "accepts a valid formula and range" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:ok, updated} =
+               Authoring.update_scenario(scenario, %{
+                 democracy_formula: "(avg + min) / 2",
+                 democracy_min: 0.0,
+                 democracy_max: 100.0
+               })
+
+      assert updated.democracy_formula == "(avg + min) / 2"
+    end
+
+    test "rejects an invalid formula" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:error, changeset} =
+               Authoring.update_scenario(scenario, %{democracy_formula: "avg +"})
+
+      assert %{democracy_formula: [_]} = errors_on(changeset)
+    end
+
+    test "rejects min greater than max" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:error, changeset} =
+               Authoring.update_scenario(scenario, %{democracy_min: 10.0, democracy_max: 0.0})
+
+      assert %{democracy_max: [_]} = errors_on(changeset)
+    end
+  end
+
   describe "value definitions" do
     setup do
       user = user_fixture()

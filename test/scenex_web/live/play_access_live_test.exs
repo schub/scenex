@@ -249,15 +249,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert Play.snapshot(ctx.session.id).decisions == %{}
     end
 
-    test "a closed event the group already decided on stays, showing the confirmation", ctx do
+    test "a closed event disappears from the group's screen even if it decided", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
       {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
-      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
 
-      {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
       assert html =~ "Crack down"
       assert html =~ "Decision confirmed"
+
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      refute render(lv) =~ "Crack down"
     end
 
     test "shows bars, not exact numbers, until the GM turns numbers on", ctx do
@@ -271,6 +274,23 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       # board itself uses — no reload needed.
       {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       assert render(lv) =~ "tabular-nums leading-none"
+    end
+
+    test "narratives render as markdown with media embeds", ctx do
+      {:ok, _} =
+        Authoring.update_timeline_element(ctx.event, %{
+          narrative: %{
+            "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
+          }
+        })
+
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+
+      assert html =~ "<strong>Chaos</strong>"
+      assert html =~ ~s(<video controls)
     end
   end
 
@@ -287,6 +307,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       # Bars, not bare numbers, by default — the GM opts in per session.
       assert html =~ "rounded-full"
       refute html =~ "tabular-nums leading-none"
+      # No chrome on the wall — no brand mark, no manual theme toggle.
+      refute html =~ "data-phx-theme"
 
       {:ok, _} = Play.end_session(ctx.session.id)
       {:ok, _} = Play.select_ending(ctx.session.id, ctx.ending.id)
@@ -302,9 +324,10 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
 
-      # Voting time: the countdown runs, no result yet.
+      # Voting time: the countdown shows as a draining progress bar, no
+      # result yet.
       assert html =~ "Referendum"
-      assert html =~ "⏱"
+      assert html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
       refute html =~ "Result"
 
       {:ok, _} =
@@ -318,10 +341,11 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "23"
       assert html =~ "decided"
       assert html =~ "(+2)"
-      refute html =~ "⏱"
+      refute html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
     end
 
-    test "shows the latest well-being tally once one is recorded", ctx do
+    test "shows the latest well-being tally once one is recorded, as an emoji — never a number",
+         ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
 
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
@@ -331,32 +355,75 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, _} = Play.record_tally(ctx.session.id, ctx.wellbeing.id, %{"4" => 3, "3" => 1})
 
-      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub.
+      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub. Never a raw
+      # number, even with the numbers toggle on.
+      {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       html = render(lv)
       assert html =~ "Well-being"
-      assert html =~ "3.8"
       assert html =~ "😀"
+      refute html =~ "3.8"
+      refute html =~ "3.75"
     end
 
-    test "narratives render as markdown with media embeds", ctx do
+    test "shows the democracy score as a label once configured — never a number", ctx do
       {:ok, _} =
-        Authoring.update_timeline_element(ctx.event, %{
-          narrative: %{
-            "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
-          }
+        Authoring.update_scenario(ctx.scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 10.0
         })
 
-      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "MD night"})
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Scored"})
       on_exit(fn -> Play.stop_running(session.id) end)
       {:ok, display_token} = Play.create_display_token(session)
 
       {:ok, _} = Play.start_session(session.id)
-      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _} = Play.set_board_numbers(session.id, true)
 
       {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
 
-      assert html =~ "<strong>Chaos</strong>"
-      assert html =~ ~s(<video controls)
+      # Stability starts at 5.0 on a 0..10 scale -> "Fragile" (the middle band).
+      assert html =~ "Democracy Score"
+      assert html =~ "Fragile"
+      refute html =~ "5.0"
+    end
+
+    test "no democracy score section when the scenario hasn't configured one", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      refute html =~ "Democracy Score"
+    end
+
+    test "the GM's per-section toggles hide/show scoreboard sections independently", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      assert html =~ "Stability"
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.set_board_section(ctx.session.id, :globals, false)
+      html = render(lv)
+      refute html =~ "Stability"
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.set_board_section(ctx.session.id, :current_beat, false)
+      html = render(lv)
+      refute html =~ "Blackout"
+    end
+
+    test "the current beat shows the title only — no narrative content", ctx do
+      {:ok, _} =
+        Authoring.update_timeline_element(ctx.event, %{narrative: %{"en" => "**Chaos** spreads."}})
+
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+
+      assert html =~ "Blackout"
+      refute html =~ "Chaos"
     end
 
     test "audience screens speak the session's play language", ctx do
@@ -370,6 +437,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Die Show beginnt in Kürze."
       assert html =~ "Entwurf"
       assert html =~ "Stability"
+    end
+
+    test "closing an event removes it from the wall's current beat", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      assert html =~ "Blackout"
+
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.event.id)
+
+      refute render(lv) =~ "Blackout"
     end
 
     test "a group token cannot open the display (and vice versa)", ctx do

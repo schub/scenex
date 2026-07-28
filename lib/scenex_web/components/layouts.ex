@@ -68,15 +68,18 @@ defmodule ScenexWeb.Layouts do
   @doc """
   Lean layout for token-access play screens (group tables, projected display):
   no account chrome — just a quiet brand mark and the theme toggle — and the
-  full width of the screen.
+  full width of the screen. `header={false}` drops even that (the projected
+  scoreboard wants zero chrome on the wall; it still gets dark/light from
+  the system preference, same as everywhere else — just no manual toggle).
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :header, :boolean, default: true
 
   slot :inner_block, required: true
 
   def play(assigns) do
     ~H"""
-    <header class="navbar min-h-0 px-4 py-2 sm:px-6">
+    <header :if={@header} class="navbar min-h-0 px-4 py-2 sm:px-6">
       <div class="flex-1">
         <span class="text-sm font-semibold opacity-50">Scenex</span>
       </div>

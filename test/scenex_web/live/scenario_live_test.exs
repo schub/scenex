@@ -148,6 +148,40 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html =~ "not a valid formula"
     end
 
+    test "sets the democracy score formula and range", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_settings"]), %{
+        "scenario" => %{
+          "democracy_formula" => "(avg + min) / 2",
+          "democracy_min" => "0",
+          "democracy_max" => "100"
+        }
+      })
+      |> render_submit()
+
+      updated = Authoring.get_scenario!(scenario.id)
+      assert updated.democracy_formula == "(avg + min) / 2"
+      assert updated.democracy_min == 0.0
+      assert updated.democracy_max == 100.0
+    end
+
+    test "rejects an invalid democracy score formula", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_settings"]), %{
+          "scenario" => %{"democracy_formula" => "bogus("}
+        })
+        |> render_submit()
+
+      assert html =~ "not a valid formula"
+    end
+
     test "adds a group", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=groups]") |> render_click()
@@ -303,6 +337,9 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
       # Election panel shows the room-wide ballot, not per-group blocks
       assert render(lv) =~ "Ballot options"
+      # The team's current wording: "election" reads as "Vote" in the UI —
+      # the stored kind atom is untouched.
+      assert render(lv) =~ "Vote"
 
       lv |> element(~s{button[phx-click=new_option]:not([phx-value-group])}) |> render_click()
 
@@ -349,6 +386,10 @@ defmodule ScenexWeb.ScenarioLiveTest do
       lv
       |> element(~s{button[phx-click=open_event][phx-value-id="#{sidequest.id}"]})
       |> render_click()
+
+      # The team's current wording: "sidequest" reads as "Wildcard" in the
+      # UI — the stored kind atom is untouched.
+      assert render(lv) =~ "Wildcard"
 
       lv
       |> element(~s{button[phx-click=new_outcome][phx-value-outcome="success"]})

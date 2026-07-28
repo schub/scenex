@@ -29,6 +29,32 @@ defmodule Scenex.Authoring.Validators do
     end)
   end
 
+  @doc "Validate a formula field via `Scenex.Engine.Formula.validate/1`."
+  def validate_formula(changeset, field) do
+    validate_change(changeset, field, fn ^field, formula ->
+      case Scenex.Engine.Formula.validate(formula) do
+        :ok -> []
+        {:error, reason} -> [{field, "is not a valid formula (#{inspect(reason)})"}]
+      end
+    end)
+  end
+
+  @doc """
+  Validate that `min_field < max_field` when both are present. Skips the
+  check entirely if either is nil (an incomplete range isn't this
+  validator's problem — pair it with `validate_required` where that matters).
+  """
+  def validate_min_max(changeset, min_field, max_field) do
+    min = get_field(changeset, min_field)
+    max = get_field(changeset, max_field)
+
+    if is_number(min) and is_number(max) and min > max do
+      add_error(changeset, max_field, "must be greater than or equal to #{min_field}")
+    else
+      changeset
+    end
+  end
+
   defp format_reason(:missing_comparison), do: "needs a comparison, e.g. self(key) >= 3"
   defp format_reason(:multiple_comparisons), do: "only one comparison is allowed"
   defp format_reason(:self_not_allowed), do: "self(...) is not allowed here"

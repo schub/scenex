@@ -334,15 +334,14 @@ defmodule ScenexWeb.PlayLive.Group do
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
 
   # Triggered event-kind elements where this group has options, newest
-  # first. A closed element the group never decided on drops out entirely —
-  # the GM has moved on, there's nothing left for the group to see or do.
-  # One it did decide on stays, showing the confirmed choice.
+  # first. A closed element drops out entirely, decided or not — the GM has
+  # moved on, so there's nothing left to show for it here.
   defp my_elements(snap, group_id) do
     for eid <- Enum.reverse(snap.triggered),
         element = snap.definition.elements[eid],
         element.kind == :event,
         my_options(snap, eid, group_id) != [],
-        not closed?(snap, eid) or locked?(snap, eid, group_id),
+        not closed?(snap, eid),
         do: element
   end
 
