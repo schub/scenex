@@ -409,9 +409,13 @@ defmodule ScenexWeb.CoreComponents do
   a tick — never a raw number, only where it falls, plus a `readout` the
   caller has already worked out for it (a band label from
   `Scenex.Engine.Scale.label/4`, an emoji, whatever fits — this component
-  only lays it out, it doesn't decide what it says). For values the
-  audience should read as a state, not a figure: a well-being mean, a
-  democracy score.
+  only lays it out, it doesn't decide what it says). The readout sits right
+  below the tick, at the same horizontal position, rather than centered
+  under the whole track — and being absolutely positioned, it doesn't add
+  to the gauge's in-flow height, so a caller centering a label against this
+  component (`items-center` in a flex row) lands on the track itself, not
+  the track-plus-readout block. For values the audience should read as a
+  state, not a figure: a well-being mean, a democracy score.
 
       <.scale_gauge value={7.2} min={0.0} max={10.0} readout="Good" />
   """
@@ -423,7 +427,7 @@ defmodule ScenexWeb.CoreComponents do
 
   def scale_gauge(assigns) do
     ~H"""
-    <div class={["w-full max-w-4xl", @class]}>
+    <div class={["relative w-full max-w-4xl", @class]}>
       <div class="relative h-4 w-full rounded-full bg-base-300">
         <div
           :if={is_number(@value)}
@@ -431,10 +435,21 @@ defmodule ScenexWeb.CoreComponents do
           style={"left: #{Scale.position(@value, @min, @max) * 100}%"}
         />
       </div>
-      <p class="mt-4 text-center text-4xl font-bold">{@readout}</p>
+      <div
+        class="absolute top-full mt-4 -translate-x-1/2 text-center text-4xl font-bold whitespace-nowrap"
+        style={"left: #{gauge_readout_pct(@value, @min, @max)}%"}
+      >
+        {@readout}
+      </div>
     </div>
     """
   end
+
+  # Centered when there's no value to point at yet.
+  defp gauge_readout_pct(value, min, max) when is_number(value),
+    do: Scale.position(value, min, max) * 100
+
+  defp gauge_readout_pct(_value, _min, _max), do: 50.0
 
   @doc """
   Authored content (markdown) rendered as safe HTML with media embeds —

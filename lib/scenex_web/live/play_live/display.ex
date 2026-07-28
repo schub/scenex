@@ -28,7 +28,7 @@ defmodule ScenexWeb.PlayLive.Display do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.play flash={@flash}>
+    <Layouts.play flash={@flash} header={false}>
       <div class="flex h-screen flex-col gap-6 overflow-hidden p-6">
         <div class="relative shrink-0">
           <h1 class="text-center text-4xl font-bold">{@session_label}</h1>

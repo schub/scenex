@@ -307,6 +307,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       # Bars, not bare numbers, by default — the GM opts in per session.
       assert html =~ "rounded-full"
       refute html =~ "tabular-nums leading-none"
+      # No chrome on the wall — no brand mark, no manual theme toggle.
+      refute html =~ "data-phx-theme"
 
       {:ok, _} = Play.end_session(ctx.session.id)
       {:ok, _} = Play.select_ending(ctx.session.id, ctx.ending.id)
