@@ -63,14 +63,22 @@ defmodule ScenexWeb.PlayLive.Display do
               >
                 ✓ {gettext("decided")}
               </span>
-              <span
-                :if={!Play.element_decided?(@snap, element) && deadline_left(@snap, element)}
-                class="badge badge-lg ml-2 align-middle"
-              >
-                ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
-              </span>
             </h2>
-            <.markdown text={I18n.t(element.narrative, @locale)} class="text-xl" />
+
+            <%!-- The deadline countdown, as a draining progress bar rather
+            than a ticking number — full width. --%>
+            <div
+              :if={!Play.element_decided?(@snap, element) and deadline_progress_pct(@snap, element)}
+              class="h-4 w-full overflow-hidden rounded-full bg-base-300"
+            >
+              <div
+                class={[
+                  "h-full rounded-full transition-all",
+                  deadline_bar_color(deadline_progress_pct(@snap, element))
+                ]}
+                style={"width: #{deadline_progress_pct(@snap, element)}%"}
+              />
+            </div>
 
             <%!-- Election result, once declared --%>
             <div
@@ -252,17 +260,26 @@ defmodule ScenexWeb.PlayLive.Display do
         do: {option, count}
   end
 
-  defp deadline_left(snap, %{deadline_seconds: seconds} = element) when is_integer(seconds) do
+  # The share of the deadline still remaining, 0..100 — nil once it lapses
+  # (the countdown bar simply disappears rather than sitting at empty) or
+  # for elements with no deadline configured at all.
+  defp deadline_progress_pct(snap, %{deadline_seconds: seconds} = element)
+       when is_integer(seconds) and seconds > 0 do
     case snap.triggered_at[element.id] do
-      nil -> nil
-      triggered_at -> triggered_at + seconds * 1000 - snap.game_time_ms
+      nil ->
+        nil
+
+      triggered_at ->
+        left = triggered_at + seconds * 1000 - snap.game_time_ms
+        if left > 0, do: (left / (seconds * 1000) * 100) |> min(100.0), else: nil
     end
   end
 
-  defp deadline_left(_snap, _element), do: nil
+  defp deadline_progress_pct(_snap, _element), do: nil
 
-  defp fmt_deadline_left(ms) when ms <= 0, do: "—"
-  defp fmt_deadline_left(ms), do: fmt_clock(ms)
+  defp deadline_bar_color(pct) when pct <= 20, do: "bg-error"
+  defp deadline_bar_color(pct) when pct <= 50, do: "bg-warning"
+  defp deadline_bar_color(_pct), do: "bg-primary"
 
   # ── Formatting ────────────────────────────────────────────────────────
 

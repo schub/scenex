@@ -275,6 +275,23 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       assert render(lv) =~ "tabular-nums leading-none"
     end
+
+    test "narratives render as markdown with media embeds", ctx do
+      {:ok, _} =
+        Authoring.update_timeline_element(ctx.event, %{
+          narrative: %{
+            "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
+          }
+        })
+
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+
+      assert html =~ "<strong>Chaos</strong>"
+      assert html =~ ~s(<video controls)
+    end
   end
 
   describe "display view" do
@@ -305,9 +322,10 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
 
-      # Voting time: the countdown runs, no result yet.
+      # Voting time: the countdown shows as a draining progress bar, no
+      # result yet.
       assert html =~ "Referendum"
-      assert html =~ "⏱"
+      assert html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
       refute html =~ "Result"
 
       {:ok, _} =
@@ -321,7 +339,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "23"
       assert html =~ "decided"
       assert html =~ "(+2)"
-      refute html =~ "⏱"
+      refute html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
     end
 
     test "shows the latest well-being tally once one is recorded, as a label — never a number",
@@ -393,25 +411,17 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "Blackout"
     end
 
-    test "narratives render as markdown with media embeds", ctx do
+    test "the current beat shows the title only — no narrative content", ctx do
       {:ok, _} =
-        Authoring.update_timeline_element(ctx.event, %{
-          narrative: %{
-            "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
-          }
-        })
+        Authoring.update_timeline_element(ctx.event, %{narrative: %{"en" => "**Chaos** spreads."}})
 
-      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "MD night"})
-      on_exit(fn -> Play.stop_running(session.id) end)
-      {:ok, display_token} = Play.create_display_token(session)
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
 
-      {:ok, _} = Play.start_session(session.id)
-      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
 
-      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
-
-      assert html =~ "<strong>Chaos</strong>"
-      assert html =~ ~s(<video controls)
+      assert html =~ "Blackout"
+      refute html =~ "Chaos"
     end
 
     test "audience screens speak the session's play language", ctx do
