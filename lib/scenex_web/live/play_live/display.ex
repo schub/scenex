@@ -65,19 +65,22 @@ defmodule ScenexWeb.PlayLive.Display do
               </span>
             </h2>
 
-            <%!-- The deadline countdown, as a draining progress bar rather
-            than a ticking number — full width. --%>
+            <%!-- The deadline countdown: a draining progress bar, full
+            width, with the time remaining alongside it. --%>
+            <% deadline = deadline_status(@snap, element) %>
             <div
-              :if={!Play.element_decided?(@snap, element) and deadline_progress_pct(@snap, element)}
-              class="h-4 w-full overflow-hidden rounded-full bg-base-300"
+              :if={not Play.element_decided?(@snap, element) and deadline}
+              class="space-y-1"
             >
-              <div
-                class={[
-                  "h-full rounded-full transition-all",
-                  deadline_bar_color(deadline_progress_pct(@snap, element))
-                ]}
-                style={"width: #{deadline_progress_pct(@snap, element)}%"}
-              />
+              <div class="text-right font-mono text-lg tabular-nums opacity-70">
+                {fmt_clock(deadline.left_ms)}
+              </div>
+              <div class="h-4 w-full overflow-hidden rounded-full bg-base-300">
+                <div
+                  class={["h-full rounded-full transition-all", deadline_bar_color(deadline.pct)]}
+                  style={"width: #{deadline.pct}%"}
+                />
+              </div>
             </div>
 
             <%!-- Election result, once declared --%>
@@ -260,10 +263,10 @@ defmodule ScenexWeb.PlayLive.Display do
         do: {option, count}
   end
 
-  # The share of the deadline still remaining, 0..100 — nil once it lapses
-  # (the countdown bar simply disappears rather than sitting at empty) or
-  # for elements with no deadline configured at all.
-  defp deadline_progress_pct(snap, %{deadline_seconds: seconds} = element)
+  # Time left and share of the deadline still remaining (0..100) — nil once
+  # it lapses (the countdown simply disappears rather than sitting at zero)
+  # or for elements with no deadline configured at all.
+  defp deadline_status(snap, %{deadline_seconds: seconds} = element)
        when is_integer(seconds) and seconds > 0 do
     case snap.triggered_at[element.id] do
       nil ->
@@ -271,11 +274,11 @@ defmodule ScenexWeb.PlayLive.Display do
 
       triggered_at ->
         left = triggered_at + seconds * 1000 - snap.game_time_ms
-        if left > 0, do: (left / (seconds * 1000) * 100) |> min(100.0), else: nil
+        if left > 0, do: %{left_ms: left, pct: (left / (seconds * 1000) * 100) |> min(100.0)}
     end
   end
 
-  defp deadline_progress_pct(_snap, _element), do: nil
+  defp deadline_status(_snap, _element), do: nil
 
   defp deadline_bar_color(pct) when pct <= 20, do: "bg-error"
   defp deadline_bar_color(pct) when pct <= 50, do: "bg-warning"
