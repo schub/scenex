@@ -36,15 +36,24 @@ defmodule ScenexWeb.CoreComponents do
   @doc """
   Renders flash notices.
 
+  `auto_dismiss` (default false) self-closes the toast a few seconds after
+  it mounts — for one-off action confirmations ("Page saved."). Leave it
+  off for anything the user needs to actively acknowledge, and for the
+  connection-status flashes (`phx-connected`/`phx-disconnected` toggle
+  their visibility via `hidden`, not by mounting/unmounting, so a timer
+  here would fire once at page load and have nothing to do with whether
+  the connection actually drops later).
+
   ## Examples
 
-      <.flash kind={:info} flash={@flash} />
+      <.flash kind={:info} flash={@flash} auto_dismiss />
       <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
   """
   attr :id, :string, doc: "the optional id of flash container"
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
   attr :title, :string, default: nil
   attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
+  attr :auto_dismiss, :boolean, default: false
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
 
   slot :inner_block, doc: "the optional inner block that renders the flash message"
@@ -56,6 +65,7 @@ defmodule ScenexWeb.CoreComponents do
     <div
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
+      phx-hook={@auto_dismiss && "AutoDismissFlash"}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
       class="toast toast-top toast-end z-50"
