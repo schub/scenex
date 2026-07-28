@@ -37,7 +37,8 @@ defmodule Scenex.Play.Projection do
     global_changes: %{},
     ending_id: nil,
     show_numbers: false,
-    board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true}
+    board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true},
+    group_values_visible: true
   ]
 
   @type slot :: String.t() | :winner | :outcome
@@ -80,6 +81,11 @@ defmodule Scenex.Play.Projection do
   defp handle(p, "board_section_toggled", %{"section" => section, "visible" => visible}, _) do
     %{p | board_sections: Map.put(p.board_sections, String.to_existing_atom(section), visible)}
   end
+
+  # Show/hide the group's own values on every group board — same kind of
+  # GM display preference, just for the group screens instead of the wall.
+  defp handle(p, "group_values_visibility_set", %{"visible" => visible}, _),
+    do: %{p | group_values_visible: visible}
 
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do

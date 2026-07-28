@@ -132,6 +132,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Government"
       assert html =~ "Blackout"
       assert html =~ "Crack down"
+      # No chrome here either — matches the scoreboard.
+      refute html =~ "data-phx-theme"
 
       # Tapping opens the styled confirm modal instead of deciding directly.
       html =
@@ -192,6 +194,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
       assert html =~ "locked"
+    end
+
+    test "a deadline shows as a draining progress bar, gone once decided", ctx do
+      {:ok, _} = Authoring.update_timeline_element(ctx.event, %{deadline_seconds: 300})
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "h-3 w-full overflow-hidden rounded-full bg-base-300"
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      refute html =~ "h-3 w-full overflow-hidden rounded-full bg-base-300"
     end
 
     test "gated options are locked for players", ctx do
@@ -274,6 +288,19 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       # board itself uses — no reload needed.
       {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       assert render(lv) =~ "tabular-nums leading-none"
+    end
+
+    test "the GM can hide the group's own values", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Stability"
+
+      {:ok, _} = Play.set_group_values_visible(ctx.session.id, false)
+      refute render(lv) =~ "Stability"
+
+      {:ok, _} = Play.set_group_values_visible(ctx.session.id, true)
+      assert render(lv) =~ "Stability"
     end
 
     test "narratives render as markdown with media embeds", ctx do

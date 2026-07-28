@@ -596,6 +596,21 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "group board values toggle" do
+    test "visible by default; the GM can turn it off and on, and it survives replay", ctx do
+      %{session: session} = ctx
+      assert Play.snapshot(session.id).group_values_visible
+
+      assert {:ok, snap} = Play.set_group_values_visible(session.id, false)
+      refute snap.group_values_visible
+
+      # A crash (or deploy) restarts the process; replay must land on the
+      # same setting, not silently reset to visible.
+      Play.stop_running(session.id)
+      refute Play.snapshot(session.id).group_values_visible
+    end
+  end
+
   describe "audience board numbers toggle" do
     test "off by default; the GM can turn it on and off, and it survives replay", ctx do
       %{session: session} = ctx
