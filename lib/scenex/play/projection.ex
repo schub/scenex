@@ -17,6 +17,14 @@ defmodule Scenex.Play.Projection do
   the event's game time), so all screens can show a transient "(+2)" without
   timers — freshness is a render-time comparison against the game clock, and
   replay rebuilds the same deltas.
+
+  `baseline_sim` is a second, coarser kind of "what changed": a snapshot of
+  `sim` as of the last **consolidation point**, kept until the next one —
+  the room's own audience-facing bars stack "since then" on top of it (a
+  cap for an increase, a dashed ghost outline for a decrease), rather than
+  a fleeting per-decision marker. A consolidation point is whenever a new
+  element triggers or the GM closes one out (the natural "moving on" beats)
+  or the GM forces one early via `consolidate_values`.
   """
 
   alias Scenex.Engine.Sim
@@ -25,6 +33,7 @@ defmodule Scenex.Play.Projection do
   defstruct [
     :definition,
     :sim,
+    :baseline_sim,
     status: :draft,
     triggered: [],
     triggered_at: %{},
@@ -46,7 +55,8 @@ defmodule Scenex.Play.Projection do
   @type t :: %__MODULE__{}
 
   def new(%Definition{} = definition) do
-    %__MODULE__{definition: definition, sim: Definition.initial_sim(definition)}
+    sim = Definition.initial_sim(definition)
+    %__MODULE__{definition: definition, sim: sim, baseline_sim: sim}
   end
 
   @doc "Fold one session event (struct or map with `type`/`payload`/`game_time_ms`)."
@@ -56,8 +66,19 @@ defmodule Scenex.Play.Projection do
     projection
     |> handle(type, payload, game_time_ms)
     |> recompute()
+    |> maybe_consolidate(type)
     |> record_changes(projection, game_time_ms)
   end
+
+  # A new element triggering, or the GM closing one out, are the natural
+  # "moving on" beats — whatever changed since the last consolidation point
+  # has had its moment, so it becomes the new baseline. "values_consolidated"
+  # is the GM forcing that same snapshot early, on demand.
+  defp maybe_consolidate(p, type)
+       when type in ["element_triggered", "element_closed", "values_consolidated"],
+       do: %{p | baseline_sim: p.sim}
+
+  defp maybe_consolidate(p, _type), do: p
 
   def globals(%__MODULE__{sim: sim}), do: Sim.globals(sim)
 

@@ -343,33 +343,56 @@ defmodule ScenexWeb.CoreComponents do
   `show_numbers` — when the value has no min/max to bar against (nothing to
   scale a bar to).
 
+  `baseline` is the value as of the session's last consolidation point (see
+  `Scenex.Play.Projection`) — pass `snap.baseline_sim`/`snap.baseline_globals`
+  for it, same shape as `value`'s own source. When it differs from `value`,
+  the bar shows *what changed since then*, not just where things stand now:
+  an increase stacks an accent-colored cap on top of the resting fill; a
+  decrease leaves a dashed "ghost" outline above the (now shorter) fill,
+  marking where it used to reach. Omit `baseline` (or pass the same number
+  as `value`) for a plain bar with no comparison.
+
       <.value_bar value={Sim.get(@snap.sim, vd.id, g.id)} min={vd.min} max={vd.max}
-        change={Play.recent_delta(@snap, vd.id, g.id)} show_numbers={@snap.show_numbers} />
+        baseline={Sim.get(@snap.baseline_sim, vd.id, g.id)} show_numbers={@snap.show_numbers} />
   """
   attr :value, :any, required: true, doc: "the number, or nil"
   attr :min, :any, default: nil
   attr :max, :any, default: nil
-  attr :change, :any, default: nil, doc: "the numeric delta, or nil for nothing"
+  attr :baseline, :any, default: nil, doc: "the value as of the last consolidation, or nil"
   attr :show_numbers, :boolean, default: true
   attr :class, :string, default: nil
 
   def value_bar(assigns) do
+    assigns = assign(assigns, :delta, bar_delta(assigns.value, assigns.baseline))
+
     ~H"""
     <span class={["inline-flex flex-col items-center gap-1", @class]}>
       <span
         :if={@show_numbers or not has_range?(@min, @max)}
         class="text-[0.9em] tabular-nums leading-none"
       >
-        {fmt_bar_value(@value)}<.value_delta change={@change} />
+        {fmt_bar_value(@value)}<.value_delta change={@delta} />
       </span>
-      <span
-        :if={has_range?(@min, @max)}
-        class="flex h-32 w-8 shrink-0 flex-col justify-end overflow-hidden rounded-full bg-base-300"
-      >
+      <span :if={has_range?(@min, @max)} class="relative h-32 w-8 shrink-0">
+        <span class="absolute inset-0 rounded-full bg-base-300" />
         <span
           :if={is_number(@value)}
-          class={["w-full", bar_color(@value, @min, @max)]}
-          style={"height: #{bar_pct(@value, @min, @max)}%"}
+          class={[
+            "absolute bottom-0 left-0 w-full",
+            bar_color(@value, @min, @max),
+            (@delta && @delta > 0 && "rounded-b-full") || "rounded-full"
+          ]}
+          style={"height: #{bar_base_pct(@value, @baseline, @delta, @min, @max)}%"}
+        />
+        <span
+          :if={@delta && @delta > 0}
+          class="absolute left-0 w-full rounded-t-full bg-accent"
+          style={"bottom: #{bar_pct(@baseline, @min, @max)}%; height: #{bar_pct(@value, @min, @max) - bar_pct(@baseline, @min, @max)}%"}
+        />
+        <span
+          :if={@delta && @delta < 0}
+          class="absolute left-0 w-full rounded-t-full border border-b-0 border-dashed border-base-content/40"
+          style={"bottom: #{bar_pct(@value, @min, @max)}%; height: #{bar_pct(@baseline, @min, @max) - bar_pct(@value, @min, @max)}%"}
         />
       </span>
     </span>
@@ -377,6 +400,22 @@ defmodule ScenexWeb.CoreComponents do
   end
 
   defp has_range?(min, max), do: is_number(min) and is_number(max)
+
+  defp bar_delta(value, baseline)
+       when is_number(value) and is_number(baseline) and value != baseline,
+       do: value - baseline
+
+  defp bar_delta(_value, _baseline), do: nil
+
+  # The resting (bottom, status-colored) segment's height: for an increase
+  # it stops at the baseline so the accent cap can sit above it; otherwise
+  # (no change, or a decrease) it's the current value — a decrease's ghost
+  # outline is drawn separately, above this shorter fill.
+  defp bar_base_pct(value, baseline, delta, lo, hi) do
+    if delta && delta > 0,
+      do: bar_pct(baseline, lo, hi),
+      else: bar_pct(value, lo, hi)
+  end
 
   defp bar_pct(value, lo, hi) when hi > lo do
     ((value - lo) / (hi - lo) * 100) |> Kernel.max(0) |> Kernel.min(100)

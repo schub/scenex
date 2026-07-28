@@ -101,6 +101,24 @@ defmodule ScenexWeb.SessionLive.Console do
         </button>
       </div>
 
+      <%!-- Value change markers — what the bars are comparing against right
+      now. Triggering the next element or closing this one both consolidate
+      automatically; this is for revealing it on the GM's own timing. --%>
+      <div
+        :if={@snap.status in [:live, :paused]}
+        class="mt-2 flex flex-wrap items-center gap-2 text-sm"
+      >
+        <span class="opacity-60">Value changes:</span>
+        <button
+          type="button"
+          phx-click="consolidate_values"
+          class="btn btn-xs btn-ghost"
+          title="Resets the audience bars' 'what changed' markers to right now — triggering the next element or closing this one also does this automatically"
+        >
+          ✓ Consolidate now
+        </button>
+      </div>
+
       <%!-- Live board --%>
       <div class="mt-6 overflow-x-auto">
         <table class="table table-sm">
@@ -509,6 +527,9 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("toggle_board_numbers", _params, socket) do
     run(socket, &Play.set_board_numbers(&1, not socket.assigns.snap.show_numbers))
   end
+
+  def handle_event("consolidate_values", _params, socket),
+    do: run(socket, &Play.consolidate_values/1)
 
   def handle_event("toggle_board_section", %{"section" => section}, socket) do
     section = String.to_existing_atom(section)

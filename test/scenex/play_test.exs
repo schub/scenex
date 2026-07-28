@@ -289,6 +289,78 @@ defmodule Scenex.PlayTest do
     assert {2.0, _at} = Play.snapshot(session.id).value_changes[{ctx.stability.id, ctx.gov.id}]
   end
 
+  describe "value baseline / consolidation" do
+    defp base_stab(snapshot, %{stability: vd}, group),
+      do: Sim.get(snapshot.baseline_sim, vd.id, group.id)
+
+    test "baseline starts equal to the current value", ctx do
+      {:ok, snap} = Play.start_session(ctx.session.id)
+      assert stab(snap, ctx, ctx.gov) == base_stab(snap, ctx, ctx.gov)
+      assert snap.baseline_globals == snap.globals
+    end
+
+    test "a decision moves the current value but not the baseline", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, snap} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      assert stab(snap, ctx, ctx.gov) == 7.0
+      assert base_stab(snap, ctx, ctx.gov) == 5.0
+    end
+
+    test "triggering the next element auto-consolidates the baseline", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      # Not yet — still the same beat.
+      assert base_stab(Play.snapshot(ctx.session.id), ctx, ctx.gov) == 5.0
+
+      {:ok, snap} = Play.trigger_element(ctx.session.id, ctx.election.id)
+      assert stab(snap, ctx, ctx.gov) == 7.0
+      assert base_stab(snap, ctx, ctx.gov) == 7.0
+    end
+
+    test "closing an element also auto-consolidates the baseline", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      assert base_stab(Play.snapshot(ctx.session.id), ctx, ctx.gov) == 5.0
+
+      {:ok, snap} = Play.close_element(ctx.session.id, ctx.event.id)
+      assert stab(snap, ctx, ctx.gov) == 7.0
+      assert base_stab(snap, ctx, ctx.gov) == 7.0
+    end
+
+    test "the GM can consolidate early, without waiting for the next trigger", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      assert {:ok, snap} = Play.consolidate_values(ctx.session.id)
+      assert base_stab(snap, ctx, ctx.gov) == 7.0
+
+      # A crash (or deploy) restarts the process; replay must land on the
+      # same consolidated baseline, not silently reset to the initial value.
+      Play.stop_running(ctx.session.id)
+      assert base_stab(Play.snapshot(ctx.session.id), ctx, ctx.gov) == 7.0
+    end
+
+    test "consolidating requires a running session", ctx do
+      assert Play.consolidate_values(ctx.session.id) == {:error, :not_running}
+    end
+
+    test "a decrease also shows against the baseline, the same way", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, snap} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.talk.id)
+
+      assert stab(snap, ctx, ctx.gov) == 4.0
+      assert base_stab(snap, ctx, ctx.gov) == 5.0
+    end
+  end
+
   test "two sessions of the same scenario are isolated", ctx do
     %{session: session_a, user: user, scenario: scenario} = ctx
     {:ok, session_b} = Play.create_session(user, scenario, %{label: "Other night"})

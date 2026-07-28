@@ -163,7 +163,15 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "7"
       # The fresh change is marked next to the value.
       assert html =~ "(+2)"
+      # An increase since the baseline stacks an accent cap on the bar — no
+      # ghost outline, that's only for decreases.
+      assert html =~ "bg-accent"
+      refute html =~ "border-dashed"
       refute html =~ "Lock in your decision?"
+
+      # The GM consolidates: the cap collapses back into the resting fill.
+      {:ok, _} = Play.consolidate_values(ctx.session.id)
+      refute render(lv) =~ "bg-accent"
 
       snap = Play.snapshot(ctx.session.id)
       assert snap.decisions[ctx.event.id][ctx.gov.id] == ctx.crack.id

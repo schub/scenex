@@ -163,6 +163,14 @@ defmodule Scenex.Play do
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})
 
   @doc """
+  Force the audience-facing value bars' "since when" baseline up to right
+  now — the same snapshot a new element trigger takes automatically, just
+  on the GM's own timing (e.g. to reveal several decisions' combined effect
+  together, rather than waiting for the next trigger).
+  """
+  def consolidate_values(session_id), do: command(session_id, {:consolidate_values})
+
+  @doc """
   Show (or hide) exact numbers alongside the bar gauges on the audience
   screens (display + group views). The GM console always shows numbers
   regardless of this setting — it's a presentation choice for the room, not
