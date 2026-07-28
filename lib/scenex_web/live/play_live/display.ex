@@ -118,7 +118,9 @@ defmodule ScenexWeb.PlayLive.Display do
             class="flex min-h-0 flex-1 flex-wrap items-center justify-center gap-10"
           >
             <div :for={vd <- value_dims(@snap)} class="text-center">
-              <div class="text-4xl font-bold">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+              <div class="text-2xl font-semibold opacity-70">
+                {I18n.t!(vd.name, @locale, default: vd.key)}
+              </div>
               <.value_bar
                 value={@snap.globals[vd.id]}
                 min={vd.min}
