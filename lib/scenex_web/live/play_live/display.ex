@@ -58,7 +58,7 @@ defmodule ScenexWeb.PlayLive.Display do
             :if={chosen_ending(@snap) == nil}
             class="rounded-box bg-base-200 p-6 space-y-3"
           >
-            <h2 class="text-3xl font-bold">
+            <h2 class="text-2xl font-bold">
               {I18n.t!(element.title, @locale, default: element.handle)}
               <span
                 :if={Play.element_decided?(@snap, element)}
