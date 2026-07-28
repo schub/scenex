@@ -203,7 +203,7 @@ defmodule ScenexWeb.SessionLive.Console do
               <span class="opacity-50">{element.position}.</span>
               {I18n.t!(element.title, @locale, default: element.handle)}
             </h3>
-            <span class="badge badge-sm">{element.kind}</span>
+            <span class="badge badge-sm">{kind_label(element.kind)}</span>
             <span :if={element.id in @snap.triggered} class="badge badge-sm badge-primary badge-soft">
               triggered
             </span>

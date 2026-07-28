@@ -98,7 +98,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
           <h3 class="text-lg font-semibold">
             <span class="opacity-50">{e.position}.</span>
             {I18n.t!(e.title, @locale, default: e.handle)}
-            <span class="badge badge-sm ml-1">{e.kind}</span>
+            <span class="badge badge-sm ml-1">{kind_label(e.kind)}</span>
           </h3>
 
           <%!-- Event: each group picks --%>

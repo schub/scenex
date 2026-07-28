@@ -337,6 +337,9 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
       # Election panel shows the room-wide ballot, not per-group blocks
       assert render(lv) =~ "Ballot options"
+      # The team's current wording: "election" reads as "Vote" in the UI —
+      # the stored kind atom is untouched.
+      assert render(lv) =~ "Vote"
 
       lv |> element(~s{button[phx-click=new_option]:not([phx-value-group])}) |> render_click()
 
@@ -383,6 +386,10 @@ defmodule ScenexWeb.ScenarioLiveTest do
       lv
       |> element(~s{button[phx-click=open_event][phx-value-id="#{sidequest.id}"]})
       |> render_click()
+
+      # The team's current wording: "sidequest" reads as "Wildcard" in the
+      # UI — the stored kind atom is untouched.
+      assert render(lv) =~ "Wildcard"
 
       lv
       |> element(~s{button[phx-click=new_outcome][phx-value-outcome="success"]})

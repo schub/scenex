@@ -460,7 +460,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 >
                   <span class="opacity-50">{e.position}.</span>
                   <span class="truncate">{e.handle}</span>
-                  <span class="badge badge-xs badge-ghost">{e.kind}</span>
+                  <span class="badge badge-xs badge-ghost">{kind_label(e.kind)}</span>
                   <span :if={e.deadline_seconds} title={fmt_deadline(e.deadline_seconds)}>⏱</span>
                 </button>
               </li>
@@ -525,7 +525,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                       field={@event_form[:kind]}
                       type="select"
                       label="Kind"
-                      options={Enum.map(TimelineElement.kinds(), &{Phoenix.Naming.humanize(&1), &1})}
+                      options={Enum.map(TimelineElement.kinds(), &{kind_label(&1), &1})}
                     />
                     <.input
                       field={@event_form[:deadline_seconds]}
@@ -555,7 +555,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
             >
               <h3 class="text-lg font-semibold">
                 Options — {I18n.t!(@selected_timeline_element.title, @locale, default: "element")}
-                <span class="badge badge-sm ml-2">{@selected_timeline_element.kind}</span>
+                <span class="badge badge-sm ml-2">{kind_label(@selected_timeline_element.kind)}</span>
               </h3>
 
               <%!-- Event: one option set per group --%>

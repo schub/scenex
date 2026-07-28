@@ -452,6 +452,16 @@ defmodule ScenexWeb.CoreComponents do
   defp gauge_readout_pct(_value, _min, _max), do: 50.0
 
   @doc """
+  The team's current wording for a timeline element kind — `:election` reads
+  as "Vote", `:sidequest` as "Wildcard". The stored atom stays as-is (no
+  migration, no rename through the engine/context layers); this only
+  covers what the editor and GM console show for it.
+  """
+  def kind_label(:election), do: "Vote"
+  def kind_label(:sidequest), do: "Wildcard"
+  def kind_label(kind), do: Phoenix.Naming.humanize(kind)
+
+  @doc """
   Authored content (markdown) rendered as safe HTML with media embeds —
   see `ScenexWeb.Markdown`. Renders nothing for nil/blank text. Styling
   comes from the `markdown` CSS class (app.css).
