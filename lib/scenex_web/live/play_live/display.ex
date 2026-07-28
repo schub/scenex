@@ -125,7 +125,7 @@ defmodule ScenexWeb.PlayLive.Display do
                 value={@snap.globals[vd.id]}
                 min={vd.min}
                 max={vd.max}
-                change={Play.recent_delta(@snap, vd.id)}
+                baseline={@snap.baseline_globals[vd.id]}
                 show_numbers={@snap.show_numbers}
                 class="mt-2"
               />

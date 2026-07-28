@@ -46,7 +46,7 @@ defmodule ScenexWeb.PlayLive.Group do
             value={Sim.get(@snap.sim, vd.id, @group.id)}
             min={vd.min}
             max={vd.max}
-            change={Play.recent_delta(@snap, vd.id, @group.id)}
+            baseline={Sim.get(@snap.baseline_sim, vd.id, @group.id)}
             show_numbers={@snap.show_numbers}
             class="mt-2"
           />

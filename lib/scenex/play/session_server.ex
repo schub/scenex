@@ -18,6 +18,7 @@ defmodule Scenex.Play.SessionServer do
   import Ecto.Query, warn: false
 
   alias Scenex.Authoring
+  alias Scenex.Engine.Sim
   alias Scenex.Play.{Definition, Projection, Session, SessionEvent}
   alias Scenex.Repo
 
@@ -281,6 +282,14 @@ defmodule Scenex.Play.SessionServer do
     end
   end
 
+  # Forces the "since when" baseline for the audience-facing value bars up
+  # to right now — same snapshot a new element trigger takes automatically,
+  # just on the GM's own timing (e.g. to reveal several decisions' combined
+  # effect together, or to move past a lull sooner than the next trigger).
+  defp validate({:consolidate_values}, state) do
+    with :ok <- running(state), do: {:ok, "values_consolidated", %{}, %{}}
+  end
+
   defp validate({:set_board_numbers, visible}, _state) when is_boolean(visible),
     do: {:ok, "board_numbers_set", %{visible: visible}, %{}}
 
@@ -431,6 +440,8 @@ defmodule Scenex.Play.SessionServer do
       status: state.projection.status,
       sim: state.projection.sim,
       globals: Projection.globals(state.projection),
+      baseline_sim: state.projection.baseline_sim,
+      baseline_globals: Sim.globals(state.projection.baseline_sim),
       triggered: state.projection.triggered,
       triggered_at: state.projection.triggered_at,
       closed: state.projection.closed,

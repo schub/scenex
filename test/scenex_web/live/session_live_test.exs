@@ -354,6 +354,24 @@ defmodule ScenexWeb.SessionLiveTest do
     refute Play.snapshot(session.id).show_numbers
   end
 
+  test "the GM can consolidate values early, without waiting for the next trigger", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, _} = Play.start_session(session.id)
+    {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+    {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+    assert html =~ "Consolidate values"
+
+    refute Play.snapshot(session.id).baseline_globals[ctx.stability.id] ==
+             Play.snapshot(session.id).globals[ctx.stability.id]
+
+    lv |> element(~s{button[phx-click=consolidate_values]}) |> render_click()
+
+    snap = Play.snapshot(session.id)
+    assert snap.baseline_globals[ctx.stability.id] == snap.globals[ctx.stability.id]
+  end
+
   test "the GM can toggle each scoreboard section independently", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")

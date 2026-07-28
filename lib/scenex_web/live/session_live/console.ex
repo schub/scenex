@@ -67,6 +67,14 @@ defmodule ScenexWeb.SessionLive.Console do
               do: "🔢 Hide numbers on displays",
               else: "🔢 Show numbers on displays"}
           </button>
+          <button
+            :if={@snap.status in [:live, :paused]}
+            phx-click="consolidate_values"
+            class="btn btn-sm btn-ghost"
+            title="Resets the audience bars' 'what changed' markers to right now — triggering the next element also does this automatically"
+          >
+            ✓ Consolidate values
+          </button>
           <.link navigate={~p"/scenarios/#{@scenario.id}/sessions"} class="btn btn-sm btn-ghost">
             ← Sessions
           </.link>
@@ -509,6 +517,9 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("toggle_board_numbers", _params, socket) do
     run(socket, &Play.set_board_numbers(&1, not socket.assigns.snap.show_numbers))
   end
+
+  def handle_event("consolidate_values", _params, socket),
+    do: run(socket, &Play.consolidate_values/1)
 
   def handle_event("toggle_board_section", %{"section" => section}, socket) do
     section = String.to_existing_atom(section)
