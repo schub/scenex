@@ -436,7 +436,7 @@ defmodule ScenexWeb.CoreComponents do
         />
       </div>
       <div
-        class="absolute top-full mt-4 -translate-x-1/2 text-center text-4xl font-bold whitespace-nowrap"
+        class="absolute top-full mt-4 -translate-x-1/2 text-center text-2xl font-bold whitespace-nowrap"
         style={"left: #{gauge_readout_pct(@value, @min, @max)}%"}
       >
         {@readout}
