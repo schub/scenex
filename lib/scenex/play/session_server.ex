@@ -294,6 +294,9 @@ defmodule Scenex.Play.SessionServer do
   defp validate({:set_board_section, _section, visible}, _state) when is_boolean(visible),
     do: {:error, :unknown_section}
 
+  defp validate({:set_group_values_visible, visible}, _state) when is_boolean(visible),
+    do: {:ok, "group_values_visibility_set", %{visible: visible}, %{}}
+
   defp validate({:record_tally, value_id, counts}, state) do
     with :ok <- running(state),
          :ok <- fetch_per_participant(state, value_id),
@@ -440,6 +443,7 @@ defmodule Scenex.Play.SessionServer do
       ending_id: state.projection.ending_id,
       show_numbers: state.projection.show_numbers,
       board_sections: state.projection.board_sections,
+      group_values_visible: state.projection.group_values_visible,
       game_time_ms: current_game_time(state.session),
       definition: state.definition
     }

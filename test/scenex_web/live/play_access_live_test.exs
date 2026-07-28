@@ -290,6 +290,19 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert render(lv) =~ "tabular-nums leading-none"
     end
 
+    test "the GM can hide the group's own values", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "Stability"
+
+      {:ok, _} = Play.set_group_values_visible(ctx.session.id, false)
+      refute render(lv) =~ "Stability"
+
+      {:ok, _} = Play.set_group_values_visible(ctx.session.id, true)
+      assert render(lv) =~ "Stability"
+    end
+
     test "narratives render as markdown with media embeds", ctx do
       {:ok, _} =
         Authoring.update_timeline_element(ctx.event, %{

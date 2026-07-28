@@ -10,7 +10,8 @@ defmodule ScenexWeb.SessionLive.Console do
   wins) — click a different option and the board recomputes. The GM can also
   close a triggered element manually, deadline or not — undecided groups
   simply stay undecided, nothing is locked. Four independent toggles control
-  which sections appear on the scoreboard (projected display) — this
+  which sections appear on the scoreboard (projected display), plus one more
+  for whether the group boards show each group's own values — this
   console's own board is never affected by any of them.
   """
   use ScenexWeb, :live_view
@@ -84,6 +85,19 @@ defmodule ScenexWeb.SessionLive.Console do
           class={["btn btn-xs", (@snap.board_sections[section] && "btn-primary") || "btn-ghost"]}
         >
           {if @snap.board_sections[section], do: "👁 #{label}", else: "🚫 #{label}"}
+        </button>
+      </div>
+
+      <%!-- Group board section visibility — same idea, for the group
+      screens instead of the wall. --%>
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <span class="opacity-60">On the group boards:</span>
+        <button
+          type="button"
+          phx-click="toggle_group_values"
+          class={["btn btn-xs", (@snap.group_values_visible && "btn-primary") || "btn-ghost"]}
+        >
+          {if @snap.group_values_visible, do: "👁 Group values", else: "🚫 Group values"}
         </button>
       </div>
 
@@ -500,6 +514,10 @@ defmodule ScenexWeb.SessionLive.Console do
     section = String.to_existing_atom(section)
     visible = not socket.assigns.snap.board_sections[section]
     run(socket, &Play.set_board_section(&1, section, visible))
+  end
+
+  def handle_event("toggle_group_values", _params, socket) do
+    run(socket, &Play.set_group_values_visible(&1, not socket.assigns.snap.group_values_visible))
   end
 
   def handle_event("trigger", %{"id" => element_id}, socket),

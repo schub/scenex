@@ -182,6 +182,13 @@ defmodule Scenex.Play do
     do: command(session_id, {:set_board_section, section, visible})
 
   @doc """
+  Show/hide a group's own values on every group board (not the scoreboard).
+  Defaults visible.
+  """
+  def set_group_values_visible(session_id, visible) when is_boolean(visible),
+    do: command(session_id, {:set_group_values_visible, visible})
+
+  @doc """
   Record a hand-count well-being tally for a `per_participant` value:
   `%{score => count}`. The latest tally sets the value's global (its
   count-weighted mean); history stays in the log and the snapshot's `tallies`.

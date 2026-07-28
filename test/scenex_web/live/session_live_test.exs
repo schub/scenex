@@ -382,6 +382,21 @@ defmodule ScenexWeb.SessionLiveTest do
     assert Play.snapshot(session.id).board_sections.democracy == true
   end
 
+  test "the GM can toggle group values on the group boards", ctx do
+    %{conn: conn, session: session} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    assert html =~ "👁 Group values"
+
+    html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
+    assert html =~ "🚫 Group values"
+    refute Play.snapshot(session.id).group_values_visible
+
+    html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
+    assert html =~ "👁 Group values"
+    assert Play.snapshot(session.id).group_values_visible
+  end
+
   test "the GM can close an event manually, deadline or not", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")

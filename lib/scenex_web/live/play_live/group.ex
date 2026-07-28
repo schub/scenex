@@ -35,8 +35,9 @@ defmodule ScenexWeb.PlayLive.Group do
         </div>
       </div>
 
-      <%!-- Our own values — the wall shows the shared scoreboard, not this. --%>
-      <div class="mt-4 flex flex-wrap justify-center gap-10">
+      <%!-- Our own values — the wall shows the shared scoreboard, not this.
+      GM-toggled, off the board layout independently of the scoreboard. --%>
+      <div :if={@snap.group_values_visible} class="mt-4 flex flex-wrap justify-center gap-10">
         <div :for={vd <- value_dims(@snap)} class="text-center">
           <div class="text-2xl font-semibold opacity-70">
             {I18n.t!(vd.name, @locale, default: vd.key)}
