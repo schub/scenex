@@ -40,6 +40,19 @@ defmodule Scenex.Engine.ScaleTest do
     end
   end
 
+  describe "index/4" do
+    test "0-based, 0 = best (nearest max)" do
+      assert Scale.index(100.0, 0.0, 100.0, 4) == 0
+      assert Scale.index(0.0, 0.0, 100.0, 4) == 3
+      assert Scale.index(50.0, 0.0, 100.0, 4) in [1, 2]
+    end
+
+    test "out-of-range values clamp to the nearest end" do
+      assert Scale.index(999.0, 0.0, 100.0, 5) == 0
+      assert Scale.index(-999.0, 0.0, 100.0, 5) == 4
+    end
+  end
+
   describe "position/3" do
     test "maps min..max onto 0.0..1.0" do
       assert Scale.position(0.0, 0.0, 10.0) == 0.0

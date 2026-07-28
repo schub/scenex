@@ -21,6 +21,9 @@ defmodule Scenex.Engine.Scale do
 
       iex> Scenex.Engine.Scale.position(7.5, 0.0, 10.0)
       0.75
+
+      iex> Scenex.Engine.Scale.index(9.0, 0.0, 10.0, 3)
+      0
   """
 
   @doc """
@@ -30,7 +33,19 @@ defmodule Scenex.Engine.Scale do
   """
   @spec label(number(), number(), number(), [String.t()]) :: String.t()
   def label(value, min, max, [_ | _] = labels) do
-    Enum.at(labels, band_index(value, min, max, length(labels)))
+    Enum.at(labels, index(value, min, max, length(labels)))
+  end
+
+  @doc """
+  Which of `band_count` equal-width bands (0 = best, `band_count - 1` =
+  worst) `value` falls into on `min..max`. The building block behind
+  `label/4` — use this directly to pick something other than a text label
+  for a band, e.g. an emoji.
+  """
+  @spec index(number(), number(), number(), pos_integer()) :: non_neg_integer()
+  def index(value, min, max, band_count) when band_count > 0 do
+    from_best = trunc((1.0 - position(value, min, max)) * band_count)
+    from_best |> max(0) |> min(band_count - 1)
   end
 
   @doc "Where `value` falls on `min..max`, clamped to `0.0..1.0` (0 = min, 1 = max)."
@@ -41,10 +56,5 @@ defmodule Scenex.Engine.Scale do
     ((value - min) / (max - min) * 1.0)
     |> max(0.0)
     |> min(1.0)
-  end
-
-  defp band_index(value, min, max, band_count) do
-    from_best = trunc((1.0 - position(value, min, max)) * band_count)
-    from_best |> max(0) |> min(band_count - 1)
   end
 end

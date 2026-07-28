@@ -14,10 +14,13 @@ defmodule ScenexWeb.PlayLive.Display do
   use ScenexWeb, :live_view
 
   alias Scenex.Play
+  alias Scenex.Engine.Scale
   alias Scenex.I18n
 
-  # Best-to-worst band labels for the two gauges — see Scenex.Engine.Scale.
-  @wellbeing_labels ["Very happy", "Happy", "OK", "Not Happy"]
+  # Well-being reads as an emoji, not a label — same 4 equal bands as the
+  # gauge's tick position, just a different readout. Democracy score keeps
+  # a text label, best to worst — see Scenex.Engine.Scale.
+  @wellbeing_emojis ["😀", "🙂", "😐", "🙁"]
   @wellbeing_min 1.0
   @wellbeing_max 4.0
   @democracy_labels ["In Bloom", "Resilient", "Fragile", "Critical", "Breakdown"]
@@ -115,7 +118,7 @@ defmodule ScenexWeb.PlayLive.Display do
             class="flex min-h-0 flex-1 flex-wrap items-center justify-center gap-10"
           >
             <div :for={vd <- value_dims(@snap)} class="text-center">
-              <div class="text-lg opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+              <div class="text-4xl font-bold">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
               <.value_bar
                 value={@snap.globals[vd.id]}
                 min={vd.min}
@@ -130,27 +133,31 @@ defmodule ScenexWeb.PlayLive.Display do
           <div
             :for={vd <- wellbeing_dims(@snap)}
             :if={@snap.board_sections.wellbeing}
-            class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-16"
+            class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
-            <div class="text-lg opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+            <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
+              {I18n.t!(vd.name, @locale, default: vd.key)}
+            </div>
             <.scale_gauge
               value={@snap.globals[vd.id]}
               min={wellbeing_min()}
               max={wellbeing_max()}
-              labels={wellbeing_labels()}
+              readout={wellbeing_readout(@snap, vd)}
             />
           </div>
 
           <div
             :if={@snap.board_sections.democracy and democracy_score(@snap) != nil}
-            class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-16"
+            class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
-            <div class="text-lg opacity-70">{gettext("Democracy Score")}</div>
+            <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
+              {gettext("Democracy Score")}
+            </div>
             <.scale_gauge
               value={democracy_score(@snap)}
               min={@snap.definition.democracy_min}
               max={@snap.definition.democracy_max}
-              labels={democracy_labels()}
+              readout={democracy_readout(@snap)}
             />
           </div>
         </div>
@@ -216,8 +223,34 @@ defmodule ScenexWeb.PlayLive.Display do
 
   defp wellbeing_min, do: @wellbeing_min
   defp wellbeing_max, do: @wellbeing_max
-  defp wellbeing_labels, do: @wellbeing_labels
-  defp democracy_labels, do: @democracy_labels
+
+  defp wellbeing_readout(snap, vd) do
+    case snap.globals[vd.id] do
+      value when is_number(value) ->
+        Enum.at(
+          @wellbeing_emojis,
+          Scale.index(value, @wellbeing_min, @wellbeing_max, length(@wellbeing_emojis))
+        )
+
+      _ ->
+        "—"
+    end
+  end
+
+  defp democracy_readout(snap) do
+    case democracy_score(snap) do
+      score when is_number(score) ->
+        Scale.label(
+          score,
+          snap.definition.democracy_min,
+          snap.definition.democracy_max,
+          @democracy_labels
+        )
+
+      _ ->
+        "—"
+    end
+  end
 
   # The number, or nil if unconfigured or unavailable — the gauge already
   # reads nil as "—", and the section hides itself when there's nothing to

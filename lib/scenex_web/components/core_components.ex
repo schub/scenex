@@ -406,17 +406,19 @@ defmodule ScenexWeb.CoreComponents do
 
   @doc """
   A value's position on a `min`/`max` range shown as a horizontal track with
-  a tick — never a raw number, only where it falls and which labeled band
-  it's in (`labels`, given best to worst — see `Scenex.Engine.Scale`). For
-  values the audience should read as a state, not a figure: a well-being
-  mean, a democracy score.
+  a tick — never a raw number, only where it falls, plus a `readout` the
+  caller has already worked out for it (a band label from
+  `Scenex.Engine.Scale.label/4`, an emoji, whatever fits — this component
+  only lays it out, it doesn't decide what it says). For values the
+  audience should read as a state, not a figure: a well-being mean, a
+  democracy score.
 
-      <.scale_gauge value={7.2} min={0.0} max={10.0} labels={["Good", "Mid", "Bad"]} />
+      <.scale_gauge value={7.2} min={0.0} max={10.0} readout="Good" />
   """
   attr :value, :any, required: true, doc: "the number, or nil if not yet known"
   attr :min, :float, required: true
   attr :max, :float, required: true
-  attr :labels, :list, required: true, doc: "band labels, best to worst"
+  attr :readout, :string, required: true, doc: "the big text (or emoji) shown under the tick"
   attr :class, :string, default: nil
 
   def scale_gauge(assigns) do
@@ -429,9 +431,7 @@ defmodule ScenexWeb.CoreComponents do
           style={"left: #{Scale.position(@value, @min, @max) * 100}%"}
         />
       </div>
-      <p class="mt-4 text-center text-4xl font-bold">
-        {if is_number(@value), do: Scale.label(@value, @min, @max, @labels), else: "—"}
-      </p>
+      <p class="mt-4 text-center text-4xl font-bold">{@readout}</p>
     </div>
     """
   end

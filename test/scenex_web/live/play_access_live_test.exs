@@ -342,7 +342,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
     end
 
-    test "shows the latest well-being tally once one is recorded, as a label — never a number",
+    test "shows the latest well-being tally once one is recorded, as an emoji — never a number",
          ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
 
@@ -353,12 +353,12 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, _} = Play.record_tally(ctx.session.id, ctx.wellbeing.id, %{"4" => 3, "3" => 1})
 
-      # Mean (4*3 + 3)/4 = 3.75 -> "Very happy" — arrives via PubSub. Never a
-      # raw number, even with the numbers toggle on.
+      # Mean (4*3 + 3)/4 = 3.75 -> 😀 — arrives via PubSub. Never a raw
+      # number, even with the numbers toggle on.
       {:ok, _} = Play.set_board_numbers(ctx.session.id, true)
       html = render(lv)
       assert html =~ "Well-being"
-      assert html =~ "Very happy"
+      assert html =~ "😀"
       refute html =~ "3.8"
       refute html =~ "3.75"
     end
