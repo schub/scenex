@@ -24,7 +24,7 @@ defmodule ScenexWeb.PlayLive.Group do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.play flash={@flash}>
+    <Layouts.play flash={@flash} header={false}>
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h1 class="text-3xl font-bold">
           {I18n.t!(@group.name, @locale, default: @group.handle)}
@@ -36,9 +36,11 @@ defmodule ScenexWeb.PlayLive.Group do
       </div>
 
       <%!-- Our own values — the wall shows the shared scoreboard, not this. --%>
-      <div class="mt-4 flex flex-wrap justify-center gap-8">
+      <div class="mt-4 flex flex-wrap justify-center gap-10">
         <div :for={vd <- value_dims(@snap)} class="text-center">
-          <div class="text-base opacity-70">{I18n.t!(vd.name, @locale, default: vd.key)}</div>
+          <div class="text-2xl font-semibold opacity-70">
+            {I18n.t!(vd.name, @locale, default: vd.key)}
+          </div>
           <.value_bar
             value={Sim.get(@snap.sim, vd.id, @group.id)}
             min={vd.min}

@@ -132,6 +132,8 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "Government"
       assert html =~ "Blackout"
       assert html =~ "Crack down"
+      # No chrome here either — matches the scoreboard.
+      refute html =~ "data-phx-theme"
 
       # Tapping opens the styled confirm modal instead of deciding directly.
       html =
