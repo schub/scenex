@@ -361,7 +361,7 @@ defmodule ScenexWeb.SessionLiveTest do
     {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
 
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
-    assert html =~ "Consolidate values"
+    assert html =~ "Consolidate now"
 
     refute Play.snapshot(session.id).baseline_globals[ctx.stability.id] ==
              Play.snapshot(session.id).globals[ctx.stability.id]

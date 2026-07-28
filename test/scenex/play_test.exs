@@ -321,6 +321,18 @@ defmodule Scenex.PlayTest do
       assert base_stab(snap, ctx, ctx.gov) == 7.0
     end
 
+    test "closing an element also auto-consolidates the baseline", ctx do
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(ctx.session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      assert base_stab(Play.snapshot(ctx.session.id), ctx, ctx.gov) == 5.0
+
+      {:ok, snap} = Play.close_element(ctx.session.id, ctx.event.id)
+      assert stab(snap, ctx, ctx.gov) == 7.0
+      assert base_stab(snap, ctx, ctx.gov) == 7.0
+    end
+
     test "the GM can consolidate early, without waiting for the next trigger", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)

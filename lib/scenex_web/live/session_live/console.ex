@@ -67,14 +67,6 @@ defmodule ScenexWeb.SessionLive.Console do
               do: "🔢 Hide numbers on displays",
               else: "🔢 Show numbers on displays"}
           </button>
-          <button
-            :if={@snap.status in [:live, :paused]}
-            phx-click="consolidate_values"
-            class="btn btn-sm btn-ghost"
-            title="Resets the audience bars' 'what changed' markers to right now — triggering the next element also does this automatically"
-          >
-            ✓ Consolidate values
-          </button>
           <.link navigate={~p"/scenarios/#{@scenario.id}/sessions"} class="btn btn-sm btn-ghost">
             ← Sessions
           </.link>
@@ -106,6 +98,24 @@ defmodule ScenexWeb.SessionLive.Console do
           class={["btn btn-xs", (@snap.group_values_visible && "btn-primary") || "btn-ghost"]}
         >
           {if @snap.group_values_visible, do: "👁 Group values", else: "🚫 Group values"}
+        </button>
+      </div>
+
+      <%!-- Value change markers — what the bars are comparing against right
+      now. Triggering the next element or closing this one both consolidate
+      automatically; this is for revealing it on the GM's own timing. --%>
+      <div
+        :if={@snap.status in [:live, :paused]}
+        class="mt-2 flex flex-wrap items-center gap-2 text-sm"
+      >
+        <span class="opacity-60">Value changes:</span>
+        <button
+          type="button"
+          phx-click="consolidate_values"
+          class="btn btn-xs btn-ghost"
+          title="Resets the audience bars' 'what changed' markers to right now — triggering the next element or closing this one also does this automatically"
+        >
+          ✓ Consolidate now
         </button>
       </div>
 

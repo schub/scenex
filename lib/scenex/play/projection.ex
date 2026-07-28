@@ -23,8 +23,8 @@ defmodule Scenex.Play.Projection do
   the room's own audience-facing bars stack "since then" on top of it (a
   cap for an increase, a dashed ghost outline for a decrease), rather than
   a fleeting per-decision marker. A consolidation point is whenever a new
-  element triggers (the natural "moving on" beat) or the GM forces one
-  early via `consolidate_values`.
+  element triggers or the GM closes one out (the natural "moving on" beats)
+  or the GM forces one early via `consolidate_values`.
   """
 
   alias Scenex.Engine.Sim
@@ -70,12 +70,13 @@ defmodule Scenex.Play.Projection do
     |> record_changes(projection, game_time_ms)
   end
 
-  # A new element triggering is the natural "moving on" beat — whatever
-  # changed since the last consolidation point has had its moment, so it
-  # becomes the new baseline. "values_consolidated" is the GM forcing that
-  # same snapshot early, on demand.
-  defp maybe_consolidate(p, type) when type in ["element_triggered", "values_consolidated"],
-    do: %{p | baseline_sim: p.sim}
+  # A new element triggering, or the GM closing one out, are the natural
+  # "moving on" beats — whatever changed since the last consolidation point
+  # has had its moment, so it becomes the new baseline. "values_consolidated"
+  # is the GM forcing that same snapshot early, on demand.
+  defp maybe_consolidate(p, type)
+       when type in ["element_triggered", "element_closed", "values_consolidated"],
+       do: %{p | baseline_sim: p.sim}
 
   defp maybe_consolidate(p, _type), do: p
 
