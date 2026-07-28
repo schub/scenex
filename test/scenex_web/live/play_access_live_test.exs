@@ -448,6 +448,35 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "Blackout"
     end
 
+    test "a GM-selected page takes over the scoreboard entirely", ctx do
+      {:ok, page} =
+        Authoring.create_page(ctx.scenario, %{
+          handle: "Welcome",
+          title: %{"en" => "Welcome"},
+          content: %{"en" => "# Bem-vindos\n\nO jogo comeca em breve."}
+        })
+
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Onboarding"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+      assert html =~ "Onboarding"
+      refute html =~ "Bem-vindos"
+
+      {:ok, _} = Play.show_page(session.id, page.id)
+      html = render(lv)
+      assert html =~ "Bem-vindos"
+      # Full takeover: session name/clock/status and everything else on the
+      # normal scoreboard are gone while the page is showing.
+      refute html =~ "Onboarding"
+
+      {:ok, _} = Play.clear_page(session.id)
+      html = render(lv)
+      refute html =~ "Bem-vindos"
+      assert html =~ "Onboarding"
+    end
+
     test "the current beat shows the title only — no narrative content", ctx do
       {:ok, _} =
         Authoring.update_timeline_element(ctx.event, %{narrative: %{"en" => "**Chaos** spreads."}})

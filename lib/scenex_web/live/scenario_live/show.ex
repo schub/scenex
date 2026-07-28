@@ -1,7 +1,7 @@
 defmodule ScenexWeb.ScenarioLive.Show do
   @moduledoc """
   The scenario-definition editor. Sections: Settings, Values, Groups, Initial values,
-  Timeline, Labels, Endings. Content is edited one working locale at a time;
+  Timeline, Labels, Endings, Pages. Content is edited one working locale at a time;
   authorization comes from the Authoring context (owners/authors edit, else
   read-only). The options panel is kind-aware: events edit per-group options
   with own-value effects; elections and sidequests edit options with an
@@ -10,12 +10,22 @@ defmodule ScenexWeb.ScenarioLive.Show do
   use ScenexWeb, :live_view
 
   alias Scenex.Authoring
-  alias Scenex.Authoring.{DecisionOption, Ending, TimelineElement, Group, Label, ValueDimension}
+
+  alias Scenex.Authoring.{
+    DecisionOption,
+    Ending,
+    Page,
+    TimelineElement,
+    Group,
+    Label,
+    ValueDimension
+  }
+
   alias Scenex.I18n
   alias Scenex.Media
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values democracy groups initial timeline labels endings media)a
+  @sections ~w(settings values democracy groups initial timeline labels endings pages media)a
   @locale_choices Scenex.I18n.locales()
 
   @impl true
@@ -1019,6 +1029,96 @@ defmodule ScenexWeb.ScenarioLive.Show do
           </div>
         </div>
 
+        <%!-- Pages: pre-authored full-screen scoreboard slides --%>
+        <div :if={@section == :pages} class={master_detail_grid()}>
+          <aside class={sidebar_classes()}>
+            <button
+              :if={@can_edit?}
+              type="button"
+              phx-click="new_page"
+              class="btn btn-sm btn-primary w-full"
+            >
+              + New page
+            </button>
+            <ul class="menu w-full rounded-box bg-base-200">
+              <li :for={p <- @pages}>
+                <button
+                  type="button"
+                  phx-click="edit_page"
+                  phx-value-id={p.id}
+                  class={selected_item(@editing_page, p)}
+                >
+                  <span class="truncate">{p.handle}</span>
+                </button>
+              </li>
+              <li :if={@pages == []} class="menu-disabled">
+                <span>No pages yet — full-screen scoreboard slides the GM can show anytime.</span>
+              </li>
+            </ul>
+          </aside>
+
+          <div class="min-w-0 card bg-base-200">
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">
+                  {if @editing_page, do: "Edit page — #{@editing_page.handle}", else: "New page"}
+                </h3>
+                <button
+                  :if={@can_edit? and @editing_page}
+                  type="button"
+                  phx-click="delete_page"
+                  phx-value-id={@editing_page.id}
+                  data-confirm="Delete this page?"
+                  class="btn btn-xs btn-error btn-soft"
+                >
+                  Delete
+                </button>
+              </div>
+              <.form
+                for={@page_form}
+                phx-change="track_localized"
+                phx-submit="save_page"
+                class="grid gap-3 sm:grid-cols-2"
+              >
+                <fieldset disabled={not @can_edit?} class="contents">
+                  <.input field={@page_form[:handle]} label="Handle (internal)" />
+                  <.input
+                    type="text"
+                    name={"page[title][#{@locale}]"}
+                    value={LocalizedForm.value(@page_form, :title, @locale)}
+                    label={"Title (#{@locale}) — the GM's button label"}
+                  />
+                  <div class="sm:col-span-2">
+                    <.input
+                      type="textarea"
+                      name={"page[content][#{@locale}]"}
+                      value={LocalizedForm.value(@page_form, :content, @locale)}
+                      label={"Content (#{@locale}, Markdown — text, and/or a single image or video from the media library)"}
+                    />
+                  </div>
+                  <.input field={@page_form[:position]} type="number" label="Position" />
+                  <div class="flex gap-2 sm:col-span-2">
+                    <.button variant="primary">Save page</.button>
+                    <button
+                      :if={@editing_page}
+                      type="button"
+                      phx-click="new_page"
+                      class="btn btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </fieldset>
+              </.form>
+              <p class="text-xs opacity-60">
+                Shown full screen on the scoreboard when the GM selects it from the console —
+                overrides everything else there (including the header) until the GM switches
+                back. Video plays once automatically, muted, no controls.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <%!-- Media library --%>
         <div :if={@section == :media} class="space-y-6">
           <p class="text-xs opacity-60">
@@ -1257,6 +1357,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
          |> assign_event_form(%TimelineElement{})
          |> assign_label_form(%Label{})
          |> assign_ending_form(%Ending{})
+         |> assign_page_form(%Page{})
          |> allow_upload(:media,
            accept:
              ~w(.png .jpg .jpeg .gif .webp .avif .mp4 .webm .mov .m4v .mp3 .ogg .oga .wav .m4a .aac .flac),
@@ -1852,6 +1953,57 @@ defmodule ScenexWeb.ScenarioLive.Show do
     end)
   end
 
+  # ── Pages ─────────────────────────────────────────────────────────────
+
+  def handle_event("edit_page", %{"id" => id}, socket) do
+    case Authoring.get_page(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      page -> {:noreply, assign_page_form(socket, page)}
+    end
+  end
+
+  def handle_event("new_page", _params, socket) do
+    {:noreply, assign_page_form(socket, %Page{})}
+  end
+
+  def handle_event("save_page", %{"page" => params}, socket) do
+    with_edit(socket, fn ->
+      params = tracked_params(socket, :page_form, params)
+      data = socket.assigns.editing_page || %Page{}
+      attrs = LocalizedForm.merge(params, data, [:title, :content])
+
+      result =
+        if socket.assigns.editing_page,
+          do: Authoring.update_page(data, attrs),
+          else: Authoring.create_page(socket.assigns.scenario, attrs)
+
+      case result do
+        {:ok, page} ->
+          {:noreply,
+           socket
+           |> assign_page_form(page)
+           |> reload()
+           |> put_flash(:info, "Page saved.")}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, :page_form, to_form(changeset, as: :page))}
+      end
+    end)
+  end
+
+  def handle_event("delete_page", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      case Authoring.get_page(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        page ->
+          Authoring.delete_page(page)
+          {:noreply, socket |> assign_page_form(%Page{}) |> reload()}
+      end
+    end)
+  end
+
   # ── Assigns helpers ───────────────────────────────────────────────────
 
   defp assign_settings_form(socket, scenario),
@@ -1867,7 +2019,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
       {"timeline_element", :event_form},
       {"option", :option_form},
       {"label", :label_form},
-      {"ending", :ending_form}
+      {"ending", :ending_form},
+      {"page", :page_form}
     ]
   end
 
@@ -1908,6 +2061,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp rebuild_form(socket, :ending_form, params) do
     data = socket.assigns.editing_ending || %Ending{}
     to_form(Authoring.change_ending(data, params), as: :ending)
+  end
+
+  defp rebuild_form(socket, :page_form, params) do
+    data = socket.assigns.editing_page || %Page{}
+    to_form(Authoring.change_page(data, params), as: :page)
   end
 
   # The tracked params (all locales typed so far), for the save handlers.
@@ -1993,6 +2151,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
     |> assign(:ending_form, to_form(Authoring.change_ending(ending), as: :ending))
   end
 
+  defp assign_page_form(socket, page) do
+    socket
+    |> assign(:editing_page, if(page.id, do: page, else: nil))
+    |> assign(:page_form, to_form(Authoring.change_page(page), as: :page))
+  end
+
   defp close_event(socket) do
     socket
     |> assign(selected_timeline_element: nil, selected_timeline_element_id: nil, options: [])
@@ -2051,6 +2215,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
         timeline_elements: Authoring.list_timeline_elements(scenario),
         labels: Authoring.list_labels(scenario),
         endings: Authoring.list_endings(scenario),
+        pages: Authoring.list_pages(scenario),
         media_files: Media.list_files(scenario)
       )
       |> reload_members()

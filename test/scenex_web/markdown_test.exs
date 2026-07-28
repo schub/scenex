@@ -43,4 +43,23 @@ defmodule ScenexWeb.MarkdownTest do
     out = html("![jingle](/media/abc/jingle.mp3)")
     assert out =~ ~s(<audio controls)
   end
+
+  test "page mode plays video automatically instead of showing controls" do
+    out =
+      "![clip](/media/abc/clip.mp4)"
+      |> Markdown.to_html(mode: :page)
+      |> Phoenix.HTML.safe_to_string()
+
+    assert out =~ ~s(<video autoplay muted playsinline src="/media/abc/clip.mp4">)
+    refute out =~ "controls"
+  end
+
+  test "narrative mode (the default) is unaffected by the mode option" do
+    out =
+      "![clip](/media/abc/clip.mp4)"
+      |> Markdown.to_html(mode: :narrative)
+      |> Phoenix.HTML.safe_to_string()
+
+    assert out =~ ~s(<video controls preload="metadata" src="/media/abc/clip.mp4">)
+  end
 end

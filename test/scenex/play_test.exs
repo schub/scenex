@@ -683,6 +683,50 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "pages" do
+    test "the GM can show a page at any session status, and clear it", ctx do
+      {:ok, page} =
+        Authoring.create_page(ctx.scenario, %{
+          handle: "Welcome",
+          title: %{"en" => "Welcome"},
+          content: %{"en" => "Hello"}
+        })
+
+      {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      # Draft — before the show even starts.
+      assert Play.snapshot(session.id).active_page_id == nil
+      assert {:ok, snap} = Play.show_page(session.id, page.id)
+      assert snap.active_page_id == page.id
+
+      assert {:ok, snap} = Play.clear_page(session.id)
+      assert snap.active_page_id == nil
+
+      # Also works once live, and switching directly to another page (or
+      # back to this one) needs no clear step in between.
+      {:ok, _} = Play.start_session(session.id)
+      assert {:ok, snap} = Play.show_page(session.id, page.id)
+      assert snap.active_page_id == page.id
+    end
+
+    test "rejects an unknown page", ctx do
+      assert Play.show_page(ctx.session.id, Ecto.UUID.generate()) == {:error, :unknown_page}
+    end
+
+    test "survives a session-process restart (replay)", ctx do
+      {:ok, page} =
+        Authoring.create_page(ctx.scenario, %{handle: "Welcome", title: %{"en" => "Welcome"}})
+
+      {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+
+      {:ok, _} = Play.show_page(session.id, page.id)
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).active_page_id == page.id
+    end
+  end
+
   describe "audience board numbers toggle" do
     test "off by default; the GM can turn it on and off, and it survives replay", ctx do
       %{session: session} = ctx

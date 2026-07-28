@@ -27,6 +27,7 @@ defmodule Scenex.Authoring do
     GroupInitialValue,
     Label,
     OptionEffect,
+    Page,
     ValueDimension
   }
 
@@ -625,6 +626,38 @@ defmodule Scenex.Authoring do
   def delete_ending(%Ending{} = ending), do: Repo.delete(ending)
 
   def change_ending(%Ending{} = ending, attrs \\ %{}), do: Ending.changeset(ending, attrs)
+
+  # ── Pages ───────────────────────────────────────────────────────────────
+  # Full-screen scoreboard slides the GM can show at any time, regardless of
+  # session status — before a show starts, onboarding, an intermission.
+
+  def list_pages(%Scenario{} = scenario) do
+    Repo.all(from p in Page, where: p.scenario_id == ^scenario.id, order_by: p.position)
+  end
+
+  def get_page!(id), do: Repo.get!(Page, id)
+
+  @doc "Fetch a page **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_page(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id), do: Repo.get_by(Page, id: uuid, scenario_id: scenario.id)
+  end
+
+  def create_page(%Scenario{} = scenario, attrs) do
+    scenario
+    |> Ecto.build_assoc(:pages)
+    |> Page.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_page(%Page{} = page, attrs) do
+    page
+    |> Page.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_page(%Page{} = page), do: Repo.delete(page)
+
+  def change_page(%Page{} = page, attrs \\ %{}), do: Page.changeset(page, attrs)
 
   # ── Internal ──────────────────────────────────────────────────────────────
 

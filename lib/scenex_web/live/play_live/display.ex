@@ -10,6 +10,11 @@ defmodule ScenexWeb.PlayLive.Display do
   four board-section toggles decide what's on screen, and whatever remains
   splits the available height evenly. Updates live via PubSub; keeps
   working after the session ends (the finale stays on the wall).
+
+  When the GM shows a pre-authored page (`Scenex.Authoring.Page`), it's a
+  full takeover: everything above disappears and the page's own content —
+  markdown, full screen, no scrolling — is the entire display, before a
+  show even starts and any time after.
   """
   use ScenexWeb, :live_view
 
@@ -29,7 +34,12 @@ defmodule ScenexWeb.PlayLive.Display do
   def render(assigns) do
     ~H"""
     <Layouts.play flash={@flash} header={false}>
-      <div class="flex h-screen flex-col gap-6 overflow-hidden p-6">
+      <% page = active_page(@snap) %>
+      <div :if={page} class="flex h-screen w-full items-center justify-center overflow-hidden p-10">
+        <.markdown text={I18n.t(page.content, @locale)} mode={:page} class="markdown-page" />
+      </div>
+
+      <div :if={is_nil(page)} class="flex h-screen flex-col gap-6 overflow-hidden p-6">
         <div class="relative shrink-0">
           <h1 class="text-center text-4xl font-bold">{@session_label}</h1>
           <div class="absolute top-0 right-0 flex items-center gap-3">
@@ -210,6 +220,13 @@ defmodule ScenexWeb.PlayLive.Display do
   defp refresh(socket), do: assign(socket, :snap, Play.snapshot(socket.assigns.session_id))
 
   # ── Snapshot accessors ────────────────────────────────────────────────
+
+  defp active_page(snap) do
+    case snap.active_page_id do
+      nil -> nil
+      id -> snap.definition.pages[id]
+    end
+  end
 
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))

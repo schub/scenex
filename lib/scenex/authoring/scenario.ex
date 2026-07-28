@@ -38,6 +38,7 @@ defmodule Scenex.Authoring.Scenario do
     has_many :groups, Group
     has_many :timeline_elements, TimelineElement
     has_many :labels, Label
+    has_many :pages, Scenex.Authoring.Page
 
     timestamps()
   end

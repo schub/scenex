@@ -197,6 +197,17 @@ defmodule Scenex.Play do
     do: command(session_id, {:set_group_values_visible, visible})
 
   @doc """
+  Show a pre-authored page full-screen on the scoreboard, overriding it
+  entirely (no header, no other section) until cleared or another page is
+  shown. Works regardless of session status — including before the show
+  starts. `{:error, :unknown_page}` if `page_id` isn't in this scenario.
+  """
+  def show_page(session_id, page_id), do: command(session_id, {:show_page, page_id})
+
+  @doc "Return the scoreboard to its normal live content."
+  def clear_page(session_id), do: command(session_id, {:clear_page})
+
+  @doc """
   Record a hand-count well-being tally for a `per_participant` value:
   `%{score => count}`. The latest tally sets the value's global (its
   count-weighted mean); history stays in the log and the snapshot's `tallies`.

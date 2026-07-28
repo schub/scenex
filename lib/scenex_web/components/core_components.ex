@@ -503,14 +503,23 @@ defmodule ScenexWeb.CoreComponents do
   @doc """
   Authored content (markdown) rendered as safe HTML with media embeds —
   see `ScenexWeb.Markdown`. Renders nothing for nil/blank text. Styling
-  comes from the `markdown` CSS class (app.css).
+  comes from the `markdown` CSS class (app.css); `mode={:page}` (a
+  full-screen scoreboard page, see `Scenex.Authoring.Page`) also plays any
+  embedded video automatically instead of showing controls — pair it with
+  the `markdown-page` class for full-screen sizing.
   """
   attr :text, :string, default: nil
+  attr :mode, :atom, default: :narrative, values: [:narrative, :page]
   attr :class, :any, default: nil
 
   def markdown(assigns) do
     ~H"""
-    <div :if={html = ScenexWeb.Markdown.to_html(@text)} class={["markdown", @class]}>{html}</div>
+    <div
+      :if={html = ScenexWeb.Markdown.to_html(@text, mode: @mode)}
+      class={["markdown", @class]}
+    >
+      {html}
+    </div>
     """
   end
 

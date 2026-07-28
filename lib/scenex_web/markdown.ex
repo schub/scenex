@@ -15,17 +15,29 @@ defmodule ScenexWeb.Markdown do
   @video_exts ~w(.mp4 .webm .mov .m4v)
   @audio_exts ~w(.mp3 .ogg .oga .wav .m4a .aac .flac)
 
-  @doc "Markdown → `{:safe, html}` for HEEx interpolation; nil/blank → nil."
-  def to_html(nil), do: nil
+  @doc """
+  Markdown → `{:safe, html}` for HEEx interpolation; nil/blank → nil.
 
-  def to_html(markdown) when is_binary(markdown) do
+  `mode: :narrative` (default) is the in-story case — a video embed gets
+  visible `controls` for a GM/player to start manually. `mode: :page` is a
+  pre-authored full-screen scoreboard slide instead: video plays once on
+  its own — `autoplay`, `muted` (required by browsers for autoplay to fire
+  at all), no `controls`, no loop.
+  """
+  def to_html(markdown, opts \\ [])
+
+  def to_html(nil, _opts), do: nil
+
+  def to_html(markdown, opts) when is_binary(markdown) do
     if String.trim(markdown) == "" do
       nil
     else
+      mode = Keyword.get(opts, :mode, :narrative)
+
       markdown
       |> String.replace(~r/^([ \t]{0,3})</m, "\\1<​")
       |> Earmark.as_html!(breaks: true, compact_output: false)
-      |> embed_media()
+      |> embed_media(mode)
       |> Phoenix.HTML.raw()
     end
   end
@@ -33,11 +45,11 @@ defmodule ScenexWeb.Markdown do
   # Earmark renders `![alt](src)` as `<img src="..." alt="..." />` — rewrite
   # references to video/audio files into players. The attribute values are
   # entity-escaped by Earmark, so matching on the quoted src is safe.
-  defp embed_media(html) do
+  defp embed_media(html, mode) do
     Regex.replace(~r/<img src="([^"]+)" alt="[^"]*"\s*\/?>/, html, fn whole, src ->
       cond do
         media?(src, @video_exts) ->
-          ~s(<video controls preload="metadata" src="#{src}"></video>)
+          video_tag(src, mode)
 
         media?(src, @audio_exts) ->
           ~s(<audio controls preload="metadata" src="#{src}"></audio>)
@@ -47,6 +59,11 @@ defmodule ScenexWeb.Markdown do
       end
     end)
   end
+
+  defp video_tag(src, :page), do: ~s(<video autoplay muted playsinline src="#{src}"></video>)
+
+  defp video_tag(src, :narrative),
+    do: ~s(<video controls preload="metadata" src="#{src}"></video>)
 
   defp media?(src, exts) do
     ext = src |> String.downcase() |> Path.extname()
