@@ -70,13 +70,23 @@ defmodule ScenexWeb.PlayLive.Group do
           :for={element <- my_elements(@snap, @group.id)}
           class="rounded-box border border-base-300 p-4 space-y-3"
         >
-          <div class="flex flex-wrap items-center gap-2">
-            <h3 class="text-xl font-semibold">
-              {I18n.t!(element.title, @locale, default: element.handle)}
-            </h3>
-            <span :if={deadline_left(@snap, element)} class={deadline_class(@snap, element)}>
-              ⏱ {fmt_deadline_left(deadline_left(@snap, element))}
-            </span>
+          <h3 class="text-xl font-semibold">
+            {I18n.t!(element.title, @locale, default: element.handle)}
+          </h3>
+
+          <%!-- The deadline countdown: a draining progress bar, full width,
+          with the time remaining alongside it — same as the scoreboard. --%>
+          <% deadline = not locked?(@snap, element.id, @group.id) and deadline_status(@snap, element) %>
+          <div :if={deadline} class="space-y-1">
+            <div class="text-right font-mono text-sm tabular-nums opacity-70">
+              {fmt_clock(deadline.left_ms)}
+            </div>
+            <div class="h-3 w-full overflow-hidden rounded-full bg-base-300">
+              <div
+                class={["h-full rounded-full transition-all", deadline_bar_color(deadline.pct)]}
+                style={"width: #{deadline.pct}%"}
+              />
+            </div>
           </div>
 
           <.markdown text={I18n.t(element.narrative, @locale)} class="text-base" />
@@ -364,18 +374,25 @@ defmodule ScenexWeb.PlayLive.Group do
 
   defp deadline_left(_snap, _element), do: nil
 
-  defp deadline_class(snap, element) do
-    left = deadline_left(snap, element)
+  # Time left and share of the deadline still remaining (0..100) — nil once
+  # it lapses (the countdown simply disappears) or for elements with no
+  # deadline configured at all.
+  defp deadline_status(snap, %{deadline_seconds: seconds} = element)
+       when is_integer(seconds) and seconds > 0 do
+    case deadline_left(snap, element) do
+      left when is_integer(left) and left > 0 ->
+        %{left_ms: left, pct: (left / (seconds * 1000) * 100) |> min(100.0)}
 
-    cond do
-      left <= 0 -> "badge badge-sm badge-error"
-      left < 60_000 -> "badge badge-sm badge-warning"
-      true -> "badge badge-sm badge-ghost"
+      _ ->
+        nil
     end
   end
 
-  defp fmt_deadline_left(ms) when ms <= 0, do: gettext("closed")
-  defp fmt_deadline_left(ms), do: fmt_clock(ms)
+  defp deadline_status(_snap, _element), do: nil
+
+  defp deadline_bar_color(pct) when pct <= 20, do: "bg-error"
+  defp deadline_bar_color(pct) when pct <= 50, do: "bg-warning"
+  defp deadline_bar_color(_pct), do: "bg-primary"
 
   # ── Formatting ────────────────────────────────────────────────────────
 

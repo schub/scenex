@@ -196,6 +196,18 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       assert html =~ "locked"
     end
 
+    test "a deadline shows as a draining progress bar, gone once decided", ctx do
+      {:ok, _} = Authoring.update_timeline_element(ctx.event, %{deadline_seconds: 300})
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+      assert html =~ "h-3 w-full overflow-hidden rounded-full bg-base-300"
+
+      html = render_click(lv, "choose", %{"element" => ctx.event.id, "option" => ctx.crack.id})
+      refute html =~ "h-3 w-full overflow-hidden rounded-full bg-base-300"
+    end
+
     test "gated options are locked for players", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
