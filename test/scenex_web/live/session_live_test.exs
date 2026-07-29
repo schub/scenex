@@ -372,6 +372,29 @@ defmodule ScenexWeb.SessionLiveTest do
     assert snap.baseline_globals[ctx.stability.id] == snap.globals[ctx.stability.id]
   end
 
+  test "the GM can show and clear a full-screen page", ctx do
+    {:ok, page} = Authoring.create_page(ctx.scenario, %{handle: "Welcome"})
+
+    {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
+    on_exit(fn -> Play.stop_running(session.id) end)
+
+    {:ok, lv, html} = live(ctx.conn, ~p"/sessions/#{session.id}/console")
+    assert html =~ "Welcome"
+    refute html =~ "Back to scoreboard"
+    refute html =~ "showing a page"
+
+    html =
+      lv |> element(~s{button[phx-click=show_page][phx-value-id="#{page.id}"]}) |> render_click()
+
+    assert html =~ "Back to scoreboard"
+    assert html =~ "showing a page"
+    assert Play.snapshot(session.id).active_page_id == page.id
+
+    html = lv |> element(~s{button[phx-click=clear_page]}) |> render_click()
+    refute html =~ "Back to scoreboard"
+    refute Play.snapshot(session.id).active_page_id
+  end
+
   test "the GM can toggle each scoreboard section independently", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")

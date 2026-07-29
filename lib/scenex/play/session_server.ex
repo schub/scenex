@@ -306,6 +306,17 @@ defmodule Scenex.Play.SessionServer do
   defp validate({:set_group_values_visible, visible}, _state) when is_boolean(visible),
     do: {:ok, "group_values_visibility_set", %{visible: visible}, %{}}
 
+  # No `running/1` gate — showing a page is meant to work before the show
+  # even starts (onboarding, a pre-show slide), same as every other display
+  # toggle it sits alongside.
+  defp validate({:show_page, page_id}, state) do
+    if Map.has_key?(state.definition.pages, page_id),
+      do: {:ok, "page_shown", %{page_id: page_id}, %{}},
+      else: {:error, :unknown_page}
+  end
+
+  defp validate({:clear_page}, _state), do: {:ok, "page_cleared", %{}, %{}}
+
   defp validate({:record_tally, value_id, counts}, state) do
     with :ok <- running(state),
          :ok <- fetch_per_participant(state, value_id),
@@ -455,6 +466,7 @@ defmodule Scenex.Play.SessionServer do
       show_numbers: state.projection.show_numbers,
       board_sections: state.projection.board_sections,
       group_values_visible: state.projection.group_values_visible,
+      active_page_id: state.projection.active_page_id,
       game_time_ms: current_game_time(state.session),
       definition: state.definition
     }

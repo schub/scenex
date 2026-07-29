@@ -447,6 +447,62 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
+  describe "pages" do
+    setup do
+      %{scenario: scenario_fixture(user_fixture())}
+    end
+
+    test "creates, updates, lists by position, and deletes", %{scenario: scenario} do
+      assert {:ok, welcome} =
+               Authoring.create_page(scenario, %{
+                 handle: "Welcome",
+                 content: %{"en" => "# Welcome\n\nTake your seats."},
+                 position: 0
+               })
+
+      assert {:ok, sponsors} =
+               Authoring.create_page(scenario, %{
+                 handle: "Sponsors",
+                 content: %{"en" => "![logo](/media/abc/logo.png)"},
+                 position: 1
+               })
+
+      assert [first, second] = Authoring.list_pages(scenario)
+      assert first.id == welcome.id
+      assert second.id == sponsors.id
+
+      assert {:ok, updated} = Authoring.update_page(welcome, %{position: 2})
+      assert updated.position == 2
+      # Reordered: welcome now sits after sponsors.
+      assert Enum.map(Authoring.list_pages(scenario), & &1.id) == [sponsors.id, welcome.id]
+
+      assert Authoring.get_page(scenario, welcome.id).id == welcome.id
+      assert Authoring.get_page(scenario, Ecto.UUID.generate()) == nil
+      assert Authoring.get_page(scenario, "not-a-uuid") == nil
+
+      assert {:ok, _} = Authoring.delete_page(sponsors)
+      assert Enum.map(Authoring.list_pages(scenario), & &1.id) == [welcome.id]
+    end
+
+    test "content is optional — a page can be blank (e.g. a deliberate blackout)", %{
+      scenario: scenario
+    } do
+      assert {:ok, page} = Authoring.create_page(scenario, %{handle: "Blank"})
+      assert page.content == %{}
+    end
+
+    test "requires a handle", %{scenario: scenario} do
+      assert {:error, cs} = Authoring.create_page(scenario, %{})
+      assert %{handle: ["can't be blank"]} = errors_on(cs)
+    end
+
+    test "handles are unique per scenario", %{scenario: scenario} do
+      assert {:ok, _} = Authoring.create_page(scenario, %{handle: "Dup"})
+      assert {:error, cs} = Authoring.create_page(scenario, %{handle: "Dup"})
+      assert %{handle: [_]} = errors_on(cs)
+    end
+  end
+
   describe "group initial values (upsert)" do
     test "creates then updates by (group, value_dimension)" do
       user = user_fixture()

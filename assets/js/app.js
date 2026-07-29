@@ -25,11 +25,27 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/scenex"
 import topbar from "../vendor/topbar"
 
+// Self-closes a flash toast a few seconds after it mounts, by simulating
+// the same click a user would make to dismiss it (see <.flash auto_dismiss>
+// in core_components.ex) — reuses its existing phx-click, no server-side
+// duplication of the dismiss logic.
+const Hooks = {
+  ...colocatedHooks,
+  AutoDismissFlash: {
+    mounted() {
+      this.timer = setTimeout(() => this.el.click(), 4000)
+    },
+    destroyed() {
+      clearTimeout(this.timer)
+    },
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: Hooks,
 })
 
 // Show progress bar on live navigation and form submits

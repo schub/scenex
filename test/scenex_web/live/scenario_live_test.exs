@@ -456,6 +456,42 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html2 =~ "self(...) is not allowed here"
     end
 
+    test "adds, edits, and deletes a page", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=pages]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_page"]), %{
+          "page" => %{
+            "handle" => "Welcome",
+            "content" => %{"en" => "# Bem-vindos"},
+            "position" => "0"
+          }
+        })
+        |> render_submit()
+
+      assert html =~ "Welcome"
+      [page] = Authoring.list_pages(scenario)
+      assert page.content == %{"en" => "# Bem-vindos"}
+
+      lv |> element(~s{button[phx-click=edit_page][phx-value-id="#{page.id}"]}) |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_page"]), %{
+        "page" => %{"content" => %{"en" => "# Ola"}}
+      })
+      |> render_submit()
+
+      assert Authoring.get_page!(page.id).content == %{"en" => "# Ola"}
+
+      lv
+      |> element(~s{button[phx-click=delete_page][phx-value-id="#{page.id}"]})
+      |> render_click()
+
+      assert Authoring.list_pages(scenario) == []
+    end
+
     test "uploads and deletes a media file", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
 

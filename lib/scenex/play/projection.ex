@@ -47,7 +47,8 @@ defmodule Scenex.Play.Projection do
     ending_id: nil,
     show_numbers: false,
     board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true},
-    group_values_visible: true
+    group_values_visible: true,
+    active_page_id: nil
   ]
 
   @type slot :: String.t() | :winner | :outcome
@@ -107,6 +108,12 @@ defmodule Scenex.Play.Projection do
   # GM display preference, just for the group screens instead of the wall.
   defp handle(p, "group_values_visibility_set", %{"visible" => visible}, _),
     do: %{p | group_values_visible: visible}
+
+  # A pre-authored full-screen scoreboard page, overriding it entirely —
+  # again purely a display preference, unrelated to game state. Works at
+  # any session status, including before the show has started.
+  defp handle(p, "page_shown", %{"page_id" => page_id}, _), do: %{p | active_page_id: page_id}
+  defp handle(p, "page_cleared", _payload, _), do: %{p | active_page_id: nil}
 
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do

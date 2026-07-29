@@ -12,7 +12,10 @@ defmodule ScenexWeb.SessionLive.Console do
   simply stay undecided, nothing is locked. Four independent toggles control
   which sections appear on the scoreboard (projected display), plus one more
   for whether the group boards show each group's own values — this
-  console's own board is never affected by any of them.
+  console's own board is never affected by any of them. The GM can also put
+  a pre-authored full-screen page up on the scoreboard at any time,
+  regardless of session status (before the show starts, onboarding) — a
+  display override that doesn't pause or affect the game underneath.
   """
   use ScenexWeb, :live_view
 
@@ -117,6 +120,35 @@ defmodule ScenexWeb.SessionLive.Console do
         >
           ✓ Consolidate now
         </button>
+      </div>
+
+      <%!-- Pre-authored full-screen scoreboard pages — a GM override of the
+      whole scoreboard (no header, nothing else), independent of session
+      status; useful before the show starts and during onboarding. Doesn't
+      pause anything — the game keeps running underneath. --%>
+      <div :if={pages(@snap) != []} class="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <span class="opacity-60">Pages:</span>
+        <button
+          :for={page <- pages(@snap)}
+          type="button"
+          phx-click="show_page"
+          phx-value-id={page.id}
+          class={["btn btn-xs", (@snap.active_page_id == page.id && "btn-primary") || "btn-soft"]}
+        >
+          {page.handle}
+        </button>
+        <button
+          :if={@snap.active_page_id}
+          type="button"
+          phx-click="clear_page"
+          class="btn btn-xs btn-error btn-soft"
+        >
+          ◼ Back to scoreboard
+        </button>
+      </div>
+
+      <div :if={@snap.active_page_id} class="alert alert-warning mt-2 text-sm">
+        📄 The scoreboard is showing a page, not the live board — the session keeps running underneath.
       </div>
 
       <%!-- Live board --%>
@@ -531,6 +563,11 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("consolidate_values", _params, socket),
     do: run(socket, &Play.consolidate_values/1)
 
+  def handle_event("show_page", %{"id" => page_id}, socket),
+    do: run(socket, &Play.show_page(&1, page_id))
+
+  def handle_event("clear_page", _params, socket), do: run(socket, &Play.clear_page/1)
+
   def handle_event("toggle_board_section", %{"section" => section}, socket) do
     section = String.to_existing_atom(section)
     visible = not socket.assigns.snap.board_sections[section]
@@ -679,6 +716,8 @@ defmodule ScenexWeb.SessionLive.Console do
       current_beat: "Current event"
     ]
   end
+
+  defp pages(snap), do: snap.definition.pages |> Map.values() |> Enum.sort_by(& &1.position)
 
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
