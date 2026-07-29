@@ -164,9 +164,21 @@
 .markdown-page :is(img, video) {
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: cover;
   border-radius: 0;
   margin: 0;
+}
+/* Markdown always wraps a standalone image/video reference in <p>...</p> —
+   normal, expected output, but it breaks height: 100% above (the percentage
+   needs a direct parent with a real height, not a paragraph sized to its
+   own auto/shrink-to-fit content). Unwrapping a *solo*-media paragraph via
+   display: contents makes the media a direct flex child instead, without
+   touching paragraphs that mix media with real text. */
+.markdown-page p:has(> img:only-child),
+.markdown-page p:has(> video:only-child) {
+  display: contents;
 }
 .markdown-page :is(h1, h2, h3, h4, p, ul, ol, blockquote) {
   padding: 0 3rem;
