@@ -414,7 +414,16 @@ defmodule ScenexWeb.SessionLive.Console do
 
       <%!-- Access: QR tokens for group tables and the projected display --%>
       <section class="mt-10 space-y-3">
-        <h3 class="text-lg font-semibold">Access &amp; QR</h3>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-lg font-semibold">Access &amp; QR</h3>
+          <.link
+            :if={@tokens != []}
+            href={~p"/sessions/#{@session.id}/qr_codes.pdf"}
+            class="btn btn-xs btn-soft"
+          >
+            ⬇ Download all as PDF
+          </.link>
+        </div>
         <p class="text-xs opacity-60">
           A group token lets one table enter its own decisions; the display token is the
           read-only board for the wall. No accounts — the code is the key.

@@ -468,4 +468,21 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "7"
   end
+
+  test "the download-PDF link appears once a QR code has been generated", ctx do
+    %{conn: conn, session: session, gov: gov} = ctx
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    pdf_link = ~s{a[href="/sessions/#{session.id}/qr_codes.pdf"]}
+    refute html =~ "Download all as PDF"
+    refute has_element?(lv, pdf_link)
+
+    html =
+      lv
+      |> element(~s{button[phx-click=gen_group_token][phx-value-group="#{gov.id}"]})
+      |> render_click()
+
+    assert html =~ "Download all as PDF"
+    assert has_element?(lv, pdf_link)
+  end
 end

@@ -68,6 +68,7 @@ defmodule ScenexWeb.Router do
       live "/sessions/:id/console", SessionLive.Console, :show
     end
 
+    get "/sessions/:id/qr_codes.pdf", SessionQrPdfController, :download
     post "/users/update-password", UserSessionController, :update_password
   end
 
