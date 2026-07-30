@@ -97,6 +97,47 @@ defmodule Scenex.AuthoringTest do
 
       assert %{democracy_max: [_]} = errors_on(changeset)
     end
+
+    test "accepts a visualization range within the real min/max" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:ok, updated} =
+               Authoring.update_scenario(scenario, %{
+                 democracy_min: 0.0,
+                 democracy_max: 20.0,
+                 democracy_viz_min: 5.0,
+                 democracy_viz_max: 15.0
+               })
+
+      assert updated.democracy_viz_min == 5.0
+      assert updated.democracy_viz_max == 15.0
+    end
+
+    test "rejects a visualization range outside the real min/max" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:error, changeset} =
+               Authoring.update_scenario(scenario, %{
+                 democracy_min: 0.0,
+                 democracy_max: 20.0,
+                 democracy_viz_min: -1.0,
+                 democracy_viz_max: 15.0
+               })
+
+      assert %{democracy_viz_min: [_]} = errors_on(changeset)
+    end
+
+    test "rejects a visualization range with no real min/max set yet" do
+      scenario = scenario_fixture(user_fixture())
+
+      assert {:error, changeset} =
+               Authoring.update_scenario(scenario, %{
+                 democracy_viz_min: 5.0,
+                 democracy_viz_max: 15.0
+               })
+
+      assert %{democracy_viz_min: [_]} = errors_on(changeset)
+    end
   end
 
   describe "value definitions" do
@@ -500,6 +541,52 @@ defmodule Scenex.AuthoringTest do
       assert {:ok, _} = Authoring.create_page(scenario, %{handle: "Dup"})
       assert {:error, cs} = Authoring.create_page(scenario, %{handle: "Dup"})
       assert %{handle: [_]} = errors_on(cs)
+    end
+  end
+
+  describe "democracy_bands" do
+    setup do
+      %{scenario: scenario_fixture(user_fixture())}
+    end
+
+    test "creates, updates, lists by position, and deletes", %{scenario: scenario} do
+      assert {:ok, breakdown} =
+               Authoring.create_democracy_band(scenario, %{
+                 label: %{"en" => "Breakdown"},
+                 position: 0
+               })
+
+      assert {:ok, in_bloom} =
+               Authoring.create_democracy_band(scenario, %{
+                 label: %{"en" => "In Bloom"},
+                 position: 1
+               })
+
+      assert [first, second] = Authoring.list_democracy_bands(scenario)
+      assert first.id == breakdown.id
+      assert second.id == in_bloom.id
+
+      assert {:ok, updated} = Authoring.update_democracy_band(breakdown, %{position: 2})
+      assert updated.position == 2
+      # Reordered: breakdown now sits after in_bloom.
+      assert Enum.map(Authoring.list_democracy_bands(scenario), & &1.id) == [
+               in_bloom.id,
+               breakdown.id
+             ]
+
+      assert Authoring.get_democracy_band(scenario, breakdown.id).id == breakdown.id
+      assert Authoring.get_democracy_band(scenario, Ecto.UUID.generate()) == nil
+      assert Authoring.get_democracy_band(scenario, "not-a-uuid") == nil
+
+      assert {:ok, _} = Authoring.delete_democracy_band(in_bloom)
+      assert Enum.map(Authoring.list_democracy_bands(scenario), & &1.id) == [breakdown.id]
+    end
+
+    test "requires a label", %{scenario: scenario} do
+      assert {:error, cs} =
+               Authoring.create_democracy_band(scenario, %{label: %{"en" => ""}})
+
+      assert %{label: ["can't be blank"]} = errors_on(cs)
     end
   end
 

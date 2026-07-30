@@ -208,6 +208,59 @@ defmodule ScenexWeb.SimulateLiveTest do
     assert html =~ "1/2 decisions made"
   end
 
+  test "shows the democracy score and its precise current band, updating live", %{
+    conn: conn,
+    scenario: scenario,
+    timeline_element: timeline_element,
+    gov: gov,
+    option: option
+  } do
+    {:ok, _} =
+      Authoring.update_scenario(scenario, %{
+        democracy_formula: "avg",
+        democracy_min: 0.0,
+        democracy_max: 10.0
+      })
+
+    {:ok, _} =
+      Authoring.create_democracy_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+
+    {:ok, _} =
+      Authoring.create_democracy_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+
+    {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
+
+    # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
+    assert html =~ "Democracy Score:"
+    assert html =~ "Breakdown"
+
+    # +2 stability -> avg 7 -> best band ("In Bloom").
+    html =
+      lv |> element(toggle_selector(timeline_element.id, gov.id, option.id)) |> render_click()
+
+    assert html =~ "7"
+    assert html =~ "In Bloom"
+  end
+
+  test "democracy score section is silent without bands or without formula/range", %{
+    conn: conn,
+    scenario: scenario
+  } do
+    {:ok, _lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
+    refute html =~ "Democracy Score:"
+
+    {:ok, _} =
+      Authoring.update_scenario(scenario, %{
+        democracy_formula: "avg",
+        democracy_min: 0.0,
+        democracy_max: 10.0
+      })
+
+    {:ok, _lv2, html2} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
+    assert html2 =~ "Democracy Score:"
+    assert html2 =~ "no bands defined yet"
+  end
+
   test "endings are recommended by the current board", %{
     conn: conn,
     scenario: scenario,

@@ -492,6 +492,61 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert Authoring.list_pages(scenario) == []
     end
 
+    test "sets the democracy score visualization range", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_settings"]), %{
+        "scenario" => %{
+          "democracy_formula" => "avg",
+          "democracy_min" => "0",
+          "democracy_max" => "20",
+          "democracy_viz_min" => "5",
+          "democracy_viz_max" => "15"
+        }
+      })
+      |> render_submit()
+
+      updated = Authoring.get_scenario!(scenario.id)
+      assert updated.democracy_viz_min == 5.0
+      assert updated.democracy_viz_max == 15.0
+    end
+
+    test "adds, edits, and deletes a democracy score band", %{conn: conn, scenario: scenario} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=democracy]") |> render_click()
+
+      html =
+        lv
+        |> form(~s(form[phx-submit="save_democracy_band"]), %{
+          "democracy_band" => %{"label" => %{"en" => "Breakdown"}, "position" => "0"}
+        })
+        |> render_submit()
+
+      assert html =~ "Breakdown"
+      [band] = Authoring.list_democracy_bands(scenario)
+      assert band.label == %{"en" => "Breakdown"}
+
+      lv
+      |> element(~s{button[phx-click=edit_democracy_band][phx-value-id="#{band.id}"]})
+      |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_democracy_band"]), %{
+        "democracy_band" => %{"label" => %{"en" => "Collapse"}}
+      })
+      |> render_submit()
+
+      assert Authoring.get_democracy_band!(band.id).label == %{"en" => "Collapse"}
+
+      lv
+      |> element(~s{button[phx-click=delete_democracy_band][phx-value-id="#{band.id}"]})
+      |> render_click()
+
+      assert Authoring.list_democracy_bands(scenario) == []
+    end
+
     test "uploads and deletes a media file", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
 
