@@ -45,7 +45,7 @@ defmodule ScenexWeb.SessionQrPdfController do
   end
 
   defp send_pdf(conn, session, scenario) do
-    tokens = Play.list_tokens(session)
+    tokens = ensure_all_tokens(session)
     locale = session.locale || scenario.source_locale
     pdf = build_pdf(session, tokens, locale)
 
@@ -53,6 +53,29 @@ defmodule ScenexWeb.SessionQrPdfController do
     |> put_resp_content_type("application/pdf")
     |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename(session)}"))
     |> send_resp(200, pdf)
+  end
+
+  # Generate whichever codes the GM hasn't clicked "+ Code" for yet, so
+  # "download all" always means all — not just whatever's already on screen.
+  defp ensure_all_tokens(session) do
+    existing = Play.list_tokens(session)
+    have_group = for t <- existing, t.kind == :group, into: MapSet.new(), do: t.group_id
+    have_display = Enum.any?(existing, &(&1.kind == :display))
+
+    missing_groups = Enum.reject(session_groups(session), &(&1.id in have_group))
+
+    if missing_groups == [] and have_display do
+      existing
+    else
+      Enum.each(missing_groups, &Play.create_group_token(session, &1))
+      unless have_display, do: Play.create_display_token(session)
+      Play.list_tokens(session)
+    end
+  end
+
+  defp session_groups(session) do
+    snap = Play.snapshot(session.id)
+    Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
   end
 
   defp filename(session) do
