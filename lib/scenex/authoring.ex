@@ -18,6 +18,7 @@ defmodule Scenex.Authoring do
 
   alias Scenex.Authoring.{
     DecisionOption,
+    DemocracyBand,
     Ending,
     TimelineElement,
     Scenario,
@@ -658,6 +659,39 @@ defmodule Scenex.Authoring do
   def delete_page(%Page{} = page), do: Repo.delete(page)
 
   def change_page(%Page{} = page, attrs \\ %{}), do: Page.changeset(page, attrs)
+
+  # ── Democracy Score bands ──────────────────────────────────────────────
+  # Worst to best, position ascending — see Scenex.Authoring.DemocracyBand.
+
+  def list_democracy_bands(%Scenario{} = scenario) do
+    Repo.all(from b in DemocracyBand, where: b.scenario_id == ^scenario.id, order_by: b.position)
+  end
+
+  def get_democracy_band!(id), do: Repo.get!(DemocracyBand, id)
+
+  @doc "Fetch a democracy band **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_democracy_band(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id),
+      do: Repo.get_by(DemocracyBand, id: uuid, scenario_id: scenario.id)
+  end
+
+  def create_democracy_band(%Scenario{} = scenario, attrs) do
+    scenario
+    |> Ecto.build_assoc(:democracy_bands)
+    |> DemocracyBand.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_democracy_band(%DemocracyBand{} = band, attrs) do
+    band
+    |> DemocracyBand.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_democracy_band(%DemocracyBand{} = band), do: Repo.delete(band)
+
+  def change_democracy_band(%DemocracyBand{} = band, attrs \\ %{}),
+    do: DemocracyBand.changeset(band, attrs)
 
   # ── Internal ──────────────────────────────────────────────────────────────
 

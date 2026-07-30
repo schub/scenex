@@ -13,6 +13,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   alias Scenex.Authoring.{
     DecisionOption,
+    DemocracyBand,
     Ending,
     Page,
     TimelineElement,
@@ -272,49 +273,166 @@ defmodule ScenexWeb.ScenarioLive.Show do
         </div>
 
         <%!-- Democracy score --%>
-        <div :if={@section == :democracy} class="max-w-xl space-y-4">
-          <p class="text-sm opacity-70">
-            A single derived score for the scoreboard, combining every per-group
-            value's current global (well-being and other per-participant values
-            never feed in). Uses the same formula language as a value's
-            aggregation — but evaluated over those globals, not per-group
-            numbers. Leave the formula blank to keep the score off the
-            scoreboard entirely.
-          </p>
-          <.form
-            for={@settings_form}
-            phx-change="track_localized"
-            phx-submit="save_settings"
-            class="space-y-4"
-          >
-            <fieldset disabled={not @can_edit?} class="contents">
-              <.input
-                field={@settings_form[:democracy_formula]}
-                label="Formula"
-                placeholder="e.g. (avg + min) / 2"
-              />
-              <div class="grid grid-cols-2 gap-3">
+        <div :if={@section == :democracy} class="space-y-10">
+          <div class="max-w-xl space-y-4">
+            <p class="text-sm opacity-70">
+              A single derived score for the scoreboard, combining every per-group
+              value's current global (well-being and other per-participant values
+              never feed in). Uses the same formula language as a value's
+              aggregation — but evaluated over those globals, not per-group
+              numbers. Leave the formula blank to keep the score off the
+              scoreboard entirely.
+            </p>
+            <.form
+              for={@settings_form}
+              phx-change="track_localized"
+              phx-submit="save_settings"
+              class="space-y-4"
+            >
+              <fieldset disabled={not @can_edit?} class="contents">
                 <.input
-                  field={@settings_form[:democracy_min]}
-                  type="number"
-                  step="any"
-                  label="Min"
+                  field={@settings_form[:democracy_formula]}
+                  label="Formula"
+                  placeholder="e.g. (avg + min) / 2"
                 />
-                <.input
-                  field={@settings_form[:democracy_max]}
-                  type="number"
-                  step="any"
-                  label="Max"
-                />
+                <div class="grid grid-cols-2 gap-3">
+                  <.input
+                    field={@settings_form[:democracy_min]}
+                    type="number"
+                    step="any"
+                    label="Min (worst)"
+                  />
+                  <.input
+                    field={@settings_form[:democracy_max]}
+                    type="number"
+                    step="any"
+                    label="Max (best)"
+                  />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <.input
+                    field={@settings_form[:democracy_viz_min]}
+                    type="number"
+                    step="any"
+                    label="Visualization min (optional)"
+                  />
+                  <.input
+                    field={@settings_form[:democracy_viz_max]}
+                    type="number"
+                    step="any"
+                    label="Visualization max (optional)"
+                  />
+                </div>
+                <.button :if={@can_edit?} variant="primary">Save</.button>
+              </fieldset>
+            </.form>
+            <p class="text-xs opacity-60">
+              Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
+              e.g. <code>(avg + min) / 2</code>. The gauge never shows a raw number or which
+              specific band the score is currently in — only the worst/best band labels below,
+              fixed at the two ends, with the score's position moving freely between them.
+            </p>
+            <p class="text-xs opacity-60">
+              The visualization range is optional and only changes where the tick sits — a
+              narrower window than the real min/max (e.g. 5–15 within 0–20) makes realistic
+              swings read as bigger movement on the gauge. It must sit within the real min/max.
+              Leave both blank to use the real range as-is.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="mb-1 font-semibold">Score bands</h3>
+            <p class="mb-3 text-xs opacity-60">
+              Worst to best — at least two. Only the first (worst) and last (best) ever show on
+              the scoreboard, as fixed labels at the two ends of the gauge; the full list is used
+              by the dry run to show the precise current band while you test.
+            </p>
+            <div class={master_detail_grid()}>
+              <aside class={sidebar_classes()}>
+                <button
+                  :if={@can_edit?}
+                  type="button"
+                  phx-click="new_democracy_band"
+                  class="btn btn-sm btn-primary w-full"
+                >
+                  + New band
+                </button>
+                <ul class="menu w-full rounded-box bg-base-200">
+                  <li :for={{b, i} <- Enum.with_index(@democracy_bands)}>
+                    <button
+                      type="button"
+                      phx-click="edit_democracy_band"
+                      phx-value-id={b.id}
+                      class={selected_item(@editing_democracy_band, b)}
+                    >
+                      <span class="w-5 shrink-0 text-xs opacity-50">
+                        {democracy_band_position_label(i, length(@democracy_bands))}
+                      </span>
+                      <span class="truncate">
+                        {I18n.t!(b.label, @locale, default: "(untranslated)")}
+                      </span>
+                    </button>
+                  </li>
+                  <li :if={@democracy_bands == []} class="menu-disabled">
+                    <span>No bands yet — at least two are needed for the scoreboard gauge.</span>
+                  </li>
+                </ul>
+              </aside>
+
+              <div class="min-w-0 card bg-base-200">
+                <div class="card-body">
+                  <div class="flex items-center justify-between">
+                    <h3 class="font-semibold">
+                      {if @editing_democracy_band, do: "Edit band", else: "New band"}
+                    </h3>
+                    <button
+                      :if={@can_edit? and @editing_democracy_band}
+                      type="button"
+                      phx-click="delete_democracy_band"
+                      phx-value-id={@editing_democracy_band.id}
+                      data-confirm="Delete this band?"
+                      class="btn btn-xs btn-error btn-soft"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <.form
+                    for={@democracy_band_form}
+                    phx-change="track_localized"
+                    phx-submit="save_democracy_band"
+                    class="grid gap-3 sm:grid-cols-2"
+                  >
+                    <fieldset disabled={not @can_edit?} class="contents">
+                      <div class="sm:col-span-2">
+                        <.input
+                          type="text"
+                          name={"democracy_band[label][#{@locale}]"}
+                          value={LocalizedForm.value(@democracy_band_form, :label, @locale)}
+                          label={"Label (#{@locale})"}
+                        />
+                      </div>
+                      <.input
+                        field={@democracy_band_form[:position]}
+                        type="number"
+                        label="Position (lower = worse, higher = better)"
+                      />
+                      <div class="flex gap-2 sm:col-span-2">
+                        <.button variant="primary">Save band</.button>
+                        <button
+                          :if={@editing_democracy_band}
+                          type="button"
+                          phx-click="new_democracy_band"
+                          class="btn btn-ghost"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </fieldset>
+                  </.form>
+                </div>
               </div>
-              <.button :if={@can_edit?} variant="primary">Save</.button>
-            </fieldset>
-          </.form>
-          <p class="text-xs opacity-60">
-            Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
-            e.g. <code>(avg + min) / 2</code>. Shown on the scoreboard as a labeled band
-            (In Bloom / Resilient / Fragile / Critical / Breakdown), never as a raw number.
-          </p>
+            </div>
+          </div>
         </div>
 
         <%!-- Groups --%>
@@ -1355,6 +1473,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
          |> assign_label_form(%Label{})
          |> assign_ending_form(%Ending{})
          |> assign_page_form(%Page{})
+         |> assign_democracy_band_form(%DemocracyBand{})
          |> allow_upload(:media,
            accept:
              ~w(.png .jpg .jpeg .gif .webp .avif .mp4 .webm .mov .m4v .mp3 .ogg .oga .wav .m4a .aac .flac),
@@ -2001,6 +2120,58 @@ defmodule ScenexWeb.ScenarioLive.Show do
     end)
   end
 
+  # ── Democracy Score bands ────────────────────────────────────────────
+
+  def handle_event("edit_democracy_band", %{"id" => id}, socket) do
+    case Authoring.get_democracy_band(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      band -> {:noreply, assign_democracy_band_form(socket, band)}
+    end
+  end
+
+  def handle_event("new_democracy_band", _params, socket) do
+    {:noreply, assign_democracy_band_form(socket, %DemocracyBand{})}
+  end
+
+  def handle_event("save_democracy_band", %{"democracy_band" => params}, socket) do
+    with_edit(socket, fn ->
+      params = tracked_params(socket, :democracy_band_form, params)
+      data = socket.assigns.editing_democracy_band || %DemocracyBand{}
+      attrs = LocalizedForm.merge(params, data, [:label])
+
+      result =
+        if socket.assigns.editing_democracy_band,
+          do: Authoring.update_democracy_band(data, attrs),
+          else: Authoring.create_democracy_band(socket.assigns.scenario, attrs)
+
+      case result do
+        {:ok, band} ->
+          {:noreply,
+           socket
+           |> assign_democracy_band_form(band)
+           |> reload()
+           |> put_flash(:info, "Band saved.")}
+
+        {:error, changeset} ->
+          {:noreply,
+           assign(socket, :democracy_band_form, to_form(changeset, as: :democracy_band))}
+      end
+    end)
+  end
+
+  def handle_event("delete_democracy_band", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      case Authoring.get_democracy_band(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        band ->
+          Authoring.delete_democracy_band(band)
+          {:noreply, socket |> assign_democracy_band_form(%DemocracyBand{}) |> reload()}
+      end
+    end)
+  end
+
   # ── Assigns helpers ───────────────────────────────────────────────────
 
   defp assign_settings_form(socket, scenario),
@@ -2017,7 +2188,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
       {"option", :option_form},
       {"label", :label_form},
       {"ending", :ending_form},
-      {"page", :page_form}
+      {"page", :page_form},
+      {"democracy_band", :democracy_band_form}
     ]
   end
 
@@ -2063,6 +2235,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp rebuild_form(socket, :page_form, params) do
     data = socket.assigns.editing_page || %Page{}
     to_form(Authoring.change_page(data, params), as: :page)
+  end
+
+  defp rebuild_form(socket, :democracy_band_form, params) do
+    data = socket.assigns.editing_democracy_band || %DemocracyBand{}
+    to_form(Authoring.change_democracy_band(data, params), as: :democracy_band)
   end
 
   # The tracked params (all locales typed so far), for the save handlers.
@@ -2154,6 +2331,15 @@ defmodule ScenexWeb.ScenarioLive.Show do
     |> assign(:page_form, to_form(Authoring.change_page(page), as: :page))
   end
 
+  defp assign_democracy_band_form(socket, band) do
+    socket
+    |> assign(:editing_democracy_band, if(band.id, do: band, else: nil))
+    |> assign(
+      :democracy_band_form,
+      to_form(Authoring.change_democracy_band(band), as: :democracy_band)
+    )
+  end
+
   defp close_event(socket) do
     socket
     |> assign(selected_timeline_element: nil, selected_timeline_element_id: nil, options: [])
@@ -2213,6 +2399,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
         labels: Authoring.list_labels(scenario),
         endings: Authoring.list_endings(scenario),
         pages: Authoring.list_pages(scenario),
+        democracy_bands: Authoring.list_democracy_bands(scenario),
         media_files: Media.list_files(scenario)
       )
       |> reload_members()
@@ -2368,6 +2555,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   defp selected_item(%{id: id}, %{id: id}), do: "menu-active"
   defp selected_item(_editing, _item), do: nil
+
+  # Which end of the worst→best list a band sits at — the only two labels
+  # the scoreboard gauge ever shows (see Scenex.Authoring.DemocracyBand).
+  defp democracy_band_position_label(0, _total), do: "worst"
+  defp democracy_band_position_label(i, total) when i == total - 1, do: "best"
+  defp democracy_band_position_label(i, _total), do: to_string(i + 1)
 
   # ── Media helpers ─────────────────────────────────────────────────────
 

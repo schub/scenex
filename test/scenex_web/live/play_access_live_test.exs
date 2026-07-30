@@ -401,12 +401,27 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "3.75"
     end
 
-    test "shows the democracy score as a label once configured — never a number", ctx do
+    test "shows the democracy score as fixed worst/best anchors — never the current band or a number",
+         ctx do
       {:ok, _} =
         Authoring.update_scenario(ctx.scenario, %{
           democracy_formula: "avg",
           democracy_min: 0.0,
           democracy_max: 10.0
+        })
+
+      {:ok, _} = Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+
+      {:ok, _} =
+        Authoring.create_democracy_band(ctx.scenario, %{
+          label: %{"en" => "Fragile"},
+          position: 1
+        })
+
+      {:ok, _} =
+        Authoring.create_democracy_band(ctx.scenario, %{
+          label: %{"en" => "In Bloom"},
+          position: 2
         })
 
       {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Scored"})
@@ -418,10 +433,61 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
 
-      # Stability starts at 5.0 on a 0..10 scale -> "Fragile" (the middle band).
+      # Stability starts at 5.0 on a 0..10 scale -> the middle band ("Fragile")
+      # — but only the two ends ever show, never the current specific one.
       assert html =~ "Democracy Score"
-      assert html =~ "Fragile"
+      assert html =~ "Breakdown"
+      assert html =~ "In Bloom"
+      refute html =~ "Fragile"
       refute html =~ "5.0"
+    end
+
+    test "the tick position uses the visualization range, not the real range, when set", ctx do
+      {:ok, _} =
+        Authoring.update_scenario(ctx.scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 20.0,
+          democracy_viz_min: 5.0,
+          democracy_viz_max: 15.0
+        })
+
+      {:ok, _} = Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+
+      {:ok, _} =
+        Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Viz range"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      # Stability starts at 5.0 -> democracy score 5.0 (avg of the one
+      # per-group global). Against the real range (0..20) that's 25%; against
+      # the visualization range (5..15) it's exactly the low end, 0% — and
+      # it's the visualization range that must win.
+      assert html =~ ~s(style="left: 0.0%")
+      refute html =~ ~s(style="left: 25.0%")
+    end
+
+    test "no democracy score section without at least one band defined", ctx do
+      {:ok, _} =
+        Authoring.update_scenario(ctx.scenario, %{
+          democracy_formula: "avg",
+          democracy_min: 0.0,
+          democracy_max: 10.0
+        })
+
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "No bands"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display_token} = Play.create_display_token(session)
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
+
+      refute html =~ "Democracy Score"
     end
 
     test "no democracy score section when the scenario hasn't configured one", ctx do

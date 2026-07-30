@@ -32,6 +32,14 @@ defmodule Scenex.Authoring.Scenario do
     field :democracy_min, :float
     field :democracy_max, :float
 
+    # Optional: a narrower range used only for the gauge's tick position, so
+    # small real-world swings (a score that in practice never nears the true
+    # ends) still read as real movement. The band labels and the dry run's
+    # precise lookup keep using the real min/max above — this only changes
+    # where the dot sits. nil (either bound) means "use the real range."
+    field :democracy_viz_min, :float
+    field :democracy_viz_max, :float
+
     has_many :memberships, ScenarioMembership
     has_many :endings, Scenex.Authoring.Ending
     has_many :value_dimensions, ValueDimension
@@ -39,6 +47,7 @@ defmodule Scenex.Authoring.Scenario do
     has_many :timeline_elements, TimelineElement
     has_many :labels, Label
     has_many :pages, Scenex.Authoring.Page
+    has_many :democracy_bands, Scenex.Authoring.DemocracyBand
 
     timestamps()
   end
@@ -56,7 +65,9 @@ defmodule Scenex.Authoring.Scenario do
       :change_highlight_seconds,
       :democracy_formula,
       :democracy_min,
-      :democracy_max
+      :democracy_max,
+      :democracy_viz_min,
+      :democracy_viz_max
     ])
     |> validate_required([:handle, :source_locale, :change_highlight_seconds])
     |> validate_number(:change_highlight_seconds, greater_than_or_equal_to: 0)
@@ -66,11 +77,40 @@ defmodule Scenex.Authoring.Scenario do
     )
     |> maybe_validate_formula(:democracy_formula)
     |> validate_min_max(:democracy_min, :democracy_max)
+    |> validate_min_max(:democracy_viz_min, :democracy_viz_max)
+    |> validate_viz_range_within_real_range()
   end
 
   defp maybe_validate_formula(changeset, field) do
     if get_field(changeset, field) in [nil, ""],
       do: changeset,
       else: validate_formula(changeset, field)
+  end
+
+  # The visualization range only makes sense as a subset of the real one —
+  # anything else can't be "exaggerate the middle of the real range."
+  defp validate_viz_range_within_real_range(changeset) do
+    real_min = get_field(changeset, :democracy_min)
+    real_max = get_field(changeset, :democracy_max)
+    viz_min = get_field(changeset, :democracy_viz_min)
+    viz_max = get_field(changeset, :democracy_viz_max)
+
+    cond do
+      is_nil(viz_min) or is_nil(viz_max) ->
+        changeset
+
+      is_nil(real_min) or is_nil(real_max) ->
+        add_error(changeset, :democracy_viz_min, "needs a democracy score min/max set first")
+
+      viz_min < real_min or viz_max > real_max ->
+        add_error(
+          changeset,
+          :democracy_viz_min,
+          "must be within the democracy score's own min/max"
+        )
+
+      true ->
+        changeset
+    end
   end
 end

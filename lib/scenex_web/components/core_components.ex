@@ -455,23 +455,39 @@ defmodule ScenexWeb.CoreComponents do
 
   @doc """
   A value's position on a `min`/`max` range shown as a horizontal track with
-  a tick — never a raw number, only where it falls, plus a `readout` the
-  caller has already worked out for it (a band label from
-  `Scenex.Engine.Scale.label/4`, an emoji, whatever fits — this component
-  only lays it out, it doesn't decide what it says). The readout sits right
-  below the tick, at the same horizontal position, rather than centered
-  under the whole track — and being absolutely positioned, it doesn't add
-  to the gauge's in-flow height, so a caller centering a label against this
+  a tick — never a raw number, only where it falls. Two mutually exclusive
+  ways to label it:
+
+    * `readout` — text (a band label, an emoji, whatever fits) that follows
+      the tick, sitting right below it at the same horizontal position. For
+      a value with one clear "current state" to name — a well-being mean.
+    * `low_label`/`high_label` — fixed text pinned to the two ends of the
+      track, never moving; the tick's *position* between them is the only
+      reading, with no name ever given to where it currently sits. For a
+      value whose in-between states aren't meant to be called out — the
+      democracy score, which only ever names its worst and best ends.
+
+  Either way the label(s) are absolutely positioned, so they don't add to
+  the gauge's in-flow height — a caller centering a heading against this
   component (`items-center` in a flex row) lands on the track itself, not
-  the track-plus-readout block. For values the audience should read as a
-  state, not a figure: a well-being mean, a democracy score.
+  the track-plus-label block.
 
       <.scale_gauge value={7.2} min={0.0} max={10.0} readout="Good" />
+      <.scale_gauge value={7.2} min={0.0} max={10.0} low_label="Bad" high_label="Great" />
   """
   attr :value, :any, required: true, doc: "the number, or nil if not yet known"
   attr :min, :float, required: true
   attr :max, :float, required: true
-  attr :readout, :string, required: true, doc: "the big text (or emoji) shown under the tick"
+  attr :readout, :string, default: nil, doc: "text that follows the tick"
+
+  attr :low_label, :string,
+    default: nil,
+    doc: "fixed label at the min end — pairs with high_label"
+
+  attr :high_label, :string,
+    default: nil,
+    doc: "fixed label at the max end — pairs with low_label"
+
   attr :class, :string, default: nil
 
   def scale_gauge(assigns) do
@@ -485,10 +501,15 @@ defmodule ScenexWeb.CoreComponents do
         />
       </div>
       <div
+        :if={@readout}
         class="absolute top-full mt-4 -translate-x-1/2 text-center text-2xl font-bold whitespace-nowrap"
         style={"left: #{gauge_readout_pct(@value, @min, @max)}%"}
       >
         {@readout}
+      </div>
+      <div :if={@low_label || @high_label} class="mt-4 flex items-start justify-between gap-4">
+        <span class="text-2xl font-bold">{@low_label}</span>
+        <span class="text-2xl font-bold">{@high_label}</span>
       </div>
     </div>
     """

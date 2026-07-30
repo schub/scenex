@@ -23,12 +23,10 @@ defmodule ScenexWeb.PlayLive.Display do
   alias Scenex.I18n
 
   # Well-being reads as an emoji, not a label — same 4 equal bands as the
-  # gauge's tick position, just a different readout. Democracy score keeps
-  # a text label, best to worst — see Scenex.Engine.Scale.
+  # gauge's tick position, just a different readout.
   @wellbeing_emojis ["😀", "🙂", "😐", "🙁"]
   @wellbeing_min 1.0
   @wellbeing_max 4.0
-  @democracy_labels ["In Bloom", "Resilient", "Fragile", "Critical", "Breakdown"]
 
   @impl true
   def render(assigns) do
@@ -159,17 +157,22 @@ defmodule ScenexWeb.PlayLive.Display do
           </div>
 
           <div
-            :if={@snap.board_sections.democracy and democracy_score(@snap) != nil}
+            :if={
+              @snap.board_sections.democracy and democracy_score(@snap) != nil and
+                democracy_bands(@snap) != []
+            }
             class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
             <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
               {gettext("Democracy Score")}
             </div>
+            <% {gauge_min, gauge_max} = democracy_gauge_range(@snap) %>
             <.scale_gauge
               value={democracy_score(@snap)}
-              min={@snap.definition.democracy_min}
-              max={@snap.definition.democracy_max}
-              readout={democracy_readout(@snap)}
+              min={gauge_min}
+              max={gauge_max}
+              low_label={democracy_low_label(@snap, @locale)}
+              high_label={democracy_high_label(@snap, @locale)}
             />
           </div>
         </div>
@@ -256,28 +259,46 @@ defmodule ScenexWeb.PlayLive.Display do
     end
   end
 
-  defp democracy_readout(snap) do
-    case democracy_score(snap) do
-      score when is_number(score) ->
-        Scale.label(
-          score,
-          snap.definition.democracy_min,
-          snap.definition.democracy_max,
-          @democracy_labels
-        )
-
-      _ ->
-        "—"
-    end
-  end
-
-  # The number, or nil if unconfigured or unavailable — the gauge already
-  # reads nil as "—", and the section hides itself when there's nothing to
-  # show (no per-group values defined yet).
+  # The number, or nil if unconfigured or unavailable — the section hides
+  # itself when there's nothing to show (no per-group values defined yet).
   defp democracy_score(snap) do
     case Play.democracy_score(snap) do
       {:ok, score} -> score
       _ -> nil
+    end
+  end
+
+  defp democracy_bands(snap), do: snap.definition.democracy_bands
+
+  # The gauge's tick position uses the visualization range when the author
+  # configured one (both bounds set) — a narrower window that exaggerates
+  # real-world swings a score never actually reaches the true ends of.
+  # Falls back to the real min/max otherwise. Scale.position/3 already
+  # clamps, so a score outside this range just sticks to the nearest end.
+  defp democracy_gauge_range(snap) do
+    case {snap.definition.democracy_viz_min, snap.definition.democracy_viz_max} do
+      {viz_min, viz_max} when is_number(viz_min) and is_number(viz_max) ->
+        {viz_min, viz_max}
+
+      _ ->
+        {snap.definition.democracy_min, snap.definition.democracy_max}
+    end
+  end
+
+  # Fixed anchors at the two ends of the gauge — never which specific band
+  # the score currently falls in, only the worst and best of the authored,
+  # position-ascending (worst-to-best) list.
+  defp democracy_low_label(snap, locale) do
+    case List.first(democracy_bands(snap)) do
+      nil -> nil
+      band -> I18n.t!(band.label, locale, default: "")
+    end
+  end
+
+  defp democracy_high_label(snap, locale) do
+    case List.last(democracy_bands(snap)) do
+      nil -> nil
+      band -> I18n.t!(band.label, locale, default: "")
     end
   end
 
