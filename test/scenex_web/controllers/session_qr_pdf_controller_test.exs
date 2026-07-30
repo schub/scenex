@@ -51,14 +51,40 @@ defmodule ScenexWeb.SessionQrPdfControllerTest do
     assert String.starts_with?(body, "%PDF-")
   end
 
-  test "still returns a PDF when no tokens have been generated yet", %{
+  test "auto-generates every missing code on first download — no clicking required", %{
     conn: conn,
-    session: session
+    session: session,
+    gov: gov,
+    scenario: scenario
   } do
+    opp = group_fixture(scenario, handle: "Opp", name: %{"en" => "Opposition"})
+
+    assert Play.list_tokens(session) == []
+
     conn = get(conn, ~p"/sessions/#{session.id}/qr_codes.pdf")
 
     assert response_content_type(conn, :pdf)
     assert String.starts_with?(response(conn, 200), "%PDF-")
+
+    tokens = Play.list_tokens(session)
+    assert length(tokens) == 2
+    assert Enum.any?(tokens, &(&1.kind == :group and &1.group_id == gov.id))
+    refute Enum.any?(tokens, &(&1.kind == :group and &1.group_id == opp.id))
+    assert Enum.any?(tokens, &(&1.kind == :display))
+  end
+
+  test "downloading again reuses existing codes instead of minting duplicates", %{
+    conn: conn,
+    session: session,
+    gov: gov
+  } do
+    {:ok, token} = Play.create_group_token(session, gov)
+
+    get(conn, ~p"/sessions/#{session.id}/qr_codes.pdf")
+
+    tokens = Play.list_tokens(session)
+    assert length(tokens) == 2
+    assert Enum.find(tokens, &(&1.kind == :group)).id == token.id
   end
 
   test "a user with no access to the scenario is redirected", %{session: session} do
