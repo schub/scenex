@@ -507,7 +507,10 @@ defmodule ScenexWeb.CoreComponents do
       >
         {@readout}
       </div>
-      <div :if={@low_label || @high_label} class="mt-4 flex items-start justify-between gap-4">
+      <div
+        :if={@low_label || @high_label}
+        class="absolute top-full inset-x-0 mt-4 flex items-start justify-between gap-4"
+      >
         <span class="text-2xl font-bold">{@low_label}</span>
         <span class="text-2xl font-bold">{@high_label}</span>
       </div>
