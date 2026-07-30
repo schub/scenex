@@ -43,6 +43,7 @@ defmodule Scenex.MixProject do
       {:bcrypt_elixir, "~> 3.0"},
       {:earmark, "~> 1.4"},
       {:eqrcode, "~> 0.2"},
+      {:pdf, "~> 0.8.0"},
       {:phoenix, "~> 1.8.3"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
