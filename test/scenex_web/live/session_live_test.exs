@@ -423,6 +423,44 @@ defmodule ScenexWeb.SessionLiveTest do
     assert Play.snapshot(session.id).board_sections.democracy == true
   end
 
+  test "the console shows the democracy score and its precise current band, updating live", ctx do
+    %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx
+
+    {:ok, _} =
+      Authoring.update_scenario(scenario, %{
+        democracy_formula: "avg",
+        democracy_min: 0.0,
+        democracy_max: 10.0
+      })
+
+    {:ok, _} =
+      Authoring.create_democracy_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+
+    {:ok, _} =
+      Authoring.create_democracy_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
+    assert html =~ "Democracy Score:"
+    assert html =~ "Breakdown"
+
+    lv |> element("button[phx-click=start]") |> render_click()
+    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{event.id}"]}) |> render_click()
+
+    # +2 stability -> avg 7 -> best band ("In Bloom").
+    html =
+      lv
+      |> element(
+        ~s{button[phx-click=choose][phx-value-element="#{event.id}"]} <>
+          ~s{[phx-value-option="#{crack.id}"]}
+      )
+      |> render_click()
+
+    assert html =~ "7"
+    assert html =~ "In Bloom"
+  end
+
   test "the GM can toggle group values on the group boards", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")

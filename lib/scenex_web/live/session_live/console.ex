@@ -20,7 +20,7 @@ defmodule ScenexWeb.SessionLive.Console do
   use ScenexWeb, :live_view
 
   alias Scenex.{Authoring, Play}
-  alias Scenex.Engine.{Condition, Sim}
+  alias Scenex.Engine.{Condition, Scale, Sim}
   alias Scenex.I18n
 
   @impl true
@@ -184,6 +184,23 @@ defmodule ScenexWeb.SessionLive.Console do
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <%!-- Democracy Score — exact number and precise current band, unlike
+      the audience scoreboard (which only ever shows the worst/best labels
+      fixed at the ends, never a number or the current specific band). --%>
+      <div
+        :if={score = democracy_score(@snap)}
+        class="mt-3 rounded bg-base-200 px-3 py-2 text-sm"
+      >
+        <span class="font-semibold">Democracy Score:</span>
+        <span class="tabular-nums">{fmt_num(score)}</span>
+        <span :if={democracy_bands(@snap) != []} class="ml-1 opacity-70">
+          ({democracy_band_label(score, @snap, @locale)})
+        </span>
+        <span :if={democracy_bands(@snap) == []} class="ml-1 opacity-50">
+          (no bands defined yet — scoreboard section won't show)
+        </span>
       </div>
 
       <%!-- Well-being: hand-count tallies for per-participant values --%>
@@ -731,6 +748,28 @@ defmodule ScenexWeb.SessionLive.Console do
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_participant))
 
   defp tally_history(snap, value_id), do: snap.tallies[value_id] || []
+
+  # ── Democracy Score ───────────────────────────────────────────────────
+
+  defp democracy_score(snap) do
+    case Play.democracy_score(snap) do
+      {:ok, score} -> score
+      _ -> nil
+    end
+  end
+
+  defp democracy_bands(snap), do: snap.definition.democracy_bands
+
+  # `democracy_bands` is worst-to-best (position ascending, how they're
+  # authored); Scale.label/4 wants best-to-worst.
+  defp democracy_band_label(score, snap, locale) do
+    labels =
+      democracy_bands(snap)
+      |> Enum.reverse()
+      |> Enum.map(&I18n.t!(&1.label, locale, default: "—"))
+
+    Scale.label(score, snap.definition.democracy_min, snap.definition.democracy_max, labels)
+  end
 
   # The fixed 4-step smiley-coin scale (see the well-being design concept).
   defp tally_scale do
