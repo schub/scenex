@@ -640,11 +640,12 @@ defmodule Scenex.PlayTest do
 
   describe "scoreboard section toggles" do
     test "all visible by default; each toggles independently and survives replay", ctx do
-      %{session: session} = ctx
+      %{session: session, wellbeing: wellbeing} = ctx
 
+      # Fixed sections default visible; per-participant sections are visible by
+      # absence (nothing stored until toggled).
       assert Play.snapshot(session.id).board_sections == %{
                globals: true,
-               wellbeing: true,
                overall_index: true,
                current_beat: true
              }
@@ -653,13 +654,14 @@ defmodule Scenex.PlayTest do
       assert snap.board_sections.overall_index == false
       assert snap.board_sections.globals == true
 
+      # A per-participant value has its own section, keyed by its id.
       # A crash (or deploy) restarts the process; replay must land on the
       # same settings, not silently reset to all-visible.
-      {:ok, _} = Play.set_board_section(session.id, :wellbeing, false)
+      {:ok, _} = Play.set_board_section(session.id, wellbeing.id, false)
       Play.stop_running(session.id)
       snap = Play.snapshot(session.id)
       assert snap.board_sections.overall_index == false
-      assert snap.board_sections.wellbeing == false
+      assert snap.board_sections[wellbeing.id] == false
       assert snap.board_sections.globals == true
       assert snap.board_sections.current_beat == true
     end

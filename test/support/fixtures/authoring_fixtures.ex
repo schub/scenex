@@ -26,7 +26,22 @@ defmodule Scenex.AuthoringFixtures do
       })
 
     {:ok, vd} = Authoring.create_value_dimension(scenario, attrs)
+
+    # Per-participant values need a readout scale; seed the legacy four-emoji
+    # one so fixtures render like a real scenario without every caller listing steps.
+    if vd.input_scope == :per_participant do
+      for {position, emoji} <- [{1, "🙁"}, {2, "😐"}, {3, "🙂"}, {4, "😀"}] do
+        value_dimension_step_fixture(vd, %{position: position, emoji: emoji})
+      end
+    end
+
     vd
+  end
+
+  def value_dimension_step_fixture(value_dimension, attrs \\ %{}) do
+    attrs = Enum.into(attrs, %{position: 1, emoji: "🙂"})
+    {:ok, step} = Authoring.create_value_dimension_step(value_dimension, attrs)
+    step
   end
 
   def group_fixture(scenario, attrs \\ %{}) do

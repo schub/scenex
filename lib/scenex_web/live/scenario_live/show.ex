@@ -19,7 +19,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
     TimelineElement,
     Group,
     Label,
-    ValueDimension
+    ValueDimension,
+    ValueDimensionStep
   }
 
   alias Scenex.I18n
@@ -268,6 +269,65 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
                 e.g. <code>(avg + min) / 2</code>.
               </p>
+
+              <%!-- Readout steps — only per-participant values carry an emoji scale --%>
+              <div
+                :if={@editing_value && @value_scope == :per_participant}
+                class="mt-6 space-y-3 border-t border-base-300 pt-4"
+              >
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">Readout steps</h4>
+                  <button
+                    :if={@can_edit?}
+                    type="button"
+                    phx-click="new_value_step"
+                    class="btn btn-xs btn-primary"
+                  >
+                    + Add step
+                  </button>
+                </div>
+                <p class="text-xs opacity-60">
+                  An ordered emoji scale, worst to best. Participants are hand-counted 1..N and the
+                  emoji for the current average shows on the boards. Define at least two.
+                </p>
+                <ul class="menu w-full rounded-box bg-base-100">
+                  <li :for={s <- @value_steps}>
+                    <button
+                      type="button"
+                      phx-click="edit_value_step"
+                      phx-value-id={s.id}
+                      class={selected_item(@editing_value_step, s)}
+                    >
+                      <span class="text-lg">{s.emoji}</span>
+                      <span class="text-xs opacity-60">position {s.position}</span>
+                    </button>
+                  </li>
+                  <li :if={@value_steps == []} class="menu-disabled"><span>No steps yet.</span></li>
+                </ul>
+                <.form
+                  for={@value_step_form}
+                  phx-submit="save_value_step"
+                  class="flex flex-wrap items-end gap-2"
+                >
+                  <fieldset disabled={not @can_edit?} class="contents">
+                    <.input field={@value_step_form[:emoji]} label="Emoji" />
+                    <.input field={@value_step_form[:position]} type="number" label="Position" />
+                    <.button variant="primary">
+                      {if @editing_value_step, do: "Save step", else: "Add step"}
+                    </.button>
+                    <button
+                      :if={@can_edit? and @editing_value_step}
+                      type="button"
+                      phx-click="delete_value_step"
+                      phx-value-id={@editing_value_step.id}
+                      data-confirm="Delete this step?"
+                      class="btn btn-error btn-soft"
+                    >
+                      Delete
+                    </button>
+                  </fieldset>
+                </.form>
+              </div>
             </div>
           </div>
         </div>
@@ -1730,6 +1790,61 @@ defmodule ScenexWeb.ScenarioLive.Show do
     end)
   end
 
+  # ── Value readout steps (per-participant scale) ───────────────────────
+
+  def handle_event("new_value_step", _params, socket) do
+    next = length(socket.assigns.value_steps) + 1
+    {:noreply, assign_value_step_form(socket, %ValueDimensionStep{position: next})}
+  end
+
+  def handle_event("edit_value_step", %{"id" => id}, socket) do
+    case Authoring.get_value_dimension_step(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      step -> {:noreply, assign_value_step_form(socket, step)}
+    end
+  end
+
+  def handle_event("save_value_step", %{"value_dimension_step" => params}, socket) do
+    with_edit(socket, fn ->
+      case socket.assigns.editing_value do
+        %ValueDimension{} = vd ->
+          data = socket.assigns.editing_value_step
+
+          result =
+            if data,
+              do: Authoring.update_value_dimension_step(data, params),
+              else: Authoring.create_value_dimension_step(vd, params)
+
+          case result do
+            {:ok, step} ->
+              {:noreply, socket |> assign_value_step_form(step) |> assign_value_steps()}
+
+            {:error, changeset} ->
+              {:noreply,
+               assign(socket, :value_step_form, to_form(changeset, as: :value_dimension_step))}
+          end
+
+        _ ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("delete_value_step", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      case Authoring.get_value_dimension_step(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        step ->
+          Authoring.delete_value_dimension_step(step)
+
+          {:noreply,
+           socket |> assign_value_step_form(%ValueDimensionStep{}) |> assign_value_steps()}
+      end
+    end)
+  end
+
   # ── Groups ────────────────────────────────────────────────────────────
 
   def handle_event("edit_group", %{"id" => id}, socket) do
@@ -2268,6 +2383,28 @@ defmodule ScenexWeb.ScenarioLive.Show do
     |> assign(
       :value_form,
       to_form(Authoring.change_value_dimension(value), as: :value_dimension)
+    )
+    |> assign_value_steps()
+    |> assign_value_step_form(%ValueDimensionStep{})
+  end
+
+  # The readout steps of the value being edited (empty for a new/per-group one).
+  defp assign_value_steps(socket) do
+    steps =
+      case socket.assigns.editing_value do
+        %ValueDimension{} = vd -> Authoring.list_value_dimension_steps(vd)
+        _ -> []
+      end
+
+    assign(socket, :value_steps, steps)
+  end
+
+  defp assign_value_step_form(socket, step) do
+    socket
+    |> assign(:editing_value_step, if(step.id, do: step, else: nil))
+    |> assign(
+      :value_step_form,
+      to_form(Authoring.change_value_dimension_step(step), as: :value_dimension_step)
     )
   end
 

@@ -593,6 +593,55 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
+  describe "value dimension steps" do
+    setup do
+      user = user_fixture()
+      scenario = scenario_fixture(user)
+      # per_group so no legacy steps are auto-seeded — a clean slate.
+      vd = value_dimension_fixture(scenario, key: "mood", name: %{"en" => "Mood"})
+      %{scenario: scenario, vd: vd}
+    end
+
+    test "create, list worst-to-best, scoped get, update, delete", %{scenario: scenario, vd: vd} do
+      assert {:ok, best} = Authoring.create_value_dimension_step(vd, %{position: 2, emoji: "🙂"})
+      assert {:ok, worst} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙁"})
+
+      assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [worst.id, best.id]
+
+      assert Authoring.get_value_dimension_step(scenario, best.id).id == best.id
+      assert Authoring.get_value_dimension_step(scenario, Ecto.UUID.generate()) == nil
+      assert Authoring.get_value_dimension_step(scenario, "not-a-uuid") == nil
+
+      assert {:ok, updated} = Authoring.update_value_dimension_step(best, %{emoji: "😀"})
+      assert updated.emoji == "😀"
+
+      assert {:ok, _} = Authoring.delete_value_dimension_step(worst)
+      assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [best.id]
+    end
+
+    test "requires an emoji", %{vd: vd} do
+      assert {:error, cs} = Authoring.create_value_dimension_step(vd, %{position: 1})
+      assert %{emoji: [_]} = errors_on(cs)
+    end
+
+    test "a step is not reachable from another scenario", %{vd: vd} do
+      {:ok, step} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙂"})
+      other = scenario_fixture(user_fixture())
+      assert Authoring.get_value_dimension_step(other, step.id) == nil
+    end
+
+    test "per-participant values are loaded with their steps preloaded", %{scenario: scenario} do
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant
+      )
+
+      vd = Enum.find(Authoring.list_value_dimensions(scenario), &(&1.key == "wellbeing"))
+      assert Enum.map(vd.steps, & &1.emoji) == ["🙁", "😐", "🙂", "😀"]
+    end
+  end
+
   describe "group initial values (upsert)" do
     test "creates then updates by (group, value_dimension)" do
       user = user_fixture()

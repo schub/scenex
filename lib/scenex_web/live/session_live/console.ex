@@ -9,8 +9,9 @@ defmodule ScenexWeb.SessionLive.Console do
   clock and deadline countdowns moving. Corrections are just re-entry (last
   wins) — click a different option and the board recomputes. The GM can also
   close a triggered element manually, deadline or not — undecided groups
-  simply stay undecided, nothing is locked. Four independent toggles control
-  which sections appear on the scoreboard (projected display), plus one more
+  simply stay undecided, nothing is locked. Independent toggles control
+  which sections appear on the scoreboard (projected display) — one per fixed
+  section and one per per-participant value — plus one more
   for whether the group boards show each group's own values — this
   console's own board is never affected by any of them. The GM can also put
   a pre-authored full-screen page up on the scoreboard at any time,
@@ -85,9 +86,12 @@ defmodule ScenexWeb.SessionLive.Console do
           type="button"
           phx-click="toggle_board_section"
           phx-value-section={section}
-          class={["btn btn-xs", (@snap.board_sections[section] && "btn-primary") || "btn-ghost"]}
+          class={[
+            "btn btn-xs",
+            (Map.get(@snap.board_sections, section, true) && "btn-primary") || "btn-ghost"
+          ]}
         >
-          {if @snap.board_sections[section], do: "👁 #{label}", else: "🚫 #{label}"}
+          {if Map.get(@snap.board_sections, section, true), do: "👁 #{label}", else: "🚫 #{label}"}
         </button>
       </div>
 
@@ -203,7 +207,7 @@ defmodule ScenexWeb.SessionLive.Console do
         </span>
       </div>
 
-      <%!-- Well-being: hand-count tallies for per-participant values --%>
+      <%!-- Per-participant values: hand-count tallies on each value's own scale --%>
       <section
         :for={vd <- participant_dims(@snap)}
         class="mt-8 rounded-box border border-base-300 p-4 space-y-3"
@@ -216,7 +220,7 @@ defmodule ScenexWeb.SessionLive.Console do
             class="ml-auto text-xl font-bold tabular-nums"
             title="Latest tally average"
           >
-            {tally_face(avg)} {fmt_num(avg)}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
+            {step_face(vd, avg)} {fmt_num(avg)}<.value_delta change={Play.recent_delta(@snap, vd.id)} />
           </span>
         </div>
 
@@ -226,8 +230,8 @@ defmodule ScenexWeb.SessionLive.Console do
           class="flex flex-wrap items-end gap-3"
         >
           <input type="hidden" name="value" value={vd.id} />
-          <label :for={{score, face, label} <- tally_scale()} class="flex flex-col gap-1 text-xs">
-            <span class="whitespace-nowrap">{face} {label} ({score})</span>
+          <label :for={{score, face} <- tally_scale(vd)} class="flex flex-col gap-1 text-xs">
+            <span class="whitespace-nowrap">{face} ({score})</span>
             <input
               type="number"
               name={"counts[#{score}]"}
@@ -251,14 +255,14 @@ defmodule ScenexWeb.SessionLive.Console do
             <thead>
               <tr>
                 <th>Time</th>
-                <th :for={{_score, face, _label} <- tally_scale()} class="text-right">{face}</th>
+                <th :for={{_score, face} <- tally_scale(vd)} class="text-right">{face}</th>
                 <th class="text-right">Average</th>
               </tr>
             </thead>
             <tbody>
               <tr :for={entry <- Enum.reverse(tally_history(@snap, vd.id))}>
                 <td class="font-mono tabular-nums">{fmt_clock(entry.game_time_ms)}</td>
-                <td :for={{score, _face, _label} <- tally_scale()} class="text-right tabular-nums">
+                <td :for={{score, _face} <- tally_scale(vd)} class="text-right tabular-nums">
                   {entry.counts[score] || 0}
                 </td>
                 <td class="text-right font-semibold tabular-nums">
@@ -591,8 +595,7 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("clear_page", _params, socket), do: run(socket, &Play.clear_page/1)
 
   def handle_event("toggle_board_section", %{"section" => section}, socket) do
-    section = String.to_existing_atom(section)
-    visible = not socket.assigns.snap.board_sections[section]
+    visible = not section_visible?(socket.assigns.snap, section)
     run(socket, &Play.set_board_section(&1, section, visible))
   end
 
@@ -730,14 +733,29 @@ defmodule ScenexWeb.SessionLive.Console do
 
   # ── Snapshot accessors ────────────────────────────────────────────────
 
+  # Fixed sections (atom-keyed) plus one per per-participant value (keyed by id
+  # string). The key type matches how the projection stores each section, so a
+  # single Map.get lookup covers both.
   defp board_sections(snap, locale) do
-    [
-      globals: "Global values",
-      wellbeing: "Well-being",
-      overall_index:
-        I18n.t!(snap.definition.overall_index_name, locale, default: "Overall Index"),
-      current_beat: "Current event"
-    ]
+    participant =
+      for vd <- participant_dims(snap), do: {vd.id, I18n.t!(vd.name, locale, default: vd.key)}
+
+    [{:globals, "Global values"}] ++
+      participant ++
+      [
+        {:overall_index,
+         I18n.t!(snap.definition.overall_index_name, locale, default: "Overall Index")},
+        {:current_beat, "Current event"}
+      ]
+  end
+
+  # Current visibility of a section given the string that arrives from the
+  # toggle: fixed sections resolve to their atom key, per-participant sections
+  # stay string ids. Absent = visible (the default for a value never toggled).
+  @fixed_sections ~w(globals overall_index current_beat)
+  defp section_visible?(snap, section) when is_binary(section) do
+    key = if section in @fixed_sections, do: String.to_existing_atom(section), else: section
+    Map.get(snap.board_sections, key, true)
   end
 
   defp pages(snap), do: snap.definition.pages |> Map.values() |> Enum.sort_by(& &1.position)
@@ -780,20 +798,22 @@ defmodule ScenexWeb.SessionLive.Console do
     )
   end
 
-  # The fixed 4-step smiley-coin scale (see the well-being design concept).
-  defp tally_scale do
-    [
-      {4, "😀", "Very happy"},
-      {3, "🙂", "Happy"},
-      {2, "😐", "Okay"},
-      {1, "🙁", "Not happy"}
-    ]
+  # The value's own steps as `{score, emoji}`, best score first (how the tally
+  # entry and history columns read). Steps are authored worst-to-best.
+  defp tally_scale(vd) do
+    vd.steps
+    |> Enum.sort_by(& &1.position, :desc)
+    |> Enum.map(&{&1.position, &1.emoji})
   end
 
-  defp tally_face(avg) when avg >= 3.5, do: "😀"
-  defp tally_face(avg) when avg >= 2.5, do: "🙂"
-  defp tally_face(avg) when avg >= 1.5, do: "😐"
-  defp tally_face(_avg), do: "🙁"
+  # The step emoji standing for a mean: steps are worst-to-best, Scale.label/4
+  # wants best-to-worst. No steps yet -> nothing to show.
+  defp step_face(%{steps: [_ | _] = steps}, avg) when is_number(avg) do
+    emojis = steps |> Enum.map(& &1.emoji) |> Enum.reverse()
+    Scale.label(avg, 1.0, length(steps) * 1.0, emojis)
+  end
+
+  defp step_face(_vd, _avg), do: ""
 
   defp groups(snap), do: Enum.map(snap.definition.group_ids, &snap.definition.groups[&1])
 

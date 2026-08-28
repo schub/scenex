@@ -67,7 +67,15 @@ defmodule Scenex.DemoScenario do
     for spec <- specs, into: %{} do
       attrs = spec |> Map.put(:name, en(spec.name)) |> Map.put_new(:input_scope, :per_group)
       {:ok, vd} = Authoring.create_value_dimension(scenario, attrs)
+      if vd.input_scope == :per_participant, do: create_steps(vd)
       {spec.key, vd}
+    end
+  end
+
+  # A four-emoji well-being scale, worst to best.
+  defp create_steps(vd) do
+    for {position, emoji} <- [{1, "🙁"}, {2, "😐"}, {3, "🙂"}, {4, "😀"}] do
+      {:ok, _} = Authoring.create_value_dimension_step(vd, %{position: position, emoji: emoji})
     end
   end
 

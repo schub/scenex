@@ -22,12 +22,6 @@ defmodule ScenexWeb.PlayLive.Display do
   alias Scenex.Engine.Scale
   alias Scenex.I18n
 
-  # Well-being reads as an emoji, not a label — same 4 equal bands as the
-  # gauge's tick position, just a different readout.
-  @wellbeing_emojis ["😀", "🙂", "😐", "🙁"]
-  @wellbeing_min 1.0
-  @wellbeing_max 4.0
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -141,8 +135,11 @@ defmodule ScenexWeb.PlayLive.Display do
           </div>
 
           <div
-            :for={vd <- wellbeing_dims(@snap)}
-            :if={@snap.board_sections.wellbeing}
+            :for={vd <- participant_dims(@snap)}
+            :if={
+              Map.get(@snap.board_sections, vd.id, true) and vd.steps != [] and
+                is_number(@snap.globals[vd.id])
+            }
             class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
             <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
@@ -150,9 +147,9 @@ defmodule ScenexWeb.PlayLive.Display do
             </div>
             <.scale_gauge
               value={@snap.globals[vd.id]}
-              min={wellbeing_min()}
-              max={wellbeing_max()}
-              readout={wellbeing_readout(@snap, vd)}
+              min={1.0}
+              max={length(vd.steps) * 1.0}
+              readout={participant_readout(vd, @snap.globals[vd.id])}
             />
           </div>
 
@@ -234,30 +231,20 @@ defmodule ScenexWeb.PlayLive.Display do
   defp value_dims(snap),
     do: Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_group))
 
-  # Per-participant values with at least one recorded tally — nothing to
-  # gauge before the first hand count comes in.
-  defp wellbeing_dims(snap) do
-    Enum.filter(
-      snap.definition.value_dimensions,
-      &(&1.input_scope == :per_participant and is_number(snap.globals[&1.id]))
-    )
+  # Every per-participant value; the template gauges only those with steps, a
+  # numeric global (a hand count is in), and their section left visible.
+  defp participant_dims(snap) do
+    Enum.filter(snap.definition.value_dimensions, &(&1.input_scope == :per_participant))
   end
 
-  defp wellbeing_min, do: @wellbeing_min
-  defp wellbeing_max, do: @wellbeing_max
-
-  defp wellbeing_readout(snap, vd) do
-    case snap.globals[vd.id] do
-      value when is_number(value) ->
-        Enum.at(
-          @wellbeing_emojis,
-          Scale.index(value, @wellbeing_min, @wellbeing_max, length(@wellbeing_emojis))
-        )
-
-      _ ->
-        "—"
-    end
+  # The step emoji standing for the current mean: steps are worst-to-best
+  # (position ascending), and Scale.label/4 wants best-to-worst.
+  defp participant_readout(vd, mean) when is_number(mean) do
+    emojis = vd.steps |> Enum.map(& &1.emoji) |> Enum.reverse()
+    Scale.label(mean, 1.0, length(vd.steps) * 1.0, emojis)
   end
+
+  defp participant_readout(_vd, _mean), do: "—"
 
   # The number, or nil if unconfigured or unavailable — the section hides
   # itself when there's nothing to show (no referenced values defined yet).

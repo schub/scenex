@@ -547,6 +547,51 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert Authoring.list_overall_index_bands(scenario) == []
     end
 
+    test "adds, edits, and deletes a per-participant value's readout step",
+         %{conn: conn, scenario: scenario} do
+      vd =
+        value_dimension_fixture(scenario,
+          key: "mood",
+          name: %{"en" => "Mood"},
+          input_scope: :per_participant
+        )
+
+      # The fixture seeds the legacy four-emoji scale.
+      assert length(Authoring.list_value_dimension_steps(vd)) == 4
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=values]") |> render_click()
+      lv |> element(~s{button[phx-click=edit_value][phx-value-id="#{vd.id}"]}) |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_value_step"]), %{
+        "value_dimension_step" => %{"emoji" => "🤩", "position" => "5"}
+      })
+      |> render_submit()
+
+      steps = Authoring.list_value_dimension_steps(vd)
+      assert length(steps) == 5
+      added = Enum.find(steps, &(&1.emoji == "🤩"))
+
+      lv
+      |> element(~s{button[phx-click=edit_value_step][phx-value-id="#{added.id}"]})
+      |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_value_step"]), %{
+        "value_dimension_step" => %{"emoji" => "🥳"}
+      })
+      |> render_submit()
+
+      assert Authoring.get_value_dimension_step(scenario, added.id).emoji == "🥳"
+
+      lv
+      |> element(~s{button[phx-click=delete_value_step][phx-value-id="#{added.id}"]})
+      |> render_click()
+
+      assert length(Authoring.list_value_dimension_steps(vd)) == 4
+    end
+
     test "uploads and deletes a media file", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
 

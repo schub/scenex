@@ -29,7 +29,8 @@ defmodule Scenex.Authoring do
     Label,
     OptionEffect,
     Page,
-    ValueDimension
+    ValueDimension,
+    ValueDimensionStep
   }
 
   # ── Scenarios ───────────────────────────────────────────────────────────
@@ -257,15 +258,24 @@ defmodule Scenex.Authoring do
   # ── Value dimensions ────────────────────────────────────────────────────
 
   def list_value_dimensions(%Scenario{} = scenario) do
-    Repo.all(from v in ValueDimension, where: v.scenario_id == ^scenario.id, order_by: v.position)
+    Repo.all(
+      from v in ValueDimension,
+        where: v.scenario_id == ^scenario.id,
+        order_by: v.position,
+        preload: [:steps]
+    )
   end
 
   def get_value_dimension!(id), do: Repo.get!(ValueDimension, id)
 
   @doc "Fetch a value dimension **within** `scenario`, or nil. Use for request-scoped reads."
   def get_value_dimension(%Scenario{} = scenario, id) do
-    if uuid = valid_uuid(id),
-      do: Repo.get_by(ValueDimension, id: uuid, scenario_id: scenario.id)
+    if uuid = valid_uuid(id) do
+      case Repo.get_by(ValueDimension, id: uuid, scenario_id: scenario.id) do
+        nil -> nil
+        vd -> Repo.preload(vd, :steps)
+      end
+    end
   end
 
   def create_value_dimension(%Scenario{} = scenario, attrs) do
@@ -293,6 +303,42 @@ defmodule Scenex.Authoring do
       input_scope: vd.input_scope
     }
   end
+
+  # ── Value readout steps (per-participant scale) ─────────────────────────
+  # Worst to best, position ascending — see Scenex.Authoring.ValueDimensionStep.
+
+  def list_value_dimension_steps(%ValueDimension{} = vd) do
+    Repo.all(
+      from s in ValueDimensionStep, where: s.value_dimension_id == ^vd.id, order_by: s.position
+    )
+  end
+
+  @doc "Fetch a step **within** `scenario` (via its value), or nil. For request-scoped reads."
+  def get_value_dimension_step(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id) do
+      Repo.one(
+        from s in ValueDimensionStep,
+          join: v in ValueDimension,
+          on: v.id == s.value_dimension_id,
+          where: s.id == ^uuid and v.scenario_id == ^scenario.id
+      )
+    end
+  end
+
+  def create_value_dimension_step(%ValueDimension{} = vd, attrs) do
+    vd
+    |> Ecto.build_assoc(:steps)
+    |> ValueDimensionStep.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_value_dimension_step(%ValueDimensionStep{} = step, attrs),
+    do: step |> ValueDimensionStep.changeset(attrs) |> Repo.update()
+
+  def delete_value_dimension_step(%ValueDimensionStep{} = step), do: Repo.delete(step)
+
+  def change_value_dimension_step(%ValueDimensionStep{} = step, attrs \\ %{}),
+    do: ValueDimensionStep.changeset(step, attrs)
 
   # ── Groups ──────────────────────────────────────────────────────────────
 

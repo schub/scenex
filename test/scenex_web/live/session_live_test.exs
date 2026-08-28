@@ -396,9 +396,11 @@ defmodule ScenexWeb.SessionLiveTest do
   end
 
   test "the GM can toggle each scoreboard section independently", ctx do
-    %{conn: conn, session: session} = ctx
+    %{conn: conn, session: session, wellbeing: wellbeing} = ctx
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
 
+    # A fixed section per name, plus one per per-participant value (labeled by
+    # the value's own name).
     assert html =~ "👁 Global values"
     assert html =~ "👁 Well-being"
     assert html =~ "👁 Overall Index"
@@ -421,6 +423,15 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "👁 Overall Index"
     assert Play.snapshot(session.id).board_sections.overall_index == true
+
+    # A per-participant value's section is keyed by its id, toggled the same way.
+    html =
+      lv
+      |> element(~s{button[phx-click=toggle_board_section][phx-value-section="#{wellbeing.id}"]})
+      |> render_click()
+
+    assert html =~ "🚫 Well-being"
+    assert Play.snapshot(session.id).board_sections[wellbeing.id] == false
   end
 
   test "the console shows the overall index and its precise current band, updating live", ctx do

@@ -12,7 +12,7 @@ defmodule Scenex.Authoring.ValueDimension do
   import Ecto.Changeset
   import Scenex.Authoring.Validators
 
-  alias Scenex.Authoring.{Scenario, GroupInitialValue}
+  alias Scenex.Authoring.{Scenario, GroupInitialValue, ValueDimensionStep}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -35,6 +35,7 @@ defmodule Scenex.Authoring.ValueDimension do
 
     belongs_to :scenario, Scenario
     has_many :group_initial_values, GroupInitialValue
+    has_many :steps, ValueDimensionStep, preload_order: [asc: :position]
 
     timestamps()
   end
