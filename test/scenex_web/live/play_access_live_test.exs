@@ -401,25 +401,26 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "3.75"
     end
 
-    test "shows the democracy score as fixed worst/best anchors — never the current band or a number",
+    test "shows the overall index as fixed worst/best anchors — never the current band or a number",
          ctx do
       {:ok, _} =
         Authoring.update_scenario(ctx.scenario, %{
-          democracy_formula: "avg",
-          democracy_min: 0.0,
-          democracy_max: 10.0
+          overall_index_formula: "stability",
+          overall_index_min: 0.0,
+          overall_index_max: 10.0
         })
 
-      {:ok, _} = Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+      {:ok, _} =
+        Authoring.create_overall_index_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
 
       {:ok, _} =
-        Authoring.create_democracy_band(ctx.scenario, %{
+        Authoring.create_overall_index_band(ctx.scenario, %{
           label: %{"en" => "Fragile"},
           position: 1
         })
 
       {:ok, _} =
-        Authoring.create_democracy_band(ctx.scenario, %{
+        Authoring.create_overall_index_band(ctx.scenario, %{
           label: %{"en" => "In Bloom"},
           position: 2
         })
@@ -435,7 +436,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
       # Stability starts at 5.0 on a 0..10 scale -> the middle band ("Fragile")
       # — but only the two ends ever show, never the current specific one.
-      assert html =~ "Democracy Score"
+      assert html =~ "Overall Index"
       assert html =~ "Breakdown"
       assert html =~ "In Bloom"
       refute html =~ "Fragile"
@@ -445,17 +446,21 @@ defmodule ScenexWeb.PlayAccessLiveTest do
     test "the tick position uses the visualization range, not the real range, when set", ctx do
       {:ok, _} =
         Authoring.update_scenario(ctx.scenario, %{
-          democracy_formula: "avg",
-          democracy_min: 0.0,
-          democracy_max: 20.0,
-          democracy_viz_min: 5.0,
-          democracy_viz_max: 15.0
+          overall_index_formula: "stability",
+          overall_index_min: 0.0,
+          overall_index_max: 20.0,
+          overall_index_viz_min: 5.0,
+          overall_index_viz_max: 15.0
         })
 
-      {:ok, _} = Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+      {:ok, _} =
+        Authoring.create_overall_index_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
 
       {:ok, _} =
-        Authoring.create_democracy_band(ctx.scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+        Authoring.create_overall_index_band(ctx.scenario, %{
+          label: %{"en" => "In Bloom"},
+          position: 1
+        })
 
       {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Viz range"})
       on_exit(fn -> Play.stop_running(session.id) end)
@@ -464,7 +469,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _} = Play.start_session(session.id)
       {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
 
-      # Stability starts at 5.0 -> democracy score 5.0 (avg of the one
+      # Stability starts at 5.0 -> overall index 5.0 (avg of the one
       # per-group global). Against the real range (0..20) that's 25%; against
       # the visualization range (5..15) it's exactly the low end, 0% — and
       # it's the visualization range that must win.
@@ -472,12 +477,12 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ ~s(style="left: 25.0%")
     end
 
-    test "no democracy score section without at least one band defined", ctx do
+    test "no overall index section without at least one band defined", ctx do
       {:ok, _} =
         Authoring.update_scenario(ctx.scenario, %{
-          democracy_formula: "avg",
-          democracy_min: 0.0,
-          democracy_max: 10.0
+          overall_index_formula: "stability",
+          overall_index_min: 0.0,
+          overall_index_max: 10.0
         })
 
       {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "No bands"})
@@ -487,14 +492,14 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       {:ok, _} = Play.start_session(session.id)
       {:ok, _lv, html} = live(build_conn(), ~p"/display/#{display_token.token}")
 
-      refute html =~ "Democracy Score"
+      refute html =~ "Overall Index"
     end
 
-    test "no democracy score section when the scenario hasn't configured one", ctx do
+    test "no overall index section when the scenario hasn't configured one", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
 
-      refute html =~ "Democracy Score"
+      refute html =~ "Overall Index"
     end
 
     test "the GM's per-section toggles hide/show scoreboard sections independently", ctx do

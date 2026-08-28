@@ -46,13 +46,13 @@ defmodule Scenex.Play.Projection do
     global_changes: %{},
     ending_id: nil,
     show_numbers: false,
-    board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true},
+    board_sections: %{globals: true, wellbeing: true, overall_index: true, current_beat: true},
     group_values_visible: true,
     active_page_id: nil
   ]
 
   @type slot :: String.t() | :winner | :outcome
-  @type board_section :: :globals | :wellbeing | :democracy | :current_beat
+  @type board_section :: :globals | :wellbeing | :overall_index | :current_beat
   @type t :: %__MODULE__{}
 
   def new(%Definition{} = definition) do

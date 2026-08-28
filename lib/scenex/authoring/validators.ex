@@ -40,6 +40,20 @@ defmodule Scenex.Authoring.Validators do
   end
 
   @doc """
+  Validate an Overall Index formula field via `Scenex.Engine.Index.validate/2`.
+  Checks syntax only; unknown value keys surface at evaluation time (and in the
+  dry-run sandbox), where the scenario's value set is known.
+  """
+  def validate_index_formula(changeset, field) do
+    validate_change(changeset, field, fn ^field, formula ->
+      case Scenex.Engine.Index.validate(formula) do
+        :ok -> []
+        {:error, reason} -> [{field, "is not a valid formula (#{inspect(reason)})"}]
+      end
+    end)
+  end
+
+  @doc """
   Validate that `min_field < max_field` when both are present. Skips the
   check entirely if either is nil (an incomplete range isn't this
   validator's problem — pair it with `validate_required` where that matters).

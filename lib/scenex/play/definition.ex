@@ -23,12 +23,14 @@ defmodule Scenex.Play.Definition do
             endings: [],
             pages: %{},
             change_highlight_ms: 30_000,
-            democracy_formula: nil,
-            democracy_min: nil,
-            democracy_max: nil,
-            democracy_viz_min: nil,
-            democracy_viz_max: nil,
-            democracy_bands: []
+            overall_index_name: %{},
+            overall_index_description: %{},
+            overall_index_formula: nil,
+            overall_index_min: nil,
+            overall_index_max: nil,
+            overall_index_viz_min: nil,
+            overall_index_viz_max: nil,
+            overall_index_bands: []
 
   @type t :: %__MODULE__{}
 
@@ -90,12 +92,14 @@ defmodule Scenex.Play.Definition do
       endings: Authoring.list_endings(scenario),
       pages: Map.new(Authoring.list_pages(scenario), &{&1.id, &1}),
       change_highlight_ms: (scenario.change_highlight_seconds || 30) * 1000,
-      democracy_formula: scenario.democracy_formula,
-      democracy_min: scenario.democracy_min,
-      democracy_max: scenario.democracy_max,
-      democracy_viz_min: scenario.democracy_viz_min,
-      democracy_viz_max: scenario.democracy_viz_max,
-      democracy_bands: Authoring.list_democracy_bands(scenario)
+      overall_index_name: scenario.overall_index_name || %{},
+      overall_index_description: scenario.overall_index_description || %{},
+      overall_index_formula: scenario.overall_index_formula,
+      overall_index_min: scenario.overall_index_min,
+      overall_index_max: scenario.overall_index_max,
+      overall_index_viz_min: scenario.overall_index_viz_min,
+      overall_index_viz_max: scenario.overall_index_viz_max,
+      overall_index_bands: Authoring.list_overall_index_bands(scenario)
     }
   end
 

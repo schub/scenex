@@ -3,7 +3,7 @@ defmodule ScenexWeb.PlayLive.Display do
   The projected display — read-only, opened via a display token, no login.
 
   Meant for the wall: session name, game clock, the derived scoreboard
-  (global values, well-being, and the democracy score — a group's own
+  (global values, well-being, and the overall index — a group's own
   standing belongs on its own screen, not the shared one), and the current
   beat (the latest triggered element's narrative, an election result, and —
   once the GM has chosen — the ending). Full-height, no scroll: the GM's
@@ -158,21 +158,21 @@ defmodule ScenexWeb.PlayLive.Display do
 
           <div
             :if={
-              @snap.board_sections.democracy and democracy_score(@snap) != nil and
-                democracy_bands(@snap) != []
+              @snap.board_sections.overall_index and overall_index(@snap) != nil and
+                overall_index_bands(@snap) != []
             }
             class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
             <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
-              {gettext("Democracy Score")}
+              {overall_index_label(@snap, @locale)}
             </div>
-            <% {gauge_min, gauge_max} = democracy_gauge_range(@snap) %>
+            <% {gauge_min, gauge_max} = overall_index_gauge_range(@snap) %>
             <.scale_gauge
-              value={democracy_score(@snap)}
+              value={overall_index(@snap)}
               min={gauge_min}
               max={gauge_max}
-              low_label={democracy_low_label(@snap, @locale)}
-              high_label={democracy_high_label(@snap, @locale)}
+              low_label={overall_index_low_label(@snap, @locale)}
+              high_label={overall_index_high_label(@snap, @locale)}
             />
           </div>
         </div>
@@ -260,43 +260,49 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   # The number, or nil if unconfigured or unavailable — the section hides
-  # itself when there's nothing to show (no per-group values defined yet).
-  defp democracy_score(snap) do
-    case Play.democracy_score(snap) do
+  # itself when there's nothing to show (no referenced values defined yet).
+  defp overall_index(snap) do
+    case Play.overall_index(snap) do
       {:ok, score} -> score
       _ -> nil
     end
   end
 
-  defp democracy_bands(snap), do: snap.definition.democracy_bands
+  defp overall_index_bands(snap), do: snap.definition.overall_index_bands
+
+  # The author's label for the index (e.g. "Democracy", "Ship Integrity"),
+  # falling back to a generic name when they haven't set one.
+  defp overall_index_label(snap, locale) do
+    I18n.t!(snap.definition.overall_index_name, locale, default: gettext("Overall Index"))
+  end
 
   # The gauge's tick position uses the visualization range when the author
   # configured one (both bounds set) — a narrower window that exaggerates
   # real-world swings a score never actually reaches the true ends of.
   # Falls back to the real min/max otherwise. Scale.position/3 already
   # clamps, so a score outside this range just sticks to the nearest end.
-  defp democracy_gauge_range(snap) do
-    case {snap.definition.democracy_viz_min, snap.definition.democracy_viz_max} do
+  defp overall_index_gauge_range(snap) do
+    case {snap.definition.overall_index_viz_min, snap.definition.overall_index_viz_max} do
       {viz_min, viz_max} when is_number(viz_min) and is_number(viz_max) ->
         {viz_min, viz_max}
 
       _ ->
-        {snap.definition.democracy_min, snap.definition.democracy_max}
+        {snap.definition.overall_index_min, snap.definition.overall_index_max}
     end
   end
 
   # Fixed anchors at the two ends of the gauge — never which specific band
   # the score currently falls in, only the worst and best of the authored,
   # position-ascending (worst-to-best) list.
-  defp democracy_low_label(snap, locale) do
-    case List.first(democracy_bands(snap)) do
+  defp overall_index_low_label(snap, locale) do
+    case List.first(overall_index_bands(snap)) do
       nil -> nil
       band -> I18n.t!(band.label, locale, default: "")
     end
   end
 
-  defp democracy_high_label(snap, locale) do
-    case List.last(democracy_bands(snap)) do
+  defp overall_index_high_label(snap, locale) do
+    case List.last(overall_index_bands(snap)) do
       nil -> nil
       band -> I18n.t!(band.label, locale, default: "")
     end

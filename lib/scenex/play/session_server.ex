@@ -293,7 +293,7 @@ defmodule Scenex.Play.SessionServer do
   defp validate({:set_board_numbers, visible}, _state) when is_boolean(visible),
     do: {:ok, "board_numbers_set", %{visible: visible}, %{}}
 
-  @board_sections ~w(globals wellbeing democracy current_beat)a
+  @board_sections ~w(globals wellbeing overall_index current_beat)a
 
   defp validate({:set_board_section, section, visible}, _state)
        when section in @board_sections and is_boolean(visible) do

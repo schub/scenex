@@ -18,7 +18,7 @@ defmodule Scenex.Authoring do
 
   alias Scenex.Authoring.{
     DecisionOption,
-    DemocracyBand,
+    OverallIndexBand,
     Ending,
     TimelineElement,
     Scenario,
@@ -660,38 +660,40 @@ defmodule Scenex.Authoring do
 
   def change_page(%Page{} = page, attrs \\ %{}), do: Page.changeset(page, attrs)
 
-  # ── Democracy Score bands ──────────────────────────────────────────────
-  # Worst to best, position ascending — see Scenex.Authoring.DemocracyBand.
+  # ── Overall Index bands ────────────────────────────────────────────────
+  # Worst to best, position ascending — see Scenex.Authoring.OverallIndexBand.
 
-  def list_democracy_bands(%Scenario{} = scenario) do
-    Repo.all(from b in DemocracyBand, where: b.scenario_id == ^scenario.id, order_by: b.position)
+  def list_overall_index_bands(%Scenario{} = scenario) do
+    Repo.all(
+      from b in OverallIndexBand, where: b.scenario_id == ^scenario.id, order_by: b.position
+    )
   end
 
-  def get_democracy_band!(id), do: Repo.get!(DemocracyBand, id)
+  def get_overall_index_band!(id), do: Repo.get!(OverallIndexBand, id)
 
-  @doc "Fetch a democracy band **within** `scenario`, or nil. Use for request-scoped reads."
-  def get_democracy_band(%Scenario{} = scenario, id) do
+  @doc "Fetch an overall index band **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_overall_index_band(%Scenario{} = scenario, id) do
     if uuid = valid_uuid(id),
-      do: Repo.get_by(DemocracyBand, id: uuid, scenario_id: scenario.id)
+      do: Repo.get_by(OverallIndexBand, id: uuid, scenario_id: scenario.id)
   end
 
-  def create_democracy_band(%Scenario{} = scenario, attrs) do
+  def create_overall_index_band(%Scenario{} = scenario, attrs) do
     scenario
-    |> Ecto.build_assoc(:democracy_bands)
-    |> DemocracyBand.changeset(attrs)
+    |> Ecto.build_assoc(:overall_index_bands)
+    |> OverallIndexBand.changeset(attrs)
     |> Repo.insert()
   end
 
-  def update_democracy_band(%DemocracyBand{} = band, attrs) do
+  def update_overall_index_band(%OverallIndexBand{} = band, attrs) do
     band
-    |> DemocracyBand.changeset(attrs)
+    |> OverallIndexBand.changeset(attrs)
     |> Repo.update()
   end
 
-  def delete_democracy_band(%DemocracyBand{} = band), do: Repo.delete(band)
+  def delete_overall_index_band(%OverallIndexBand{} = band), do: Repo.delete(band)
 
-  def change_democracy_band(%DemocracyBand{} = band, attrs \\ %{}),
-    do: DemocracyBand.changeset(band, attrs)
+  def change_overall_index_band(%OverallIndexBand{} = band, attrs \\ %{}),
+    do: OverallIndexBand.changeset(band, attrs)
 
   # ── Internal ──────────────────────────────────────────────────────────────
 

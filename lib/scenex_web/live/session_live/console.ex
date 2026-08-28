@@ -81,7 +81,7 @@ defmodule ScenexWeb.SessionLive.Console do
       <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <span class="opacity-60">On the scoreboard:</span>
         <button
-          :for={{section, label} <- board_sections()}
+          :for={{section, label} <- board_sections(@snap, @locale)}
           type="button"
           phx-click="toggle_board_section"
           phx-value-section={section}
@@ -186,19 +186,19 @@ defmodule ScenexWeb.SessionLive.Console do
         </table>
       </div>
 
-      <%!-- Democracy Score — exact number and precise current band, unlike
+      <%!-- Overall Index — exact number and precise current band, unlike
       the audience scoreboard (which only ever shows the worst/best labels
       fixed at the ends, never a number or the current specific band). --%>
       <div
-        :if={score = democracy_score(@snap)}
+        :if={score = overall_index(@snap)}
         class="mt-3 rounded bg-base-200 px-3 py-2 text-sm"
       >
-        <span class="font-semibold">Democracy Score:</span>
+        <span class="font-semibold">{overall_index_label(@snap, @locale)}:</span>
         <span class="tabular-nums">{fmt_num(score)}</span>
-        <span :if={democracy_bands(@snap) != []} class="ml-1 opacity-70">
-          ({democracy_band_label(score, @snap, @locale)})
+        <span :if={overall_index_bands(@snap) != []} class="ml-1 opacity-70">
+          ({overall_index_band_label(score, @snap, @locale)})
         </span>
-        <span :if={democracy_bands(@snap) == []} class="ml-1 opacity-50">
+        <span :if={overall_index_bands(@snap) == []} class="ml-1 opacity-50">
           (no bands defined yet — scoreboard section won't show)
         </span>
       </div>
@@ -730,11 +730,12 @@ defmodule ScenexWeb.SessionLive.Console do
 
   # ── Snapshot accessors ────────────────────────────────────────────────
 
-  defp board_sections do
+  defp board_sections(snap, locale) do
     [
       globals: "Global values",
       wellbeing: "Well-being",
-      democracy: "Democracy score",
+      overall_index:
+        I18n.t!(snap.definition.overall_index_name, locale, default: "Overall Index"),
       current_beat: "Current event"
     ]
   end
@@ -749,26 +750,34 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp tally_history(snap, value_id), do: snap.tallies[value_id] || []
 
-  # ── Democracy Score ───────────────────────────────────────────────────
+  # ── Overall Index ─────────────────────────────────────────────────────
 
-  defp democracy_score(snap) do
-    case Play.democracy_score(snap) do
+  defp overall_index(snap) do
+    case Play.overall_index(snap) do
       {:ok, score} -> score
       _ -> nil
     end
   end
 
-  defp democracy_bands(snap), do: snap.definition.democracy_bands
+  defp overall_index_bands(snap), do: snap.definition.overall_index_bands
 
-  # `democracy_bands` is worst-to-best (position ascending, how they're
+  defp overall_index_label(snap, locale),
+    do: I18n.t!(snap.definition.overall_index_name, locale, default: "Overall Index")
+
+  # `overall_index_bands` is worst-to-best (position ascending, how they're
   # authored); Scale.label/4 wants best-to-worst.
-  defp democracy_band_label(score, snap, locale) do
+  defp overall_index_band_label(score, snap, locale) do
     labels =
-      democracy_bands(snap)
+      overall_index_bands(snap)
       |> Enum.reverse()
       |> Enum.map(&I18n.t!(&1.label, locale, default: "—"))
 
-    Scale.label(score, snap.definition.democracy_min, snap.definition.democracy_max, labels)
+    Scale.label(
+      score,
+      snap.definition.overall_index_min,
+      snap.definition.overall_index_max,
+      labels
+    )
   end
 
   # The fixed 4-step smiley-coin scale (see the well-being design concept).

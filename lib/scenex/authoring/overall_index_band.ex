@@ -1,6 +1,6 @@
-defmodule Scenex.Authoring.DemocracyBand do
+defmodule Scenex.Authoring.OverallIndexBand do
   @moduledoc """
-  One labeled band of the Democracy Score's `min`..`max` range — an author
+  One labeled band of the Overall Index's `min`..`max` range — an author
   defines as many as the scenario needs (4, 5, 6, whatever), `position`
   ascending from worst (nearest `min`) to best (nearest `max`).
 
@@ -21,7 +21,7 @@ defmodule Scenex.Authoring.DemocracyBand do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime]
 
-  schema "democracy_bands" do
+  schema "overall_index_bands" do
     field :label, :map, default: %{}
     field :position, :integer, default: 0
 

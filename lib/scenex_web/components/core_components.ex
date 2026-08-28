@@ -465,7 +465,7 @@ defmodule ScenexWeb.CoreComponents do
       track, never moving; the tick's *position* between them is the only
       reading, with no name ever given to where it currently sits. For a
       value whose in-between states aren't meant to be called out — the
-      democracy score, which only ever names its worst and best ends.
+      overall index, which only ever names its worst and best ends.
 
   Either way the label(s) are absolutely positioned, so they don't add to
   the gauge's in-flow height — a caller centering a heading against this

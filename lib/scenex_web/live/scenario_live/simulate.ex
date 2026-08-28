@@ -16,7 +16,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
   use ScenexWeb, :live_view
 
   alias Scenex.Authoring
-  alias Scenex.Engine.{Condition, Formula, Scale, Sim}
+  alias Scenex.Engine.{Condition, Index, Scale, Sim}
   alias Scenex.I18n
 
   @locale_choices Scenex.I18n.locales()
@@ -92,17 +92,17 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
         </table>
       </div>
 
-      <%!-- Democracy Score — exact number and precise current band, unlike
+      <%!-- Overall Index — exact number and precise current band, unlike
       the audience scoreboard (which only ever shows the worst/best labels
       fixed at the ends, never a number or the current specific band). This
       is a debugging readout for the author, testing the formula/bands. --%>
-      <div :if={@democracy_score} class="mt-3 rounded bg-base-200 px-3 py-2 text-sm">
-        <span class="font-semibold">Democracy Score:</span>
-        <span class="tabular-nums">{fmt_num(@democracy_score)}</span>
-        <span :if={@democracy_bands != []} class="ml-1 opacity-70">
-          ({democracy_band_label(@democracy_score, @scenario, @democracy_bands, @locale)})
+      <div :if={@overall_index_score} class="mt-3 rounded bg-base-200 px-3 py-2 text-sm">
+        <span class="font-semibold">{overall_index_label(@scenario, @locale)}:</span>
+        <span class="tabular-nums">{fmt_num(@overall_index_score)}</span>
+        <span :if={@overall_index_bands != []} class="ml-1 opacity-70">
+          ({overall_index_band_label(@overall_index_score, @scenario, @overall_index_bands, @locale)})
         </span>
-        <span :if={@democracy_bands == []} class="ml-1 opacity-50">
+        <span :if={@overall_index_bands == []} class="ml-1 opacity-50">
           (no bands defined yet — scoreboard section won't show)
         </span>
       </div>
@@ -350,7 +350,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
       groups_index: Map.new(groups, &{&1.id, &1}),
       timeline_elements: timeline_elements,
       endings: Authoring.list_endings(scenario),
-      democracy_bands: Authoring.list_democracy_bands(scenario),
+      overall_index_bands: Authoring.list_overall_index_bands(scenario),
       per_group_ids: per_group_ids,
       initial_sim: Sim.new(specs, group_ids, initial),
       total_slots: total_slots
@@ -402,7 +402,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
       locked: locked,
       ending_status: ending_status,
       decided: map_size(selections),
-      democracy_score: democracy_score(socket.assigns.scenario, value_defs, globals)
+      overall_index_score: overall_index(socket.assigns.scenario, value_defs, globals)
     )
   end
 
@@ -466,22 +466,15 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
     Map.new(for vd <- value_defs, is_number(globals[vd.id]), do: {vd.key, globals[vd.id]})
   end
 
-  # ── Democracy Score ───────────────────────────────────────────────────
-  # Same formula/gating as Scenex.Play.democracy_score/1, over this
+  # ── Overall Index ─────────────────────────────────────────────────────
+  # Same formula/gating as Scenex.Play.overall_index/1, over this
   # sandbox's own sim instead of a live session's.
 
-  defp democracy_score(scenario, value_defs, globals) do
-    with formula when is_binary(formula) <- scenario.democracy_formula,
-         min when is_number(min) <- scenario.democracy_min,
-         max when is_number(max) <- scenario.democracy_max do
-      values =
-        for vd <- value_defs,
-            vd.input_scope == :per_group,
-            v = globals[vd.id],
-            is_number(v),
-            do: v
-
-      case Formula.evaluate(formula, values) do
+  defp overall_index(scenario, value_defs, globals) do
+    with formula when is_binary(formula) <- scenario.overall_index_formula,
+         min when is_number(min) <- scenario.overall_index_min,
+         max when is_number(max) <- scenario.overall_index_max do
+      case Index.evaluate(formula, global_context(value_defs, globals)) do
         {:ok, score} -> score
         _ -> nil
       end
@@ -490,11 +483,14 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
     end
   end
 
+  defp overall_index_label(scenario, locale),
+    do: I18n.t!(scenario.overall_index_name, locale, default: "Overall Index")
+
   # The precise current band — `bands` is worst-to-best (position ascending,
   # how they're authored); Scale.label/4 wants best-to-worst.
-  defp democracy_band_label(score, scenario, bands, locale) do
+  defp overall_index_band_label(score, scenario, bands, locale) do
     labels = bands |> Enum.reverse() |> Enum.map(&I18n.t!(&1.label, locale, default: "—"))
-    Scale.label(score, scenario.democracy_min, scenario.democracy_max, labels)
+    Scale.label(score, scenario.overall_index_min, scenario.overall_index_max, labels)
   end
 
   # ── Endings ───────────────────────────────────────────────────────────

@@ -401,48 +401,48 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "👁 Global values"
     assert html =~ "👁 Well-being"
-    assert html =~ "👁 Democracy score"
+    assert html =~ "👁 Overall Index"
     assert html =~ "👁 Current event"
 
     html =
       lv
-      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=democracy]})
+      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
       |> render_click()
 
-    assert html =~ "🚫 Democracy score"
-    assert Play.snapshot(session.id).board_sections.democracy == false
+    assert html =~ "🚫 Overall Index"
+    assert Play.snapshot(session.id).board_sections.overall_index == false
     # Untouched sections stay visible — this is one flag per section.
     assert Play.snapshot(session.id).board_sections.globals == true
 
     html =
       lv
-      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=democracy]})
+      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
       |> render_click()
 
-    assert html =~ "👁 Democracy score"
-    assert Play.snapshot(session.id).board_sections.democracy == true
+    assert html =~ "👁 Overall Index"
+    assert Play.snapshot(session.id).board_sections.overall_index == true
   end
 
-  test "the console shows the democracy score and its precise current band, updating live", ctx do
+  test "the console shows the overall index and its precise current band, updating live", ctx do
     %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx
 
     {:ok, _} =
       Authoring.update_scenario(scenario, %{
-        democracy_formula: "avg",
-        democracy_min: 0.0,
-        democracy_max: 10.0
+        overall_index_formula: "stability",
+        overall_index_min: 0.0,
+        overall_index_max: 10.0
       })
 
     {:ok, _} =
-      Authoring.create_democracy_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
 
     {:ok, _} =
-      Authoring.create_democracy_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
 
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
 
     # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
-    assert html =~ "Democracy Score:"
+    assert html =~ "Overall Index:"
     assert html =~ "Breakdown"
 
     lv |> element("button[phx-click=start]") |> render_click()
