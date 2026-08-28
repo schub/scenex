@@ -603,8 +603,17 @@ defmodule Scenex.AuthoringTest do
     end
 
     test "create, list worst-to-best, scoped get, update, delete", %{scenario: scenario, vd: vd} do
-      assert {:ok, best} = Authoring.create_value_dimension_step(vd, %{position: 2, emoji: "🙂"})
+      assert {:ok, best} =
+               Authoring.create_value_dimension_step(vd, %{
+                 position: 2,
+                 emoji: "🙂",
+                 label: %{"en" => "Good"}
+               })
+
+      assert best.label == %{"en" => "Good"}
       assert {:ok, worst} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙁"})
+      # Label is optional.
+      assert worst.label == %{}
 
       assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [worst.id, best.id]
 
