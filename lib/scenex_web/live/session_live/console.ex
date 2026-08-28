@@ -230,8 +230,13 @@ defmodule ScenexWeb.SessionLive.Console do
           class="flex flex-wrap items-end gap-3"
         >
           <input type="hidden" name="value" value={vd.id} />
-          <label :for={{score, face} <- tally_scale(vd)} class="flex flex-col gap-1 text-xs">
-            <span class="whitespace-nowrap">{face} ({score})</span>
+          <label
+            :for={{score, face, name} <- tally_scale(vd, @locale)}
+            class="flex flex-col gap-1 text-xs"
+          >
+            <span class="whitespace-nowrap">
+              {face}<span :if={name != ""}>&nbsp;{name}</span> ({score})
+            </span>
             <input
               type="number"
               name={"counts[#{score}]"}
@@ -255,14 +260,19 @@ defmodule ScenexWeb.SessionLive.Console do
             <thead>
               <tr>
                 <th>Time</th>
-                <th :for={{_score, face} <- tally_scale(vd)} class="text-right">{face}</th>
+                <th :for={{_score, face, _name} <- tally_scale(vd, @locale)} class="text-right">
+                  {face}
+                </th>
                 <th class="text-right">Average</th>
               </tr>
             </thead>
             <tbody>
               <tr :for={entry <- Enum.reverse(tally_history(@snap, vd.id))}>
                 <td class="font-mono tabular-nums">{fmt_clock(entry.game_time_ms)}</td>
-                <td :for={{score, _face} <- tally_scale(vd)} class="text-right tabular-nums">
+                <td
+                  :for={{score, _face, _name} <- tally_scale(vd, @locale)}
+                  class="text-right tabular-nums"
+                >
                   {entry.counts[score] || 0}
                 </td>
                 <td class="text-right font-semibold tabular-nums">
@@ -800,10 +810,10 @@ defmodule ScenexWeb.SessionLive.Console do
 
   # The value's own steps as `{score, emoji}`, best score first (how the tally
   # entry and history columns read). Steps are authored worst-to-best.
-  defp tally_scale(vd) do
+  defp tally_scale(vd, locale) do
     vd.steps
     |> Enum.sort_by(& &1.position, :desc)
-    |> Enum.map(&{&1.position, &1.emoji})
+    |> Enum.map(&{&1.position, &1.emoji, I18n.t!(&1.label, locale, default: "")})
   end
 
   # The step emoji standing for a mean: steps are worst-to-best, Scale.label/4

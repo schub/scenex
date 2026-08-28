@@ -299,6 +299,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                       class={selected_item(@editing_value_step, s)}
                     >
                       <span class="text-lg">{s.emoji}</span>
+                      <span>{I18n.t!(s.label, @locale, default: "")}</span>
                       <span class="text-xs opacity-60">position {s.position}</span>
                     </button>
                   </li>
@@ -306,11 +307,18 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 </ul>
                 <.form
                   for={@value_step_form}
+                  phx-change="track_localized"
                   phx-submit="save_value_step"
                   class="flex flex-wrap items-end gap-2"
                 >
                   <fieldset disabled={not @can_edit?} class="contents">
                     <.input field={@value_step_form[:emoji]} label="Emoji" />
+                    <.input
+                      type="text"
+                      name={"value_dimension_step[label][#{@locale}]"}
+                      value={LocalizedForm.value(@value_step_form, :label, @locale)}
+                      label={"Name (#{@locale}, optional)"}
+                    />
                     <.input field={@value_step_form[:position]} type="number" label="Position" />
                     <.button variant="primary">
                       {if @editing_value_step, do: "Save step", else: "Add step"}
@@ -1809,11 +1817,13 @@ defmodule ScenexWeb.ScenarioLive.Show do
       case socket.assigns.editing_value do
         %ValueDimension{} = vd ->
           data = socket.assigns.editing_value_step
+          params = tracked_params(socket, :value_step_form, params)
+          attrs = LocalizedForm.merge(params, data || %ValueDimensionStep{}, [:label])
 
           result =
             if data,
-              do: Authoring.update_value_dimension_step(data, params),
-              else: Authoring.create_value_dimension_step(vd, params)
+              do: Authoring.update_value_dimension_step(data, attrs),
+              else: Authoring.create_value_dimension_step(vd, attrs)
 
           case result do
             {:ok, step} ->
@@ -2319,7 +2329,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
       {"label", :label_form},
       {"ending", :ending_form},
       {"page", :page_form},
-      {"overall_index_band", :overall_index_band_form}
+      {"overall_index_band", :overall_index_band_form},
+      {"value_dimension_step", :value_step_form}
     ]
   end
 
@@ -2370,6 +2381,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp rebuild_form(socket, :overall_index_band_form, params) do
     data = socket.assigns.editing_overall_index_band || %OverallIndexBand{}
     to_form(Authoring.change_overall_index_band(data, params), as: :overall_index_band)
+  end
+
+  defp rebuild_form(socket, :value_step_form, params) do
+    data = socket.assigns.editing_value_step || %ValueDimensionStep{}
+    to_form(Authoring.change_value_dimension_step(data, params), as: :value_dimension_step)
   end
 
   # The tracked params (all locales typed so far), for the save handlers.

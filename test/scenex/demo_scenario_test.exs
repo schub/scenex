@@ -22,9 +22,16 @@ defmodule Scenex.DemoScenarioTest do
     assert scenario.overall_index_formula =~ "stability"
     assert length(Authoring.list_overall_index_bands(scenario)) == 5
 
-    # Per-participant well_being carries its emoji step scale.
+    # Per-participant well_being carries its emoji step scale, with labels.
     wb = Enum.find(Authoring.list_value_dimensions(scenario), &(&1.key == "well_being"))
     assert Enum.map(wb.steps, & &1.emoji) == ["🙁", "😐", "🙂", "😀"]
+
+    assert Enum.map(wb.steps, &Map.get(&1.label, "en")) == [
+             "Not happy",
+             "Okay",
+             "Happy",
+             "Very happy"
+           ]
 
     elements = Authoring.list_timeline_elements(scenario)
     assert Enum.map(elements, & &1.kind) == [:event, :event, :event, :sidequest, :election]

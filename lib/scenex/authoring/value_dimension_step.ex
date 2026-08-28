@@ -20,6 +20,7 @@ defmodule Scenex.Authoring.ValueDimensionStep do
 
   schema "value_dimension_steps" do
     field :emoji, :string
+    field :label, :map, default: %{}
     field :position, :integer, default: 0
 
     belongs_to :value_dimension, ValueDimension
@@ -29,7 +30,7 @@ defmodule Scenex.Authoring.ValueDimensionStep do
 
   def changeset(step, attrs) do
     step
-    |> cast(attrs, [:value_dimension_id, :emoji, :position])
+    |> cast(attrs, [:value_dimension_id, :emoji, :label, :position])
     |> validate_required([:value_dimension_id, :emoji])
     |> validate_length(:emoji, min: 1, max: 8)
     |> assoc_constraint(:value_dimension)

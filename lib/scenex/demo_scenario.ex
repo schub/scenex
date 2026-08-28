@@ -92,8 +92,20 @@ defmodule Scenex.DemoScenario do
 
   # A four-emoji well-being scale, worst to best.
   defp create_steps(vd) do
-    for {position, emoji} <- [{1, "🙁"}, {2, "😐"}, {3, "🙂"}, {4, "😀"}] do
-      {:ok, _} = Authoring.create_value_dimension_step(vd, %{position: position, emoji: emoji})
+    steps = [
+      {1, "🙁", "Not happy"},
+      {2, "😐", "Okay"},
+      {3, "🙂", "Happy"},
+      {4, "😀", "Very happy"}
+    ]
+
+    for {position, emoji, label} <- steps do
+      {:ok, _} =
+        Authoring.create_value_dimension_step(vd, %{
+          position: position,
+          emoji: emoji,
+          label: en(label)
+        })
     end
   end
 

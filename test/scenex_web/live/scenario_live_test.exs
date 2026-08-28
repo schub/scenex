@@ -565,13 +565,18 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
       lv
       |> form(~s(form[phx-submit="save_value_step"]), %{
-        "value_dimension_step" => %{"emoji" => "🤩", "position" => "5"}
+        "value_dimension_step" => %{
+          "emoji" => "🤩",
+          "position" => "5",
+          "label" => %{"en" => "Ecstatic"}
+        }
       })
       |> render_submit()
 
       steps = Authoring.list_value_dimension_steps(vd)
       assert length(steps) == 5
       added = Enum.find(steps, &(&1.emoji == "🤩"))
+      assert added.label == %{"en" => "Ecstatic"}
 
       lv
       |> element(~s{button[phx-click=edit_value_step][phx-value-id="#{added.id}"]})
