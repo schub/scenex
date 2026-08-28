@@ -39,7 +39,11 @@ defmodule Scenex.DemoScenario do
           Mini-megagame test scenario (alpha v0.2): three groups respond to
           societal crises, and their decisions shift the shared values.
           """),
-        source_locale: "en"
+        source_locale: "en",
+        overall_index_name: en("Democracy"),
+        overall_index_formula: "(stability + solidarity + influence + resources + risk) / 5",
+        overall_index_min: 0.0,
+        overall_index_max: 10.0
       })
 
     dims = create_dimensions(scenario)
@@ -47,7 +51,21 @@ defmodule Scenex.DemoScenario do
     labels = create_labels(scenario)
     create_timeline(scenario, dims, groups, labels)
     create_endings(scenario)
+    create_overall_index_bands(scenario)
     scenario
+  end
+
+  # ── Overall Index bands ───────────────────────────────────────────────
+  # Worst to best; the scoreboard shows only the two ends, the dry run the
+  # precise current band.
+
+  defp create_overall_index_bands(scenario) do
+    labels = ["Breakdown", "Critical", "Fragile", "Resilient", "In bloom"]
+
+    for {label, position} <- Enum.with_index(labels) do
+      {:ok, _} =
+        Authoring.create_overall_index_band(scenario, %{label: en(label), position: position})
+    end
   end
 
   defp en(text), do: %{"en" => text}
@@ -67,7 +85,15 @@ defmodule Scenex.DemoScenario do
     for spec <- specs, into: %{} do
       attrs = spec |> Map.put(:name, en(spec.name)) |> Map.put_new(:input_scope, :per_group)
       {:ok, vd} = Authoring.create_value_dimension(scenario, attrs)
+      if vd.input_scope == :per_participant, do: create_steps(vd)
       {spec.key, vd}
+    end
+  end
+
+  # A four-emoji well-being scale, worst to best.
+  defp create_steps(vd) do
+    for {position, emoji} <- [{1, "🙁"}, {2, "😐"}, {3, "🙂"}, {4, "😀"}] do
+      {:ok, _} = Authoring.create_value_dimension_step(vd, %{position: position, emoji: emoji})
     end
   end
 

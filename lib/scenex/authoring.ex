@@ -18,7 +18,7 @@ defmodule Scenex.Authoring do
 
   alias Scenex.Authoring.{
     DecisionOption,
-    DemocracyBand,
+    OverallIndexBand,
     Ending,
     TimelineElement,
     Scenario,
@@ -29,7 +29,8 @@ defmodule Scenex.Authoring do
     Label,
     OptionEffect,
     Page,
-    ValueDimension
+    ValueDimension,
+    ValueDimensionStep
   }
 
   # ── Scenarios ───────────────────────────────────────────────────────────
@@ -257,15 +258,24 @@ defmodule Scenex.Authoring do
   # ── Value dimensions ────────────────────────────────────────────────────
 
   def list_value_dimensions(%Scenario{} = scenario) do
-    Repo.all(from v in ValueDimension, where: v.scenario_id == ^scenario.id, order_by: v.position)
+    Repo.all(
+      from v in ValueDimension,
+        where: v.scenario_id == ^scenario.id,
+        order_by: v.position,
+        preload: [:steps]
+    )
   end
 
   def get_value_dimension!(id), do: Repo.get!(ValueDimension, id)
 
   @doc "Fetch a value dimension **within** `scenario`, or nil. Use for request-scoped reads."
   def get_value_dimension(%Scenario{} = scenario, id) do
-    if uuid = valid_uuid(id),
-      do: Repo.get_by(ValueDimension, id: uuid, scenario_id: scenario.id)
+    if uuid = valid_uuid(id) do
+      case Repo.get_by(ValueDimension, id: uuid, scenario_id: scenario.id) do
+        nil -> nil
+        vd -> Repo.preload(vd, :steps)
+      end
+    end
   end
 
   def create_value_dimension(%Scenario{} = scenario, attrs) do
@@ -293,6 +303,42 @@ defmodule Scenex.Authoring do
       input_scope: vd.input_scope
     }
   end
+
+  # ── Value readout steps (per-participant scale) ─────────────────────────
+  # Worst to best, position ascending — see Scenex.Authoring.ValueDimensionStep.
+
+  def list_value_dimension_steps(%ValueDimension{} = vd) do
+    Repo.all(
+      from s in ValueDimensionStep, where: s.value_dimension_id == ^vd.id, order_by: s.position
+    )
+  end
+
+  @doc "Fetch a step **within** `scenario` (via its value), or nil. For request-scoped reads."
+  def get_value_dimension_step(%Scenario{} = scenario, id) do
+    if uuid = valid_uuid(id) do
+      Repo.one(
+        from s in ValueDimensionStep,
+          join: v in ValueDimension,
+          on: v.id == s.value_dimension_id,
+          where: s.id == ^uuid and v.scenario_id == ^scenario.id
+      )
+    end
+  end
+
+  def create_value_dimension_step(%ValueDimension{} = vd, attrs) do
+    vd
+    |> Ecto.build_assoc(:steps)
+    |> ValueDimensionStep.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_value_dimension_step(%ValueDimensionStep{} = step, attrs),
+    do: step |> ValueDimensionStep.changeset(attrs) |> Repo.update()
+
+  def delete_value_dimension_step(%ValueDimensionStep{} = step), do: Repo.delete(step)
+
+  def change_value_dimension_step(%ValueDimensionStep{} = step, attrs \\ %{}),
+    do: ValueDimensionStep.changeset(step, attrs)
 
   # ── Groups ──────────────────────────────────────────────────────────────
 
@@ -660,38 +706,40 @@ defmodule Scenex.Authoring do
 
   def change_page(%Page{} = page, attrs \\ %{}), do: Page.changeset(page, attrs)
 
-  # ── Democracy Score bands ──────────────────────────────────────────────
-  # Worst to best, position ascending — see Scenex.Authoring.DemocracyBand.
+  # ── Overall Index bands ────────────────────────────────────────────────
+  # Worst to best, position ascending — see Scenex.Authoring.OverallIndexBand.
 
-  def list_democracy_bands(%Scenario{} = scenario) do
-    Repo.all(from b in DemocracyBand, where: b.scenario_id == ^scenario.id, order_by: b.position)
+  def list_overall_index_bands(%Scenario{} = scenario) do
+    Repo.all(
+      from b in OverallIndexBand, where: b.scenario_id == ^scenario.id, order_by: b.position
+    )
   end
 
-  def get_democracy_band!(id), do: Repo.get!(DemocracyBand, id)
+  def get_overall_index_band!(id), do: Repo.get!(OverallIndexBand, id)
 
-  @doc "Fetch a democracy band **within** `scenario`, or nil. Use for request-scoped reads."
-  def get_democracy_band(%Scenario{} = scenario, id) do
+  @doc "Fetch an overall index band **within** `scenario`, or nil. Use for request-scoped reads."
+  def get_overall_index_band(%Scenario{} = scenario, id) do
     if uuid = valid_uuid(id),
-      do: Repo.get_by(DemocracyBand, id: uuid, scenario_id: scenario.id)
+      do: Repo.get_by(OverallIndexBand, id: uuid, scenario_id: scenario.id)
   end
 
-  def create_democracy_band(%Scenario{} = scenario, attrs) do
+  def create_overall_index_band(%Scenario{} = scenario, attrs) do
     scenario
-    |> Ecto.build_assoc(:democracy_bands)
-    |> DemocracyBand.changeset(attrs)
+    |> Ecto.build_assoc(:overall_index_bands)
+    |> OverallIndexBand.changeset(attrs)
     |> Repo.insert()
   end
 
-  def update_democracy_band(%DemocracyBand{} = band, attrs) do
+  def update_overall_index_band(%OverallIndexBand{} = band, attrs) do
     band
-    |> DemocracyBand.changeset(attrs)
+    |> OverallIndexBand.changeset(attrs)
     |> Repo.update()
   end
 
-  def delete_democracy_band(%DemocracyBand{} = band), do: Repo.delete(band)
+  def delete_overall_index_band(%OverallIndexBand{} = band), do: Repo.delete(band)
 
-  def change_democracy_band(%DemocracyBand{} = band, attrs \\ %{}),
-    do: DemocracyBand.changeset(band, attrs)
+  def change_overall_index_band(%OverallIndexBand{} = band, attrs \\ %{}),
+    do: OverallIndexBand.changeset(band, attrs)
 
   # ── Internal ──────────────────────────────────────────────────────────────
 

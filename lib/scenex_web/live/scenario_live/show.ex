@@ -13,20 +13,21 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   alias Scenex.Authoring.{
     DecisionOption,
-    DemocracyBand,
+    OverallIndexBand,
     Ending,
     Page,
     TimelineElement,
     Group,
     Label,
-    ValueDimension
+    ValueDimension,
+    ValueDimensionStep
   }
 
   alias Scenex.I18n
   alias Scenex.Media
   alias ScenexWeb.LocalizedForm
 
-  @sections ~w(settings values democracy groups initial timeline labels endings pages media)a
+  @sections ~w(settings values overall_index groups initial timeline labels endings pages media)a
   @locale_choices Scenex.I18n.locales()
 
   @impl true
@@ -268,20 +269,79 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 Aggregations: min, max, avg, median, sum — combine with + - * / and parentheses,
                 e.g. <code>(avg + min) / 2</code>.
               </p>
+
+              <%!-- Readout steps — only per-participant values carry an emoji scale --%>
+              <div
+                :if={@editing_value && @value_scope == :per_participant}
+                class="mt-6 space-y-3 border-t border-base-300 pt-4"
+              >
+                <div class="flex items-center justify-between">
+                  <h4 class="font-medium">Readout steps</h4>
+                  <button
+                    :if={@can_edit?}
+                    type="button"
+                    phx-click="new_value_step"
+                    class="btn btn-xs btn-primary"
+                  >
+                    + Add step
+                  </button>
+                </div>
+                <p class="text-xs opacity-60">
+                  An ordered emoji scale, worst to best. Participants are hand-counted 1..N and the
+                  emoji for the current average shows on the boards. Define at least two.
+                </p>
+                <ul class="menu w-full rounded-box bg-base-100">
+                  <li :for={s <- @value_steps}>
+                    <button
+                      type="button"
+                      phx-click="edit_value_step"
+                      phx-value-id={s.id}
+                      class={selected_item(@editing_value_step, s)}
+                    >
+                      <span class="text-lg">{s.emoji}</span>
+                      <span class="text-xs opacity-60">position {s.position}</span>
+                    </button>
+                  </li>
+                  <li :if={@value_steps == []} class="menu-disabled"><span>No steps yet.</span></li>
+                </ul>
+                <.form
+                  for={@value_step_form}
+                  phx-submit="save_value_step"
+                  class="flex flex-wrap items-end gap-2"
+                >
+                  <fieldset disabled={not @can_edit?} class="contents">
+                    <.input field={@value_step_form[:emoji]} label="Emoji" />
+                    <.input field={@value_step_form[:position]} type="number" label="Position" />
+                    <.button variant="primary">
+                      {if @editing_value_step, do: "Save step", else: "Add step"}
+                    </.button>
+                    <button
+                      :if={@can_edit? and @editing_value_step}
+                      type="button"
+                      phx-click="delete_value_step"
+                      phx-value-id={@editing_value_step.id}
+                      data-confirm="Delete this step?"
+                      class="btn btn-error btn-soft"
+                    >
+                      Delete
+                    </button>
+                  </fieldset>
+                </.form>
+              </div>
             </div>
           </div>
         </div>
 
-        <%!-- Democracy score --%>
-        <div :if={@section == :democracy} class="space-y-10">
+        <%!-- Overall index --%>
+        <div :if={@section == :overall_index} class="space-y-10">
           <div class="max-w-xl space-y-4">
             <p class="text-sm opacity-70">
-              A single derived score for the scoreboard, combining every per-group
-              value's current global (well-being and other per-participant values
-              never feed in). Uses the same formula language as a value's
-              aggregation — but evaluated over those globals, not per-group
-              numbers. Leave the formula blank to keep the score off the
-              scoreboard entirely.
+              A single derived headline score for the scoreboard. Name it for your
+              setting (e.g. "Democracy", "Ship Integrity"), then write a formula
+              combining your values' current globals by their key — <code>2*stability + 3*resources</code>. References are raw, so
+              normalise across differing scales yourself
+              (<code>stability/10 + resources/100</code>). Leave the formula blank
+              to keep the score off the scoreboard entirely.
             </p>
             <.form
               for={@settings_form}
@@ -291,19 +351,32 @@ defmodule ScenexWeb.ScenarioLive.Show do
             >
               <fieldset disabled={not @can_edit?} class="contents">
                 <.input
-                  field={@settings_form[:democracy_formula]}
+                  type="text"
+                  name={"scenario[overall_index_name][#{@locale}]"}
+                  value={LocalizedForm.value(@settings_form, :overall_index_name, @locale)}
+                  label="Name"
+                  placeholder="e.g. Democracy"
+                />
+                <.input
+                  type="text"
+                  name={"scenario[overall_index_description][#{@locale}]"}
+                  value={LocalizedForm.value(@settings_form, :overall_index_description, @locale)}
+                  label="Description (optional)"
+                />
+                <.input
+                  field={@settings_form[:overall_index_formula]}
                   label="Formula"
-                  placeholder="e.g. (avg + min) / 2"
+                  placeholder="e.g. 2*stability + 3*resources"
                 />
                 <div class="grid grid-cols-2 gap-3">
                   <.input
-                    field={@settings_form[:democracy_min]}
+                    field={@settings_form[:overall_index_min]}
                     type="number"
                     step="any"
                     label="Min (worst)"
                   />
                   <.input
-                    field={@settings_form[:democracy_max]}
+                    field={@settings_form[:overall_index_max]}
                     type="number"
                     step="any"
                     label="Max (best)"
@@ -311,13 +384,13 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                   <.input
-                    field={@settings_form[:democracy_viz_min]}
+                    field={@settings_form[:overall_index_viz_min]}
                     type="number"
                     step="any"
                     label="Visualization min (optional)"
                   />
                   <.input
-                    field={@settings_form[:democracy_viz_max]}
+                    field={@settings_form[:overall_index_viz_max]}
                     type="number"
                     step="any"
                     label="Visualization max (optional)"
@@ -352,28 +425,28 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 <button
                   :if={@can_edit?}
                   type="button"
-                  phx-click="new_democracy_band"
+                  phx-click="new_overall_index_band"
                   class="btn btn-sm btn-primary w-full"
                 >
                   + New band
                 </button>
                 <ul class="menu w-full rounded-box bg-base-200">
-                  <li :for={{b, i} <- Enum.with_index(@democracy_bands)}>
+                  <li :for={{b, i} <- Enum.with_index(@overall_index_bands)}>
                     <button
                       type="button"
-                      phx-click="edit_democracy_band"
+                      phx-click="edit_overall_index_band"
                       phx-value-id={b.id}
-                      class={selected_item(@editing_democracy_band, b)}
+                      class={selected_item(@editing_overall_index_band, b)}
                     >
                       <span class="w-5 shrink-0 text-xs opacity-50">
-                        {democracy_band_position_label(i, length(@democracy_bands))}
+                        {overall_index_band_position_label(i, length(@overall_index_bands))}
                       </span>
                       <span class="truncate">
                         {I18n.t!(b.label, @locale, default: "(untranslated)")}
                       </span>
                     </button>
                   </li>
-                  <li :if={@democracy_bands == []} class="menu-disabled">
+                  <li :if={@overall_index_bands == []} class="menu-disabled">
                     <span>No bands yet — at least two are needed for the scoreboard gauge.</span>
                   </li>
                 </ul>
@@ -383,13 +456,13 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 <div class="card-body">
                   <div class="flex items-center justify-between">
                     <h3 class="font-semibold">
-                      {if @editing_democracy_band, do: "Edit band", else: "New band"}
+                      {if @editing_overall_index_band, do: "Edit band", else: "New band"}
                     </h3>
                     <button
-                      :if={@can_edit? and @editing_democracy_band}
+                      :if={@can_edit? and @editing_overall_index_band}
                       type="button"
-                      phx-click="delete_democracy_band"
-                      phx-value-id={@editing_democracy_band.id}
+                      phx-click="delete_overall_index_band"
+                      phx-value-id={@editing_overall_index_band.id}
                       data-confirm="Delete this band?"
                       class="btn btn-xs btn-error btn-soft"
                     >
@@ -397,31 +470,31 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     </button>
                   </div>
                   <.form
-                    for={@democracy_band_form}
+                    for={@overall_index_band_form}
                     phx-change="track_localized"
-                    phx-submit="save_democracy_band"
+                    phx-submit="save_overall_index_band"
                     class="grid gap-3 sm:grid-cols-2"
                   >
                     <fieldset disabled={not @can_edit?} class="contents">
                       <div class="sm:col-span-2">
                         <.input
                           type="text"
-                          name={"democracy_band[label][#{@locale}]"}
-                          value={LocalizedForm.value(@democracy_band_form, :label, @locale)}
+                          name={"overall_index_band[label][#{@locale}]"}
+                          value={LocalizedForm.value(@overall_index_band_form, :label, @locale)}
                           label={"Label (#{@locale})"}
                         />
                       </div>
                       <.input
-                        field={@democracy_band_form[:position]}
+                        field={@overall_index_band_form[:position]}
                         type="number"
                         label="Position (lower = worse, higher = better)"
                       />
                       <div class="flex gap-2 sm:col-span-2">
                         <.button variant="primary">Save band</.button>
                         <button
-                          :if={@editing_democracy_band}
+                          :if={@editing_overall_index_band}
                           type="button"
-                          phx-click="new_democracy_band"
+                          phx-click="new_overall_index_band"
                           class="btn btn-ghost"
                         >
                           Cancel
@@ -1473,7 +1546,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
          |> assign_label_form(%Label{})
          |> assign_ending_form(%Ending{})
          |> assign_page_form(%Page{})
-         |> assign_democracy_band_form(%DemocracyBand{})
+         |> assign_overall_index_band_form(%OverallIndexBand{})
          |> allow_upload(:media,
            accept:
              ~w(.png .jpg .jpeg .gif .webp .avif .mp4 .webm .mov .m4v .mp3 .ogg .oga .wav .m4a .aac .flac),
@@ -1568,7 +1641,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
           :name,
           :tagline,
           :description,
-          :director_notes
+          :director_notes,
+          :overall_index_name,
+          :overall_index_description
         ])
 
       case Authoring.update_scenario(socket.assigns.scenario, attrs) do
@@ -1711,6 +1786,61 @@ defmodule ScenexWeb.ScenarioLive.Show do
         value ->
           Authoring.delete_value_dimension(value)
           {:noreply, socket |> assign_value_form(%ValueDimension{}) |> reload()}
+      end
+    end)
+  end
+
+  # ── Value readout steps (per-participant scale) ───────────────────────
+
+  def handle_event("new_value_step", _params, socket) do
+    next = length(socket.assigns.value_steps) + 1
+    {:noreply, assign_value_step_form(socket, %ValueDimensionStep{position: next})}
+  end
+
+  def handle_event("edit_value_step", %{"id" => id}, socket) do
+    case Authoring.get_value_dimension_step(socket.assigns.scenario, id) do
+      nil -> {:noreply, socket}
+      step -> {:noreply, assign_value_step_form(socket, step)}
+    end
+  end
+
+  def handle_event("save_value_step", %{"value_dimension_step" => params}, socket) do
+    with_edit(socket, fn ->
+      case socket.assigns.editing_value do
+        %ValueDimension{} = vd ->
+          data = socket.assigns.editing_value_step
+
+          result =
+            if data,
+              do: Authoring.update_value_dimension_step(data, params),
+              else: Authoring.create_value_dimension_step(vd, params)
+
+          case result do
+            {:ok, step} ->
+              {:noreply, socket |> assign_value_step_form(step) |> assign_value_steps()}
+
+            {:error, changeset} ->
+              {:noreply,
+               assign(socket, :value_step_form, to_form(changeset, as: :value_dimension_step))}
+          end
+
+        _ ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("delete_value_step", %{"id" => id}, socket) do
+    with_edit(socket, fn ->
+      case Authoring.get_value_dimension_step(socket.assigns.scenario, id) do
+        nil ->
+          {:noreply, socket}
+
+        step ->
+          Authoring.delete_value_dimension_step(step)
+
+          {:noreply,
+           socket |> assign_value_step_form(%ValueDimensionStep{}) |> assign_value_steps()}
       end
     end)
   end
@@ -2120,54 +2250,54 @@ defmodule ScenexWeb.ScenarioLive.Show do
     end)
   end
 
-  # ── Democracy Score bands ────────────────────────────────────────────
+  # ── Overall Index bands ────────────────────────────────────────────
 
-  def handle_event("edit_democracy_band", %{"id" => id}, socket) do
-    case Authoring.get_democracy_band(socket.assigns.scenario, id) do
+  def handle_event("edit_overall_index_band", %{"id" => id}, socket) do
+    case Authoring.get_overall_index_band(socket.assigns.scenario, id) do
       nil -> {:noreply, socket}
-      band -> {:noreply, assign_democracy_band_form(socket, band)}
+      band -> {:noreply, assign_overall_index_band_form(socket, band)}
     end
   end
 
-  def handle_event("new_democracy_band", _params, socket) do
-    {:noreply, assign_democracy_band_form(socket, %DemocracyBand{})}
+  def handle_event("new_overall_index_band", _params, socket) do
+    {:noreply, assign_overall_index_band_form(socket, %OverallIndexBand{})}
   end
 
-  def handle_event("save_democracy_band", %{"democracy_band" => params}, socket) do
+  def handle_event("save_overall_index_band", %{"overall_index_band" => params}, socket) do
     with_edit(socket, fn ->
-      params = tracked_params(socket, :democracy_band_form, params)
-      data = socket.assigns.editing_democracy_band || %DemocracyBand{}
+      params = tracked_params(socket, :overall_index_band_form, params)
+      data = socket.assigns.editing_overall_index_band || %OverallIndexBand{}
       attrs = LocalizedForm.merge(params, data, [:label])
 
       result =
-        if socket.assigns.editing_democracy_band,
-          do: Authoring.update_democracy_band(data, attrs),
-          else: Authoring.create_democracy_band(socket.assigns.scenario, attrs)
+        if socket.assigns.editing_overall_index_band,
+          do: Authoring.update_overall_index_band(data, attrs),
+          else: Authoring.create_overall_index_band(socket.assigns.scenario, attrs)
 
       case result do
         {:ok, band} ->
           {:noreply,
            socket
-           |> assign_democracy_band_form(band)
+           |> assign_overall_index_band_form(band)
            |> reload()
            |> put_flash(:info, "Band saved.")}
 
         {:error, changeset} ->
           {:noreply,
-           assign(socket, :democracy_band_form, to_form(changeset, as: :democracy_band))}
+           assign(socket, :overall_index_band_form, to_form(changeset, as: :overall_index_band))}
       end
     end)
   end
 
-  def handle_event("delete_democracy_band", %{"id" => id}, socket) do
+  def handle_event("delete_overall_index_band", %{"id" => id}, socket) do
     with_edit(socket, fn ->
-      case Authoring.get_democracy_band(socket.assigns.scenario, id) do
+      case Authoring.get_overall_index_band(socket.assigns.scenario, id) do
         nil ->
           {:noreply, socket}
 
         band ->
-          Authoring.delete_democracy_band(band)
-          {:noreply, socket |> assign_democracy_band_form(%DemocracyBand{}) |> reload()}
+          Authoring.delete_overall_index_band(band)
+          {:noreply, socket |> assign_overall_index_band_form(%OverallIndexBand{}) |> reload()}
       end
     end)
   end
@@ -2189,7 +2319,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
       {"label", :label_form},
       {"ending", :ending_form},
       {"page", :page_form},
-      {"democracy_band", :democracy_band_form}
+      {"overall_index_band", :overall_index_band_form}
     ]
   end
 
@@ -2237,9 +2367,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
     to_form(Authoring.change_page(data, params), as: :page)
   end
 
-  defp rebuild_form(socket, :democracy_band_form, params) do
-    data = socket.assigns.editing_democracy_band || %DemocracyBand{}
-    to_form(Authoring.change_democracy_band(data, params), as: :democracy_band)
+  defp rebuild_form(socket, :overall_index_band_form, params) do
+    data = socket.assigns.editing_overall_index_band || %OverallIndexBand{}
+    to_form(Authoring.change_overall_index_band(data, params), as: :overall_index_band)
   end
 
   # The tracked params (all locales typed so far), for the save handlers.
@@ -2253,6 +2383,28 @@ defmodule ScenexWeb.ScenarioLive.Show do
     |> assign(
       :value_form,
       to_form(Authoring.change_value_dimension(value), as: :value_dimension)
+    )
+    |> assign_value_steps()
+    |> assign_value_step_form(%ValueDimensionStep{})
+  end
+
+  # The readout steps of the value being edited (empty for a new/per-group one).
+  defp assign_value_steps(socket) do
+    steps =
+      case socket.assigns.editing_value do
+        %ValueDimension{} = vd -> Authoring.list_value_dimension_steps(vd)
+        _ -> []
+      end
+
+    assign(socket, :value_steps, steps)
+  end
+
+  defp assign_value_step_form(socket, step) do
+    socket
+    |> assign(:editing_value_step, if(step.id, do: step, else: nil))
+    |> assign(
+      :value_step_form,
+      to_form(Authoring.change_value_dimension_step(step), as: :value_dimension_step)
     )
   end
 
@@ -2331,12 +2483,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
     |> assign(:page_form, to_form(Authoring.change_page(page), as: :page))
   end
 
-  defp assign_democracy_band_form(socket, band) do
+  defp assign_overall_index_band_form(socket, band) do
     socket
-    |> assign(:editing_democracy_band, if(band.id, do: band, else: nil))
+    |> assign(:editing_overall_index_band, if(band.id, do: band, else: nil))
     |> assign(
-      :democracy_band_form,
-      to_form(Authoring.change_democracy_band(band), as: :democracy_band)
+      :overall_index_band_form,
+      to_form(Authoring.change_overall_index_band(band), as: :overall_index_band)
     )
   end
 
@@ -2399,7 +2551,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
         labels: Authoring.list_labels(scenario),
         endings: Authoring.list_endings(scenario),
         pages: Authoring.list_pages(scenario),
-        democracy_bands: Authoring.list_democracy_bands(scenario),
+        overall_index_bands: Authoring.list_overall_index_bands(scenario),
         media_files: Media.list_files(scenario)
       )
       |> reload_members()
@@ -2557,10 +2709,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp selected_item(_editing, _item), do: nil
 
   # Which end of the worst→best list a band sits at — the only two labels
-  # the scoreboard gauge ever shows (see Scenex.Authoring.DemocracyBand).
-  defp democracy_band_position_label(0, _total), do: "worst"
-  defp democracy_band_position_label(i, total) when i == total - 1, do: "best"
-  defp democracy_band_position_label(i, _total), do: to_string(i + 1)
+  # the scoreboard gauge ever shows (see Scenex.Authoring.OverallIndexBand).
+  defp overall_index_band_position_label(0, _total), do: "worst"
+  defp overall_index_band_position_label(i, total) when i == total - 1, do: "best"
+  defp overall_index_band_position_label(i, _total), do: to_string(i + 1)
 
   # ── Media helpers ─────────────────────────────────────────────────────
 

@@ -14,7 +14,7 @@ defmodule Scenex.Play do
   alias Scenex.Accounts.User
   alias Scenex.Authoring
   alias Scenex.Authoring.{Group, Scenario}
-  alias Scenex.Engine.{Condition, Formula, Sim}
+  alias Scenex.Engine.{Condition, Index, Sim}
   alias Scenex.Play.{CapabilityToken, Session, SessionEvent, SessionGroup, SessionServer}
   alias Scenex.Repo
 
@@ -181,7 +181,7 @@ defmodule Scenex.Play do
 
   @doc """
   Show/hide one scoreboard section independently: `:globals`, `:wellbeing`,
-  `:democracy`, or `:current_beat` (the triggered element's narrative,
+  `:overall_index`, or `:current_beat` (the triggered element's narrative,
   election result, and ending). All default visible; this only affects the
   scoreboard, never the group screens or the GM console. `{:error,
   :unknown_section}` for anything else.
@@ -330,24 +330,28 @@ defmodule Scenex.Play do
   end
 
   @doc """
-  The scenario's derived "Democracy Score": `democracy_formula` evaluated over
-  the globals of every `:per_group` value dimension (well-being and other
-  `:per_participant` values never feed in). `:not_configured` if the scenario
-  hasn't set a formula and a min/max range; otherwise `{:ok, number}` or the
-  formula's own `{:error, reason}` (e.g. no per-group values defined yet).
+  The scenario's derived Overall Index: `overall_index_formula` evaluated over
+  the current globals of the scenario's values, each referenced by its key (see
+  `Scenex.Engine.Index`). `:not_configured` if the scenario hasn't set a formula
+  and a min/max range; otherwise `{:ok, number}` or the formula's own
+  `{:error, reason}` (e.g. a referenced value has no global yet).
   """
-  def democracy_score(snapshot) do
-    %{democracy_formula: formula, democracy_min: min, democracy_max: max} = snapshot.definition
+  def overall_index(snapshot) do
+    %{
+      overall_index_formula: formula,
+      overall_index_min: min,
+      overall_index_max: max
+    } = snapshot.definition
 
     if is_binary(formula) and is_number(min) and is_number(max) do
-      values =
-        for vd <- snapshot.definition.value_dimensions,
-            vd.input_scope == :per_group,
-            value = snapshot.globals[vd.id],
-            is_number(value),
-            do: value
+      context =
+        Map.new(
+          for vd <- snapshot.definition.value_dimensions, is_number(snapshot.globals[vd.id]) do
+            {vd.key, snapshot.globals[vd.id]}
+          end
+        )
 
-      Formula.evaluate(formula, values)
+      Index.evaluate(formula, context)
     else
       :not_configured
     end

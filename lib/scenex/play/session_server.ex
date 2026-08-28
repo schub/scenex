@@ -293,15 +293,17 @@ defmodule Scenex.Play.SessionServer do
   defp validate({:set_board_numbers, visible}, _state) when is_boolean(visible),
     do: {:ok, "board_numbers_set", %{visible: visible}, %{}}
 
-  @board_sections ~w(globals wellbeing democracy current_beat)a
+  @fixed_sections ~w(globals overall_index current_beat)
 
-  defp validate({:set_board_section, section, visible}, _state)
-       when section in @board_sections and is_boolean(visible) do
-    {:ok, "board_section_toggled", %{section: Atom.to_string(section), visible: visible}, %{}}
+  defp validate({:set_board_section, section, visible}, state) when is_boolean(visible) do
+    section = to_string(section)
+
+    if section in @fixed_sections or section in participant_section_ids(state) do
+      {:ok, "board_section_toggled", %{section: section, visible: visible}, %{}}
+    else
+      {:error, :unknown_section}
+    end
   end
-
-  defp validate({:set_board_section, _section, visible}, _state) when is_boolean(visible),
-    do: {:error, :unknown_section}
 
   defp validate({:set_group_values_visible, visible}, _state) when is_boolean(visible),
     do: {:ok, "group_values_visibility_set", %{visible: visible}, %{}}
@@ -326,6 +328,11 @@ defmodule Scenex.Play.SessionServer do
   end
 
   defp validate(_command, _state), do: {:error, :unknown_command}
+
+  # Each per-participant value gets its own scoreboard section, keyed by id.
+  defp participant_section_ids(state) do
+    for vd <- state.definition.value_dimensions, vd.input_scope == :per_participant, do: vd.id
+  end
 
   defp running(%{projection: %{status: status}}) when status in [:live, :paused], do: :ok
   defp running(_state), do: {:error, :not_running}

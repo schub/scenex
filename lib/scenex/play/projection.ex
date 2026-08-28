@@ -30,6 +30,10 @@ defmodule Scenex.Play.Projection do
   alias Scenex.Engine.Sim
   alias Scenex.Play.Definition
 
+  # Scoreboard sections that always exist; anything else is a per-participant
+  # value's section, keyed by that value's id string.
+  @fixed_sections ~w(globals overall_index current_beat)
+
   defstruct [
     :definition,
     :sim,
@@ -46,13 +50,14 @@ defmodule Scenex.Play.Projection do
     global_changes: %{},
     ending_id: nil,
     show_numbers: false,
-    board_sections: %{globals: true, wellbeing: true, democracy: true, current_beat: true},
+    board_sections: %{globals: true, overall_index: true, current_beat: true},
     group_values_visible: true,
     active_page_id: nil
   ]
 
   @type slot :: String.t() | :winner | :outcome
-  @type board_section :: :globals | :wellbeing | :democracy | :current_beat
+  # Fixed sections plus one per per-participant value (keyed by its id string).
+  @type board_section :: :globals | :overall_index | :current_beat | String.t()
   @type t :: %__MODULE__{}
 
   def new(%Definition{} = definition) do
@@ -99,9 +104,13 @@ defmodule Scenex.Play.Projection do
     do: %{p | show_numbers: visible}
 
   # Independent show/hide per scoreboard section — also a GM display
-  # preference, not a game decision.
+  # preference, not a game decision. Fixed sections are atom-keyed;
+  # per-participant value sections are keyed by the value's id string. Anything
+  # else (e.g. a section from a since-removed value, or a legacy name) is stored
+  # verbatim as a string — harmless, never atomized, never crashes replay.
   defp handle(p, "board_section_toggled", %{"section" => section, "visible" => visible}, _) do
-    %{p | board_sections: Map.put(p.board_sections, String.to_existing_atom(section), visible)}
+    key = if section in @fixed_sections, do: String.to_existing_atom(section), else: section
+    %{p | board_sections: Map.put(p.board_sections, key, visible)}
   end
 
   # Show/hide the group's own values on every group board — same kind of

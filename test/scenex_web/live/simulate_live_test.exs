@@ -208,7 +208,7 @@ defmodule ScenexWeb.SimulateLiveTest do
     assert html =~ "1/2 decisions made"
   end
 
-  test "shows the democracy score and its precise current band, updating live", %{
+  test "shows the overall index and its precise current band, updating live", %{
     conn: conn,
     scenario: scenario,
     timeline_element: timeline_element,
@@ -217,21 +217,21 @@ defmodule ScenexWeb.SimulateLiveTest do
   } do
     {:ok, _} =
       Authoring.update_scenario(scenario, %{
-        democracy_formula: "avg",
-        democracy_min: 0.0,
-        democracy_max: 10.0
+        overall_index_formula: "stability",
+        overall_index_min: 0.0,
+        overall_index_max: 10.0
       })
 
     {:ok, _} =
-      Authoring.create_democracy_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
 
     {:ok, _} =
-      Authoring.create_democracy_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
 
     {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
 
     # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
-    assert html =~ "Democracy Score:"
+    assert html =~ "Overall Index:"
     assert html =~ "Breakdown"
 
     # +2 stability -> avg 7 -> best band ("In Bloom").
@@ -242,22 +242,22 @@ defmodule ScenexWeb.SimulateLiveTest do
     assert html =~ "In Bloom"
   end
 
-  test "democracy score section is silent without bands or without formula/range", %{
+  test "overall index section is silent without bands or without formula/range", %{
     conn: conn,
     scenario: scenario
   } do
     {:ok, _lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
-    refute html =~ "Democracy Score:"
+    refute html =~ "Overall Index:"
 
     {:ok, _} =
       Authoring.update_scenario(scenario, %{
-        democracy_formula: "avg",
-        democracy_min: 0.0,
-        democracy_max: 10.0
+        overall_index_formula: "stability",
+        overall_index_min: 0.0,
+        overall_index_max: 10.0
       })
 
     {:ok, _lv2, html2} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
-    assert html2 =~ "Democracy Score:"
+    assert html2 =~ "Overall Index:"
     assert html2 =~ "no bands defined yet"
   end
 

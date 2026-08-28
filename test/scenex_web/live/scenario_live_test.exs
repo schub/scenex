@@ -148,34 +148,34 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert html =~ "not a valid formula"
     end
 
-    test "sets the democracy score formula and range", %{conn: conn, scenario: scenario} do
+    test "sets the overall index formula and range", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
-      lv |> element("button[phx-value-section=democracy]") |> render_click()
+      lv |> element("button[phx-value-section=overall_index]") |> render_click()
 
       lv
       |> form(~s(form[phx-submit="save_settings"]), %{
         "scenario" => %{
-          "democracy_formula" => "(avg + min) / 2",
-          "democracy_min" => "0",
-          "democracy_max" => "100"
+          "overall_index_formula" => "2*stability + resources",
+          "overall_index_min" => "0",
+          "overall_index_max" => "100"
         }
       })
       |> render_submit()
 
       updated = Authoring.get_scenario!(scenario.id)
-      assert updated.democracy_formula == "(avg + min) / 2"
-      assert updated.democracy_min == 0.0
-      assert updated.democracy_max == 100.0
+      assert updated.overall_index_formula == "2*stability + resources"
+      assert updated.overall_index_min == 0.0
+      assert updated.overall_index_max == 100.0
     end
 
-    test "rejects an invalid democracy score formula", %{conn: conn, scenario: scenario} do
+    test "rejects an invalid overall index formula", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
-      lv |> element("button[phx-value-section=democracy]") |> render_click()
+      lv |> element("button[phx-value-section=overall_index]") |> render_click()
 
       html =
         lv
         |> form(~s(form[phx-submit="save_settings"]), %{
-          "scenario" => %{"democracy_formula" => "bogus("}
+          "scenario" => %{"overall_index_formula" => "bogus("}
         })
         |> render_submit()
 
@@ -492,59 +492,104 @@ defmodule ScenexWeb.ScenarioLiveTest do
       assert Authoring.list_pages(scenario) == []
     end
 
-    test "sets the democracy score visualization range", %{conn: conn, scenario: scenario} do
+    test "sets the overall index visualization range", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
-      lv |> element("button[phx-value-section=democracy]") |> render_click()
+      lv |> element("button[phx-value-section=overall_index]") |> render_click()
 
       lv
       |> form(~s(form[phx-submit="save_settings"]), %{
         "scenario" => %{
-          "democracy_formula" => "avg",
-          "democracy_min" => "0",
-          "democracy_max" => "20",
-          "democracy_viz_min" => "5",
-          "democracy_viz_max" => "15"
+          "overall_index_formula" => "stability",
+          "overall_index_min" => "0",
+          "overall_index_max" => "20",
+          "overall_index_viz_min" => "5",
+          "overall_index_viz_max" => "15"
         }
       })
       |> render_submit()
 
       updated = Authoring.get_scenario!(scenario.id)
-      assert updated.democracy_viz_min == 5.0
-      assert updated.democracy_viz_max == 15.0
+      assert updated.overall_index_viz_min == 5.0
+      assert updated.overall_index_viz_max == 15.0
     end
 
-    test "adds, edits, and deletes a democracy score band", %{conn: conn, scenario: scenario} do
+    test "adds, edits, and deletes a overall index band", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
-      lv |> element("button[phx-value-section=democracy]") |> render_click()
+      lv |> element("button[phx-value-section=overall_index]") |> render_click()
 
       html =
         lv
-        |> form(~s(form[phx-submit="save_democracy_band"]), %{
-          "democracy_band" => %{"label" => %{"en" => "Breakdown"}, "position" => "0"}
+        |> form(~s(form[phx-submit="save_overall_index_band"]), %{
+          "overall_index_band" => %{"label" => %{"en" => "Breakdown"}, "position" => "0"}
         })
         |> render_submit()
 
       assert html =~ "Breakdown"
-      [band] = Authoring.list_democracy_bands(scenario)
+      [band] = Authoring.list_overall_index_bands(scenario)
       assert band.label == %{"en" => "Breakdown"}
 
       lv
-      |> element(~s{button[phx-click=edit_democracy_band][phx-value-id="#{band.id}"]})
+      |> element(~s{button[phx-click=edit_overall_index_band][phx-value-id="#{band.id}"]})
       |> render_click()
 
       lv
-      |> form(~s(form[phx-submit="save_democracy_band"]), %{
-        "democracy_band" => %{"label" => %{"en" => "Collapse"}}
+      |> form(~s(form[phx-submit="save_overall_index_band"]), %{
+        "overall_index_band" => %{"label" => %{"en" => "Collapse"}}
       })
       |> render_submit()
 
-      assert Authoring.get_democracy_band!(band.id).label == %{"en" => "Collapse"}
+      assert Authoring.get_overall_index_band!(band.id).label == %{"en" => "Collapse"}
 
       lv
-      |> element(~s{button[phx-click=delete_democracy_band][phx-value-id="#{band.id}"]})
+      |> element(~s{button[phx-click=delete_overall_index_band][phx-value-id="#{band.id}"]})
       |> render_click()
 
-      assert Authoring.list_democracy_bands(scenario) == []
+      assert Authoring.list_overall_index_bands(scenario) == []
+    end
+
+    test "adds, edits, and deletes a per-participant value's readout step",
+         %{conn: conn, scenario: scenario} do
+      vd =
+        value_dimension_fixture(scenario,
+          key: "mood",
+          name: %{"en" => "Mood"},
+          input_scope: :per_participant
+        )
+
+      # The fixture seeds the legacy four-emoji scale.
+      assert length(Authoring.list_value_dimension_steps(vd)) == 4
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=values]") |> render_click()
+      lv |> element(~s{button[phx-click=edit_value][phx-value-id="#{vd.id}"]}) |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_value_step"]), %{
+        "value_dimension_step" => %{"emoji" => "🤩", "position" => "5"}
+      })
+      |> render_submit()
+
+      steps = Authoring.list_value_dimension_steps(vd)
+      assert length(steps) == 5
+      added = Enum.find(steps, &(&1.emoji == "🤩"))
+
+      lv
+      |> element(~s{button[phx-click=edit_value_step][phx-value-id="#{added.id}"]})
+      |> render_click()
+
+      lv
+      |> form(~s(form[phx-submit="save_value_step"]), %{
+        "value_dimension_step" => %{"emoji" => "🥳"}
+      })
+      |> render_submit()
+
+      assert Authoring.get_value_dimension_step(scenario, added.id).emoji == "🥳"
+
+      lv
+      |> element(~s{button[phx-click=delete_value_step][phx-value-id="#{added.id}"]})
+      |> render_click()
+
+      assert length(Authoring.list_value_dimension_steps(vd)) == 4
     end
 
     test "uploads and deletes a media file", %{conn: conn, scenario: scenario} do

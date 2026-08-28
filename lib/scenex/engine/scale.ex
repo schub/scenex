@@ -1,7 +1,7 @@
 defmodule Scenex.Engine.Scale do
   @moduledoc """
   Maps a number on a `min..max` range to one of N equal-width bands, each
-  carrying a label — e.g. a democracy score's five states, or a well-being
+  carrying a label — e.g. an overall index's five states, or a well-being
   mean's four moods. Pure and self-contained.
 
   `min` is the worst end of the range, `max` the best end (matching how the

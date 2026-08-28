@@ -59,12 +59,12 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
-  describe "democracy score fields" do
+  describe "overall index fields" do
     test "unset by default" do
       scenario = scenario_fixture(user_fixture())
-      assert scenario.democracy_formula == nil
-      assert scenario.democracy_min == nil
-      assert scenario.democracy_max == nil
+      assert scenario.overall_index_formula == nil
+      assert scenario.overall_index_min == nil
+      assert scenario.overall_index_max == nil
     end
 
     test "accepts a valid formula and range" do
@@ -72,30 +72,33 @@ defmodule Scenex.AuthoringTest do
 
       assert {:ok, updated} =
                Authoring.update_scenario(scenario, %{
-                 democracy_formula: "(avg + min) / 2",
-                 democracy_min: 0.0,
-                 democracy_max: 100.0
+                 overall_index_formula: "(avg + min) / 2",
+                 overall_index_min: 0.0,
+                 overall_index_max: 100.0
                })
 
-      assert updated.democracy_formula == "(avg + min) / 2"
+      assert updated.overall_index_formula == "(avg + min) / 2"
     end
 
     test "rejects an invalid formula" do
       scenario = scenario_fixture(user_fixture())
 
       assert {:error, changeset} =
-               Authoring.update_scenario(scenario, %{democracy_formula: "avg +"})
+               Authoring.update_scenario(scenario, %{overall_index_formula: "avg +"})
 
-      assert %{democracy_formula: [_]} = errors_on(changeset)
+      assert %{overall_index_formula: [_]} = errors_on(changeset)
     end
 
     test "rejects min greater than max" do
       scenario = scenario_fixture(user_fixture())
 
       assert {:error, changeset} =
-               Authoring.update_scenario(scenario, %{democracy_min: 10.0, democracy_max: 0.0})
+               Authoring.update_scenario(scenario, %{
+                 overall_index_min: 10.0,
+                 overall_index_max: 0.0
+               })
 
-      assert %{democracy_max: [_]} = errors_on(changeset)
+      assert %{overall_index_max: [_]} = errors_on(changeset)
     end
 
     test "accepts a visualization range within the real min/max" do
@@ -103,14 +106,14 @@ defmodule Scenex.AuthoringTest do
 
       assert {:ok, updated} =
                Authoring.update_scenario(scenario, %{
-                 democracy_min: 0.0,
-                 democracy_max: 20.0,
-                 democracy_viz_min: 5.0,
-                 democracy_viz_max: 15.0
+                 overall_index_min: 0.0,
+                 overall_index_max: 20.0,
+                 overall_index_viz_min: 5.0,
+                 overall_index_viz_max: 15.0
                })
 
-      assert updated.democracy_viz_min == 5.0
-      assert updated.democracy_viz_max == 15.0
+      assert updated.overall_index_viz_min == 5.0
+      assert updated.overall_index_viz_max == 15.0
     end
 
     test "rejects a visualization range outside the real min/max" do
@@ -118,13 +121,13 @@ defmodule Scenex.AuthoringTest do
 
       assert {:error, changeset} =
                Authoring.update_scenario(scenario, %{
-                 democracy_min: 0.0,
-                 democracy_max: 20.0,
-                 democracy_viz_min: -1.0,
-                 democracy_viz_max: 15.0
+                 overall_index_min: 0.0,
+                 overall_index_max: 20.0,
+                 overall_index_viz_min: -1.0,
+                 overall_index_viz_max: 15.0
                })
 
-      assert %{democracy_viz_min: [_]} = errors_on(changeset)
+      assert %{overall_index_viz_min: [_]} = errors_on(changeset)
     end
 
     test "rejects a visualization range with no real min/max set yet" do
@@ -132,11 +135,11 @@ defmodule Scenex.AuthoringTest do
 
       assert {:error, changeset} =
                Authoring.update_scenario(scenario, %{
-                 democracy_viz_min: 5.0,
-                 democracy_viz_max: 15.0
+                 overall_index_viz_min: 5.0,
+                 overall_index_viz_max: 15.0
                })
 
-      assert %{democracy_viz_min: [_]} = errors_on(changeset)
+      assert %{overall_index_viz_min: [_]} = errors_on(changeset)
     end
   end
 
@@ -544,49 +547,98 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
-  describe "democracy_bands" do
+  describe "overall index bands" do
     setup do
       %{scenario: scenario_fixture(user_fixture())}
     end
 
     test "creates, updates, lists by position, and deletes", %{scenario: scenario} do
       assert {:ok, breakdown} =
-               Authoring.create_democracy_band(scenario, %{
+               Authoring.create_overall_index_band(scenario, %{
                  label: %{"en" => "Breakdown"},
                  position: 0
                })
 
       assert {:ok, in_bloom} =
-               Authoring.create_democracy_band(scenario, %{
+               Authoring.create_overall_index_band(scenario, %{
                  label: %{"en" => "In Bloom"},
                  position: 1
                })
 
-      assert [first, second] = Authoring.list_democracy_bands(scenario)
+      assert [first, second] = Authoring.list_overall_index_bands(scenario)
       assert first.id == breakdown.id
       assert second.id == in_bloom.id
 
-      assert {:ok, updated} = Authoring.update_democracy_band(breakdown, %{position: 2})
+      assert {:ok, updated} = Authoring.update_overall_index_band(breakdown, %{position: 2})
       assert updated.position == 2
       # Reordered: breakdown now sits after in_bloom.
-      assert Enum.map(Authoring.list_democracy_bands(scenario), & &1.id) == [
+      assert Enum.map(Authoring.list_overall_index_bands(scenario), & &1.id) == [
                in_bloom.id,
                breakdown.id
              ]
 
-      assert Authoring.get_democracy_band(scenario, breakdown.id).id == breakdown.id
-      assert Authoring.get_democracy_band(scenario, Ecto.UUID.generate()) == nil
-      assert Authoring.get_democracy_band(scenario, "not-a-uuid") == nil
+      assert Authoring.get_overall_index_band(scenario, breakdown.id).id == breakdown.id
+      assert Authoring.get_overall_index_band(scenario, Ecto.UUID.generate()) == nil
+      assert Authoring.get_overall_index_band(scenario, "not-a-uuid") == nil
 
-      assert {:ok, _} = Authoring.delete_democracy_band(in_bloom)
-      assert Enum.map(Authoring.list_democracy_bands(scenario), & &1.id) == [breakdown.id]
+      assert {:ok, _} = Authoring.delete_overall_index_band(in_bloom)
+      assert Enum.map(Authoring.list_overall_index_bands(scenario), & &1.id) == [breakdown.id]
     end
 
     test "requires a label", %{scenario: scenario} do
       assert {:error, cs} =
-               Authoring.create_democracy_band(scenario, %{label: %{"en" => ""}})
+               Authoring.create_overall_index_band(scenario, %{label: %{"en" => ""}})
 
       assert %{label: ["can't be blank"]} = errors_on(cs)
+    end
+  end
+
+  describe "value dimension steps" do
+    setup do
+      user = user_fixture()
+      scenario = scenario_fixture(user)
+      # per_group so no legacy steps are auto-seeded — a clean slate.
+      vd = value_dimension_fixture(scenario, key: "mood", name: %{"en" => "Mood"})
+      %{scenario: scenario, vd: vd}
+    end
+
+    test "create, list worst-to-best, scoped get, update, delete", %{scenario: scenario, vd: vd} do
+      assert {:ok, best} = Authoring.create_value_dimension_step(vd, %{position: 2, emoji: "🙂"})
+      assert {:ok, worst} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙁"})
+
+      assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [worst.id, best.id]
+
+      assert Authoring.get_value_dimension_step(scenario, best.id).id == best.id
+      assert Authoring.get_value_dimension_step(scenario, Ecto.UUID.generate()) == nil
+      assert Authoring.get_value_dimension_step(scenario, "not-a-uuid") == nil
+
+      assert {:ok, updated} = Authoring.update_value_dimension_step(best, %{emoji: "😀"})
+      assert updated.emoji == "😀"
+
+      assert {:ok, _} = Authoring.delete_value_dimension_step(worst)
+      assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [best.id]
+    end
+
+    test "requires an emoji", %{vd: vd} do
+      assert {:error, cs} = Authoring.create_value_dimension_step(vd, %{position: 1})
+      assert %{emoji: [_]} = errors_on(cs)
+    end
+
+    test "a step is not reachable from another scenario", %{vd: vd} do
+      {:ok, step} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙂"})
+      other = scenario_fixture(user_fixture())
+      assert Authoring.get_value_dimension_step(other, step.id) == nil
+    end
+
+    test "per-participant values are loaded with their steps preloaded", %{scenario: scenario} do
+      value_dimension_fixture(scenario,
+        key: "wellbeing",
+        name: %{"en" => "Well-being"},
+        input_scope: :per_participant
+      )
+
+      vd = Enum.find(Authoring.list_value_dimensions(scenario), &(&1.key == "wellbeing"))
+      assert Enum.map(vd.steps, & &1.emoji) == ["🙁", "😐", "🙂", "😀"]
     end
   end
 
