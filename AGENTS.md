@@ -1,3 +1,102 @@
+# AGENTS.md — Scenex
+
+Two parts. **This first part is specific to Scenex and is the part that
+matters** — it covers what the generic Phoenix guidance below cannot. Read it
+before writing anything here.
+
+## What Scenex is
+
+A platform for authoring and running live, facilitator-led megagames. The
+architecture is one idea: **separate the generic engine from game-specific
+content, and separate authored content from a live play-through.**
+
+| Layer | Context | Storage |
+|---|---|---|
+| 1. Engine — the rules of physics, same for every game | `Scenex.Engine` | Code, pure functions |
+| 2. Definition — one authored scenario | `Scenex.Authoring` | CRUD in Postgres |
+| 3. Session — one live run of a definition | `Scenex.Play` | Append-only event log + in-memory projection |
+
+Read [`docs/architecture.md`](docs/architecture.md) before any non-trivial
+change. The module docs are current and detailed — prefer them over guessing.
+
+## Non-negotiables
+
+Breaking one of these is an architecture decision, not a refactor. Stop and
+ask rather than doing it incidentally.
+
+- **`Scenex.Engine` stays pure.** No Ecto, no processes, no I/O. It is shared
+  verbatim by simulate mode and live play; that is the whole point.
+- **The session event log is append-only.** Never update or delete a
+  `SessionEvent`. Corrections are new events; the projection folds last-wins
+  per decision slot.
+- **Global values are derived, never stored.** They come from the aggregation
+  formula every time.
+- **Nothing fires automatically in a live show.** The GM triggers every beat
+  and makes every final call. Conditions, deadline defaults and ending matches
+  are recommendations.
+- **Mechanics never depend on a specific game.** Anything scenario-specific
+  leaking into the engine is a bug.
+- **`/media/<id>/<filename>` is a permanent URL contract** — authors paste it
+  into markdown. It must survive any storage change.
+
+## Conventions that bite
+
+- **Authorization lives in the context, not the LiveView.** Use
+  `Authoring.get_scenario_for_user/2`, `can_edit?/2`, `is_owner?/2`,
+  `get_user_role/2`. Don't reach for `get_scenario!/1` when serving a request.
+- **Scope first.** Contexts take `current_scope` as their first argument. In
+  templates use `@current_scope.user` — never `@current_user`.
+- **All schemas use `binary_id` (UUID) primary keys.**
+- **Every content entity has a `handle`** — required, never translated, unique
+  within its scope. Player-facing text lives in separate localized fields.
+- **Localized content is a `jsonb` map** of `locale => string`, rendered
+  through `Scenex.I18n` with fallback to the scenario's `source_locale`. UI
+  chrome uses Gettext instead. Don't mix the two up.
+- **Join tables are written through upsert helpers**, not raw inserts — e.g.
+  `set_group_initial_value/3`, `set_decision_effect/3`.
+- **An `OptionEffect` with `group_id: nil` means "the deciding group."** A set
+  `group_id` is an explicit target — that's the outcome matrix for elections
+  and sidequests.
+- **Code says `:election` / `:sidequest`; the UI says "Vote" / "Wildcard"**
+  via `CoreComponents.kind_label/1`. Both are intentional.
+- **The event log is language-neutral** — it stores ids, never rendered text.
+- **`Play.Definition` is an immutable snapshot** taken at session start, so
+  scenario edits can't change a running game.
+- **Long-form localized fields are Markdown** by convention, rendered through
+  `ScenexWeb.Markdown`.
+
+## Workflow
+
+- **Run `mix precommit` when you are done** and fix everything it reports. It
+  is compile-with-warnings-as-errors, unused-deps, format, and the full test
+  suite — the same gate `release.sh` enforces.
+- **Generate migrations with `mix ecto.gen.migration name`.** Never hand-write
+  a timestamp.
+- Work happens on `dev`. Releases and deploys are scripted and manual — see
+  [`docs/releasing.md`](docs/releasing.md). Don't invent release steps.
+
+## Where documentation lives
+
+| Topic | Document |
+|---|---|
+| What the product is, running it locally | [`README.md`](README.md) |
+| Layers, invariants, how a live session runs | [`docs/architecture.md`](docs/architecture.md) |
+| Production VM, env vars, edge proxy | [`docs/deployment.md`](docs/deployment.md) |
+| Branch model, versioning, releasing | [`docs/releasing.md`](docs/releasing.md) |
+| Game design source material (concepts, playtests) | `studio/docs/` — one level up, not in this repo |
+
+Keep documentation thin and link to modules. The moduledocs are the reference;
+prose that restates the data model rots and has rotted here before.
+
+---
+
+# Generic Phoenix guidance
+
+Everything below this line is the stock `phx.new` / `usage_rules` boilerplate.
+It is framework guidance, not Scenex guidance, and is essentially vendored —
+prefer regenerating it over hand-editing. Where it conflicts with the section
+above, the section above wins.
+
 This is a web application written using the Phoenix web framework.
 
 ## Project guidelines
