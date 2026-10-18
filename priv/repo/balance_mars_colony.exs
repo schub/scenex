@@ -178,7 +178,7 @@ command_id = Enum.find(definition.group_ids, &(group_handle[&1] == "command"))
 called_earth? = fn p ->
   storm = element.("the_storm")
   oid = get_in(p.decisions, [storm.id, command_id])
-  oid && definition.options[oid].handle == "command: Call Earth"
+  oid && definition.options[oid].handle == "Call Earth"
 end
 
 checkpoints = ~w(start what_to_bring touchdown settling_in the_storm rationing end)a

@@ -5,7 +5,8 @@ config :scenex, Scenex.Repo,
   username: "dev",
   password: "dev",
   hostname: "localhost",
-  database: "scenex_dev",
+  # Overridable so tooling (e.g. tutorial/) can run against its own database.
+  database: System.get_env("SCENEX_DEV_DATABASE", "scenex_dev"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

@@ -5,7 +5,8 @@
 # dust-storm crisis in Act 2. Authored in English (the source locale).
 #
 # Re-runnable: it deletes any existing scenario with handle "mars_colony"
-# first (children cascade), then rebuilds it for the owner below.
+# first (children cascade), then rebuilds it for the owner below. It refuses
+# if that scenario already has live sessions.
 #
 #     mix run priv/repo/seeds_mars_colony.exs
 #
@@ -24,7 +25,17 @@ owner =
   Repo.get_by(Accounts.User, email: owner_email) ||
     raise "No account for #{owner_email} — register it first, or set MARS_OWNER_EMAIL."
 
-Repo.all(from s in Scenario, where: s.handle == "mars_colony") |> Enum.each(&Repo.delete/1)
+existing = Repo.all(from s in Scenario, where: s.handle == "mars_colony")
+
+# Sessions keep an append-only log against the scenario's groups; never delete
+# them as a side effect of re-seeding.
+if Repo.exists?(
+     from s in Scenex.Play.Session, where: s.scenario_id in ^Enum.map(existing, & &1.id)
+   ) do
+  raise "The existing mars_colony scenario has sessions — delete them first (or reset the database)."
+end
+
+Enum.each(existing, &Repo.delete/1)
 
 en = fn text -> %{"en" => String.trim(text)} end
 
@@ -74,10 +85,9 @@ en = fn text -> %{"en" => String.trim(text)} end
     change_highlight_seconds: 30,
     overall_index_name: en.("Colony Vitality"),
     overall_index_description:
-      en.("""
-      How well the colony is doing overall: life support, supplies and
-      progress push it up, risk drags it down.
-      """),
+      en.(
+        "How well the colony is doing overall: life support, supplies and progress push it up, risk drags it down."
+      ),
     overall_index_formula: "(life_support + supplies + progress + (10 - risk)) / 4",
     overall_index_min: 0.0,
     overall_index_max: 10.0,
@@ -310,7 +320,7 @@ label_by_handle =
 # Effect shorthand: ls / sup / pro / risk.
 key_of = %{ls: "life_support", sup: "supplies", pro: "progress", risk: "risk"}
 
-option_text = fn title, line -> "**#{title}**\n\n#{line}" end
+option_text = fn title, line -> "**#{title}** — #{line}" end
 
 create_element = fn attrs ->
   {:ok, el} =
@@ -340,8 +350,8 @@ add_event_options = fn element, per_team ->
     |> Enum.each(fn {{title, line, labels, effects, extra}, pos} ->
       {:ok, opt} =
         Authoring.create_decision_option(element, group, %{
-          # Handles are unique per element, so they carry the team.
-          handle: "#{team}: #{title}",
+          # Handles are unique per element: titles never repeat within a beat.
+          handle: title,
           text: en.(option_text.(title, line)),
           condition: extra[:condition],
           is_default: Keyword.get(extra, :default, false),
@@ -958,26 +968,23 @@ earths_offer =
     director_notes: """
     Only fire this if Command chose *Call Earth* during *The Storm*.
 
-    Give the room three minutes to campaign: each team may send one speaker.
+    The ballot isn't shown on any screen by itself: put up the page *Earth's
+    Offer* so the room can read the three options, and read them aloud. Then
+    give the room three minutes to campaign: each team may send one speaker.
     Then a show of hands per option; enter the count in the console. On a
     tie, you decide. If time runs out, the ⏱ default (the sponsor deal)
     wins.
 
     *Go it alone* is gated on the colony's Supplies — a colony that is
-    already starving cannot afford pride. If it is greyed out, say why.
+    already starving cannot afford pride. If the colony's Supplies are below
+    3, take it off the ballot and say why.
     """
   })
 
 {:ok, sponsor} =
   Authoring.create_decision_option(earths_offer, nil, %{
     handle: "Sponsor deal",
-    text:
-      en.(
-        option_text.(
-          "Take the sponsor deal",
-          "A tech company pays for the rocket. In return, they own every discovery made on Mars."
-        )
-      ),
+    text: en.("Take the sponsor deal"),
     is_default: true,
     position: 1
   })
@@ -995,13 +1002,7 @@ set_matrix.(sponsor, %{
 {:ok, extend} =
   Authoring.create_decision_option(earths_offer, nil, %{
     handle: "Extend the mission",
-    text:
-      en.(
-        option_text.(
-          "Extend the mission",
-          "Earth pays — if the crew agrees to stay four extra years before anyone can go home."
-        )
-      ),
+    text: en.("Extend the mission"),
     position: 2
   })
 
@@ -1018,13 +1019,7 @@ set_matrix.(extend, %{
 {:ok, alone} =
   Authoring.create_decision_option(earths_offer, nil, %{
     handle: "Go it alone",
-    text:
-      en.(
-        option_text.(
-          "Go it alone",
-          "Thank Earth, and refuse. We will get through this ourselves — and own what we build."
-        )
-      ),
+    text: en.("Go it alone"),
     condition: "global(supplies) >= 3",
     director_notes:
       en.("Gated: only on the ballot if the colony still has Supplies of 3 or more."),
@@ -1121,6 +1116,18 @@ pages = [
    The colony is running. The greenhouse is green. Earth is impressed.
 
    ### Then the weather report changes.
+   """},
+  {"Earth's Offer",
+   """
+   # Earth's Offer
+
+   A resupply rocket can launch next week. Who pays for it?
+
+   1. **Take the sponsor deal** — a tech company pays. In return, it owns every discovery made on Mars.
+   2. **Extend the mission** — Earth pays, if the crew stays four extra years before anyone can go home.
+   3. **Go it alone** — thank Earth, and refuse. We get through this ourselves, and own what we build.
+
+   *One person, one vote.*
    """},
   {"Debrief",
    """
