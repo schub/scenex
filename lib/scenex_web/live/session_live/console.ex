@@ -341,9 +341,10 @@ defmodule ScenexWeb.SessionLive.Console do
             </button>
           </div>
 
-          <p :if={notes = notes(element, @locale)} class="rounded bg-base-200 p-2 text-xs italic">
-            🎭 {notes}
-          </p>
+          <div :if={notes = notes(element, @locale)} class="rounded bg-base-200 p-2 text-xs">
+            <span class="font-semibold">🎭 Director's notes</span>
+            <.markdown text={notes} />
+          </div>
 
           <%!-- Decision entry, once triggered --%>
           <div :if={element.id in @snap.triggered}>
