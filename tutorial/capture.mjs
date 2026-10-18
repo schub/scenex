@@ -177,7 +177,10 @@ await live(display);
 await shot("display-waiting", display);
 
 await page.bringToFront();
-await page.click("button:has-text('Welcome')");
+await page.click("[phx-click=show_page]:has-text('Title')");
+await settle(page, 800);
+await shot("display-page-title", display);
+await page.click("[phx-click=show_page]:has-text('Welcome')");
 await settle(page);
 await shot("display-page-welcome", display);
 await page.screenshot({ path: `${OUT}/console-pages.png`, clip: { x: 0, y: 0, width: 1440, height: 330 } });
@@ -290,8 +293,6 @@ await settle(page);
 const storm = consoleElement(page, "The Storm");
 await storm.locator("button:has-text('Trigger')").click();
 await settle(page);
-await settle(board);
-await shot("board-storm", board, { full: true });
 await shot("console-deadline", storm);
 await gmChoose("The Storm", [
   "Power down",
@@ -300,7 +301,6 @@ await gmChoose("The Storm", [
   "Shelter in the core",
   "Call Earth"
 ]);
-await shot("console-storm-decided", storm);
 
 // The milder Rationing shade (Vitality is still "Getting By").
 const rationing = page

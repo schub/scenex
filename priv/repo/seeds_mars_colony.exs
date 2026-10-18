@@ -35,6 +35,8 @@ if Repo.exists?(
   raise "The existing mars_colony scenario has sessions — delete them first (or reset the database)."
 end
 
+# Media rows cascade with the scenario, but their files would stay on disk.
+existing |> Enum.flat_map(&Scenex.Media.list_files/1) |> Enum.each(&Scenex.Media.delete_file/1)
 Enum.each(existing, &Repo.delete/1)
 
 en = fn text -> %{"en" => String.trim(text)} end
@@ -108,6 +110,20 @@ en = fn text -> %{"en" => String.trim(text)} end
 |> Enum.each(fn {label, pos} ->
   {:ok, _} = Authoring.create_overall_index_band(scenario, %{label: en.(label), position: pos})
 end)
+
+# ── Media ───────────────────────────────────────────────────────────────────
+# priv/repo/mars_colony/jezero-crater.png (rendered from the .svg next to it).
+crater_png = Path.join(__DIR__, "mars_colony/jezero-crater.png")
+
+{:ok, crater} =
+  Scenex.Media.create_file(scenario, owner, %{
+    filename: "jezero-crater.png",
+    content_type: "image/png",
+    size: File.stat!(crater_png).size,
+    path: crater_png
+  })
+
+crater_url = Scenex.Media.public_path(crater)
 
 # ── Values ──────────────────────────────────────────────────────────────────
 # {key, name, formula, description, director's notes}
@@ -484,6 +500,8 @@ touchdown =
     title: "Touchdown",
     narrative: """
     **Act 1 — Sol 1, Jezero Crater.**
+
+    ![Jezero Crater](#{crater_url})
 
     Seven months in space, seven minutes of terror, and then: dust settling
     on a silent red plain. The landing went *mostly* to plan. One cargo pod
@@ -1087,6 +1105,10 @@ end)
 
 # ── Pages (scoreboard slides) ───────────────────────────────────────────────
 pages = [
+  {"Title",
+   """
+   ![Mars Colony — Jezero Crater at dawn](#{crater_url})
+   """},
   {"Welcome",
    """
    # 🚀 Mars Colony
@@ -1157,4 +1179,5 @@ Seeded Mars Colony:
   timeline:  #{length(Authoring.list_timeline_elements(scenario))} elements
   endings:   #{length(endings)}
   pages:     #{length(pages)}
+  media:     #{crater_url}
 """)

@@ -105,6 +105,10 @@ current and are more detailed than these documents.
 
 ## Documentation
 
+- [`docs/tutorial/`](docs/tutorial/index.md) — **the user tutorial**: writing a
+  scenario and running a session, with the Mars Colony example
+  (`priv/repo/seeds_mars_colony.exs`); regenerate its screenshots and video
+  with `tutorial/run.sh`
 - [`docs/architecture.md`](docs/architecture.md) — the three layers, the
   invariants, how a live session runs
 - [`docs/deployment.md`](docs/deployment.md) — production VM, environment,

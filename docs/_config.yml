@@ -1,0 +1,4 @@
+# GitHub Pages (Settings → Pages → Deploy from branch → main /docs).
+title: Scenex
+description: Write and run megagames — documentation and tutorial
+theme: jekyll-theme-cayman

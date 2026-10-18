@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+ <defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b1a3d"/><stop offset=".55" stop-color="#c2552d"/><stop offset="1" stop-color="#f0a35e"/></linearGradient>
+  <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5401f"/><stop offset="1" stop-color="#5c1d0e"/></linearGradient>
+  <radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6dc"/><stop offset=".4" stop-color="#ffe0a3" stop-opacity=".9"/><stop offset="1" stop-color="#ffb46b" stop-opacity="0"/></radialGradient>
+  <linearGradient id="dome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9f1f7"/><stop offset="1" stop-color="#9fb4c4"/></linearGradient>
+ </defs>
+ <rect width="1600" height="900" fill="url(#sky)"/>
+ <g fill="#fff" opacity=".7"><circle cx="120" cy="80" r="2"/><circle cx="340" cy="140" r="1.5"/><circle cx="560" cy="60" r="2"/><circle cx="900" cy="110" r="1.5"/><circle cx="1180" cy="50" r="2"/><circle cx="1450" cy="130" r="1.5"/><circle cx="760" cy="200" r="1"/><circle cx="1320" cy="220" r="1"/></g>
+ <circle cx="1180" cy="430" r="160" fill="url(#sun)"/>
+ <circle cx="1180" cy="430" r="26" fill="#fffaf0"/>
+ <path d="M0 560 L180 470 L330 520 L470 440 L640 530 L820 480 L1000 540 L1180 470 L1360 520 L1600 460 L1600 900 L0 900Z" fill="#7a2c17" opacity=".75"/>
+ <path d="M0 640 Q400 580 800 630 T1600 610 L1600 900 L0 900Z" fill="url(#ground)"/>
+ <g transform="translate(520 640)">
+  <rect x="-40" y="-6" width="560" height="14" fill="#3b1209" opacity=".5"/>
+  <path d="M0 0 A90 90 0 0 1 180 0Z" fill="url(#dome)"/>
+  <path d="M200 0 A70 70 0 0 1 340 0Z" fill="url(#dome)"/>
+  <path d="M360 0 A55 55 0 0 1 470 0Z" fill="url(#dome)"/>
+  <rect x="170" y="-14" width="40" height="14" fill="#c9d6e0"/><rect x="330" y="-12" width="40" height="12" fill="#c9d6e0"/>
+  <g fill="#ffd27a"><circle cx="60" cy="-30" r="5"/><circle cx="110" cy="-45" r="5"/><circle cx="250" cy="-30" r="4"/><circle cx="400" cy="-22" r="4"/></g>
+ </g>
+ <g transform="translate(120 700)" fill="#1f2b38">
+  <rect x="0" y="0" width="70" height="40" transform="skewX(-20)"/><rect x="90" y="0" width="70" height="40" transform="skewX(-20)"/><rect x="180" y="0" width="70" height="40" transform="skewX(-20)"/>
+  <rect x="5" y="40" width="4" height="30" fill="#55606b"/><rect x="95" y="40" width="4" height="30" fill="#55606b"/><rect x="185" y="40" width="4" height="30" fill="#55606b"/>
+ </g>
+ <path d="M1040 690 l40 -120 l40 120z" fill="#d9e2ea"/><rect x="1072" y="560" width="16" height="20" fill="#e85d2a"/>
+</svg>
