@@ -39,11 +39,14 @@ const srt = scenes
 await writeFile(BUILD + "scenex-tutorial.srt", srt);
 
 // ── The picture ─────────────────────────────────────────────────────────────
-// Frame times are relative to the first scene (0 s). Start with the last
-// frame painted before it, hold every frame until the next one, end with the
-// last scene.
+// Frame times are relative to the first scene (0 s). Hold every frame until
+// the next one and end with the last scene. The video opens on the first
+// scene's settled picture — the last frame painted within its first half
+// second — so the blank page a title card is built on never flashes up at
+// 0:00. (The voice only starts at VOICE_DELAY anyway.)
+const OPENING = 0.5;
 const total = scenes.at(-1).end;
-const first = Math.max(0, frames.findLastIndex((f) => f.at <= 0));
+const first = Math.max(0, frames.findLastIndex((f) => f.at <= OPENING));
 const used = frames.slice(first).filter((f) => f.at < total);
 const list = used
   .map((f, i) => {
