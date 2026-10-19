@@ -468,7 +468,7 @@ export const scenes = [
       await h.click(`${vote} button:has-text('Trigger')`);
       await h.wait(600);
       for (const [option, n] of [["A - Ban", 9], ["B - Regulate", 21], ["C - Educate", 14]]) {
-        await h.fill(`${vote} div:has(> label:has-text("${option}")) input[type=number]`, String(n));
+        await h.fill(`${vote} div:has(> label:has-text("${option}")) input[name^='tally']`, String(n));
       }
       await h.click(`${vote} label:has-text('B - Regulate') input[type=radio]`);
       await h.click(`${vote} button:has-text('Declare result')`);

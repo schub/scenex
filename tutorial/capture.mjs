@@ -324,7 +324,7 @@ for (const [option, votes] of [
   ["Social Media Policy B - Regulate", 21],
   ["Social Media Policy C - Educate", 14]
 ]) {
-  await vote.locator(`div:has(> label:has-text("${option}")) input[type=number]`).fill(String(votes));
+  await vote.locator(`div:has(> label:has-text("${option}")) input[name^='tally']`).fill(String(votes));
 }
 await vote.locator("label:has-text('Social Media Policy B - Regulate') input[type=radio]").check();
 await shot("console-vote", vote);

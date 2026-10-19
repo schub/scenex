@@ -1,10 +1,12 @@
 // Assembles the screencast from record.mjs's output: the picture from the
 // screencast frames, each held until the next one (by their real paint
-// times), every narration clip at its scene's start, the caption bar below
-// the picture and soft subtitles. Writes video/build/scenex-tutorial.mp4
-// (plus .srt).
+// times), every narration clip at its scene's start, and the captions as a
+// switchable subtitle track. Writes video/build/scenex-tutorial.mp4 (1280×720)
+// plus the same captions as .srt.
 //
 //     node video/assemble.mjs
+//     TUTORIAL_BURN_CAPTIONS=1 node video/assemble.mjs   captions burned into
+//                                                         a bar below (1280×800)
 
 import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
@@ -54,22 +56,26 @@ const list = used
 await writeFile(BUILD + "frames.txt", `${list}\nfile '${used.at(-1).file}'\n`);
 console.log(`  picture: ${used.length} frames`);
 
-// Inputs: 0 = picture, 1..n = narration clips, n+1..2n = caption bars.
+// Inputs: 0 = picture, 1..n = narration clips, and — only when burning in
+// captions — n+1..2n = caption bars.
+const burn = process.env.TUTORIAL_BURN_CAPTIONS === "1";
 const n = scenes.length;
 const inputs = ["-f", "concat", "-safe", "0", "-i", BUILD + "frames.txt"];
 scenes.forEach((s) => inputs.push("-i", s.audio));
-scenes.forEach((s) => inputs.push("-i", s.caption));
+if (burn) scenes.forEach((s) => inputs.push("-i", s.caption));
 
 const chains = [
-  `[0:v]fps=30,scale=1280:720:force_original_aspect_ratio=decrease,` +
-    `pad=1280:800:0:0:color=0x141418[v0]`
+  `[0:v]fps=30,scale=1280:720:force_original_aspect_ratio=decrease` +
+    (burn ? `,pad=1280:800:0:0:color=0x141418[v0]` : `[v${n}]`)
 ];
 scenes.forEach((s, i) => {
   const ms = Math.round((s.start + VOICE_DELAY) * 1000);
   chains.push(`[${i + 1}:a]aresample=48000,adelay=${ms}|${ms}[a${i}]`);
-  chains.push(
-    `[v${i}][${n + 1 + i}:v]overlay=0:720:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[v${i + 1}]`
-  );
+  if (burn) {
+    chains.push(
+      `[v${i}][${n + 1 + i}:v]overlay=0:720:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[v${i + 1}]`
+    );
+  }
 });
 const mix =
   chains.join(";") +
@@ -77,7 +83,7 @@ const mix =
   scenes.map((_, i) => `[a${i}]`).join("") +
   `amix=inputs=${n}:normalize=0:dropout_transition=0[voice]`;
 
-const subIndex = 2 * n + 1;
+const subIndex = (burn ? 2 * n : n) + 1;
 execFileSync(
   "ffmpeg",
   [

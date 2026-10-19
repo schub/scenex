@@ -69,6 +69,25 @@ export function consoleElement(page, title) {
   return page.locator("section").filter({ has: page.locator(`h3:has-text("${title}")`) }).first();
 }
 
+// Chromium on macOS formats <input type="number"> by the system region (and no
+// launch flag or locale overrides it), so a German Mac shows "8,0" in an
+// English tutorial. For screenshots and the video only, number fields become
+// text fields, which show the value exactly as the server renders it ("8.0").
+// LiveView may patch the type back, hence the observer.
+export function numbersAsText() {
+  const convert = (root) =>
+    root.querySelectorAll?.('input[type="number"]').forEach((input) => {
+      input.type = "text";
+    });
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.target.matches?.('input[type="number"]')) m.target.type = "text";
+      m.addedNodes.forEach((n) => n.nodeType === 1 && (n.matches('input[type="number"]') ? (n.type = "text") : convert(n)));
+    }
+  }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["type"] });
+  document.addEventListener("DOMContentLoaded", () => convert(document));
+}
+
 export async function newContext(browser, extra = {}) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -76,6 +95,7 @@ export async function newContext(browser, extra = {}) {
     colorScheme: "light",
     ...extra
   });
+  await context.addInitScript(numbersAsText);
   // The console asks for confirmation before start/end/close.
   context.on("page", (p) => p.on("dialog", (d) => d.accept()));
   return context;

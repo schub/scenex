@@ -47,8 +47,12 @@ const total = audio.reduce((s, a) => s + a.seconds, 0);
 console.log(`  ${total.toFixed(0)} s of narration`);
 
 // ── 2. Browser overlay: the pointer ─────────────────────────────────────────
-// Survives full page loads by keeping its position in sessionStorage.
+// Survives full page loads by keeping its position in sessionStorage. It is
+// invisible until it moves — to click or to point at something — and fades
+// out a few seconds after it comes to rest, so title cards, pictures and
+// quiet moments stay clean.
 const overlays = () => {
+  const SHOW_FOR_MS = 3000;
   // Documents made with setContent have no usable storage.
   const load = (k, d) => { try { return sessionStorage.getItem(k) ?? d; } catch { return d; } };
   const save = (k, v) => { try { sessionStorage.setItem(k, v); } catch {} };
@@ -60,19 +64,27 @@ const overlays = () => {
       position: "fixed", width: "26px", height: "26px", borderRadius: "50%",
       border: "3px solid #ff5a00", background: "rgba(255,90,0,.25)",
       transform: "translate(-50%,-50%)", pointerEvents: "none", zIndex: 2147483647,
-      transition: "background .15s, width .15s, height .15s"
+      transition: "background .15s, opacity .4s", opacity: "0"
     });
     const pos = JSON.parse(load("__pos", "[640,360]"));
     cursor.style.left = pos[0] + "px";
     cursor.style.top = pos[1] + "px";
     document.body.appendChild(cursor);
 
+    let hideTimer;
+    const show = () => {
+      cursor.style.opacity = "1";
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => { cursor.style.opacity = "0"; }, SHOW_FOR_MS);
+    };
+
     document.addEventListener("mousemove", (e) => {
       cursor.style.left = e.clientX + "px";
       cursor.style.top = e.clientY + "px";
       save("__pos", JSON.stringify([e.clientX, e.clientY]));
+      show();
     }, true);
-    document.addEventListener("mousedown", () => { cursor.style.background = "rgba(255,90,0,.75)"; }, true);
+    document.addEventListener("mousedown", () => { show(); cursor.style.background = "rgba(255,90,0,.75)"; }, true);
     document.addEventListener("mouseup", () => { cursor.style.background = "rgba(255,90,0,.25)"; }, true);
   };
   if (document.body) install();
