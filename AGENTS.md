@@ -83,6 +83,7 @@ ask rather than doing it incidentally.
 | Layers, invariants, how a live session runs | [`docs/architecture.md`](docs/architecture.md) |
 | Production VM, env vars, edge proxy | [`docs/deployment.md`](docs/deployment.md) |
 | Branch model, versioning, releasing | [`docs/releasing.md`](docs/releasing.md) |
+| User tutorial (authors, GMs) and its generator | [`docs/tutorial/`](docs/tutorial/index.md), [`tutorial/`](tutorial/run.sh) |
 | Game design source material (concepts, playtests) | `studio/docs/` — one level up, not in this repo |
 
 Keep documentation thin and link to modules. The moduledocs are the reference;

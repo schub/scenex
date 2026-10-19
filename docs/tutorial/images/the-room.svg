@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <defs>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe7d8"/>
+      <stop offset="1" stop-color="#e2d6c0"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6c8" stop-opacity=".0"/>
+      <stop offset="1" stop-color="#fff6c8" stop-opacity=".55"/>
+    </linearGradient>
+    <g id="person">
+      <circle cx="0" cy="-30" r="13" />
+      <path d="M-18 0 Q-18 -18 0 -18 Q18 -18 18 0 Z" />
+    </g>
+    <g id="tablet">
+      <rect x="-26" y="-18" width="52" height="36" rx="5" fill="#16383E"/>
+      <rect x="-21" y="-13" width="42" height="26" rx="2" fill="#fbf8f2"/>
+      <rect x="-16" y="-3" width="6" height="12" rx="2" fill="#ff7a1a"/>
+      <rect x="-7" y="-7" width="6" height="16" rx="2" fill="#ff7a1a"/>
+      <rect x="2" y="-1" width="6" height="10" rx="2" fill="#ff7a1a"/>
+      <rect x="11" y="-9" width="6" height="18" rx="2" fill="#ff7a1a"/>
+    </g>
+  </defs>
+
+  <!-- room -->
+  <rect width="1280" height="720" fill="#2b2140"/>
+  <path d="M0 330 L1280 330 L1280 720 L0 720 Z" fill="url(#floor)"/>
+  <rect x="0" y="0" width="1280" height="330" fill="#3a2d58"/>
+
+  <!-- projector screen with the scoreboard -->
+  <rect x="400" y="40" width="480" height="250" rx="10" fill="#fbf8f2" stroke="#16383E" stroke-width="6"/>
+  <text x="640" y="80" text-anchor="middle" font-size="20" font-weight="700" fill="#16383E">Positive Starting Proposal</text>
+  <g fill="#e4e1db">
+    <rect x="520" y="100" width="22" height="100" rx="11"/>
+    <rect x="590" y="100" width="22" height="100" rx="11"/>
+    <rect x="660" y="100" width="22" height="100" rx="11"/>
+    <rect x="730" y="100" width="22" height="100" rx="11"/>
+  </g>
+  <g fill="#ff7a1a">
+    <rect x="520" y="140" width="22" height="60" rx="11"/>
+    <rect x="590" y="125" width="22" height="75" rx="11"/>
+    <rect x="660" y="150" width="22" height="50" rx="11"/>
+    <rect x="730" y="132" width="22" height="68" rx="11"/>
+  </g>
+  <rect x="470" y="238" width="340" height="8" rx="4" fill="#e4e1db"/>
+  <circle cx="676" cy="242" r="12" fill="#ff7a1a" stroke="#fff" stroke-width="3"/>
+  <text x="470" y="272" font-size="13" font-weight="700" fill="#16383E">Breakdown</text>
+  <text x="810" y="272" text-anchor="end" font-size="13" font-weight="700" fill="#16383E">In Bloom</text>
+  <path d="M580 290 L700 290 L1000 700 L280 700 Z" fill="url(#beam)" opacity=".35"/>
+
+  <!-- tables with groups -->
+  <g>
+    <g transform="translate(200 470)">
+      <ellipse cx="0" cy="0" rx="120" ry="48" fill="#8fd3c7" stroke="#16383E" stroke-width="3"/>
+      <use href="#tablet"/>
+      <g fill="#6b4fbb"><use href="#person" x="-80" y="-36"/><use href="#person" x="-25" y="-52"/><use href="#person" x="30" y="-52"/><use href="#person" x="84" y="-36"/></g>
+    </g>
+    <g transform="translate(470 560)">
+      <ellipse cx="0" cy="0" rx="120" ry="48" fill="#f6c915" stroke="#16383E" stroke-width="3"/>
+      <use href="#tablet"/>
+      <g fill="#16383E"><use href="#person" x="-80" y="-36"/><use href="#person" x="-25" y="-52"/><use href="#person" x="30" y="-52"/><use href="#person" x="84" y="-36"/></g>
+    </g>
+    <g transform="translate(810 560)">
+      <ellipse cx="0" cy="0" rx="120" ry="48" fill="#ffb27a" stroke="#16383E" stroke-width="3"/>
+      <use href="#tablet"/>
+      <g fill="#6b4fbb"><use href="#person" x="-80" y="-36"/><use href="#person" x="-25" y="-52"/><use href="#person" x="30" y="-52"/><use href="#person" x="84" y="-36"/></g>
+    </g>
+    <g transform="translate(1080 470)">
+      <ellipse cx="0" cy="0" rx="120" ry="48" fill="#b9a7f0" stroke="#16383E" stroke-width="3"/>
+      <use href="#tablet"/>
+      <g fill="#16383E"><use href="#person" x="-80" y="-36"/><use href="#person" x="-25" y="-52"/><use href="#person" x="30" y="-52"/><use href="#person" x="84" y="-36"/></g>
+    </g>
+    <g transform="translate(640 420)">
+      <ellipse cx="0" cy="0" rx="110" ry="42" fill="#d8eeea" stroke="#16383E" stroke-width="3"/>
+      <use href="#tablet"/>
+      <g fill="#ff7a1a"><use href="#person" x="-70" y="-32"/><use href="#person" x="-22" y="-46"/><use href="#person" x="26" y="-46"/><use href="#person" x="74" y="-32"/></g>
+    </g>
+  </g>
+
+  <!-- game master desk -->
+  <g transform="translate(1110 640)">
+    <rect x="-90" y="-10" width="180" height="40" rx="6" fill="#16383E"/>
+    <rect x="-40" y="-52" width="80" height="44" rx="4" fill="#26545b"/>
+    <rect x="-34" y="-46" width="68" height="32" rx="2" fill="#fbf8f2"/>
+    <rect x="-28" y="-40" width="56" height="4" fill="#ff7a1a"/>
+    <rect x="-28" y="-32" width="40" height="3" fill="#b7b2a8"/>
+    <rect x="-28" y="-26" width="48" height="3" fill="#b7b2a8"/>
+    <g fill="#f6c915"><use href="#person" x="0" y="-62"/></g>
+  </g>
+
+  <!-- labels -->
+  <g font-size="21" font-weight="700">
+    <rect x="895" y="70" width="330" height="62" rx="12" fill="#f6c915"/>
+    <text x="912" y="98" fill="#2b2140">Projected display</text>
+    <text x="912" y="121" font-size="16" font-weight="500" fill="#2b2140">the whole town, for everyone</text>
+
+    <rect x="40" y="250" width="330" height="62" rx="12" fill="#8fd3c7"/>
+    <text x="57" y="278" fill="#16383E">Group boards</text>
+    <text x="57" y="301" font-size="16" font-weight="500" fill="#16383E">one tablet per table — its own choices</text>
+
+    <rect x="900" y="660" width="140" height="44" rx="10" fill="#fbf8f2" stroke="#16383E" stroke-width="2"/>
+    <text x="970" y="689" text-anchor="middle" font-size="18" fill="#16383E">GM console</text>
+  </g>
+</svg>

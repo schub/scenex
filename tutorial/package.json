@@ -1,0 +1,12 @@
+{
+  "name": "scenex-tutorial",
+  "private": true,
+  "type": "module",
+  "description": "Generates the Scenex tutorial's screenshots and video from a running instance.",
+  "scripts": {
+    "shots": "node capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.48.2"
+  }
+}

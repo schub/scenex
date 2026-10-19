@@ -105,6 +105,10 @@ current and are more detailed than these documents.
 
 ## Documentation
 
+- [`docs/tutorial/`](docs/tutorial/index.md) — **the user tutorial** for authors
+  and game masters, with Common Ground as the running example and Mars Colony
+  (`priv/repo/seeds_mars_colony.exs`) as the second one; regenerate its
+  screenshots and video with `tutorial/run.sh`
 - [`docs/architecture.md`](docs/architecture.md) — the three layers, the
   invariants, how a live session runs
 - [`docs/deployment.md`](docs/deployment.md) — production VM, environment,
