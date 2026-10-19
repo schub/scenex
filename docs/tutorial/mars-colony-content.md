@@ -1,10 +1,9 @@
 # Mars Colony — complete content
 
 > Generated from the database by `tutorial/reference.exs` — don't edit by
-> hand; change the scenario (`priv/repo/seeds_mars_colony.exs` or the editor)
-> and run `tutorial/run.sh` again.
+> hand; change the scenario and run `tutorial/run.sh` again.
 
-[← Mars Colony](mars-colony.md) · [Contents](index.md)
+[← Back](mars-colony.md) · [Contents](index.md)
 
 **Overall Index:** Colony Vitality =
 `(life_support + supplies + progress + (10 - risk)) / 4` (0–10)
@@ -79,7 +78,7 @@
 |---|---|---|---|---|
 | Engineering & Habitat | **Expand the solar field** — Double the panels. Power for every project anyone dreams up. | 🚀 Bold | Supplies -1, Progress +3, Risk +1 |  |
 | Engineering & Habitat | **Bury the cables** — Protect the power lines under a metre of regolith. | 🛡️ Cautious | Supplies -1, Risk -2 | `self(supplies) >= 4` |
-| Engineering & Habitat | **Battery bank** — Store power for the long night — or the day the sun goes out. | 🤝 Team Player 🛡️ Cautious | Life Support +2, Supplies -2, Risk -1 | `self(supplies) >= 5` |
+| Engineering & Habitat | **Battery bank** — Store power for the long night — or the day the sun goes out. | 🛡️ Cautious 🤝 Team Player | Life Support +2, Supplies -2, Risk -1 | `self(supplies) >= 5` |
 | Science & Exploration | **Long expedition** — Two weeks in a rover, 400 kilometres, the old river delta. | 🚀 Bold | Progress +3, Risk +1 |  |
 | Science & Exploration | **Weather radar** — Turn the weather stations into a real early-warning system. | 🤝 Team Player | Progress +2, Risk -2 | `self(progress) >= 9` |
 | Science & Exploration | **Share the lab** — Lend equipment and people to Agriculture and Medical. | 🤝 Team Player | Life Support +1, Supplies +1 |  |

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 440" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#4a3a78"/>
+    </marker>
+  </defs>
+  <rect width="880" height="440" rx="18" fill="#fbf8f2"/>
+  <text x="440" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#16383E">The loop every megagame runs on</text>
+
+  <!-- boxes -->
+  <g font-size="15" text-anchor="middle">
+    <rect x="330" y="72" width="220" height="64" rx="12" fill="#f6c915"/>
+    <text x="440" y="100" font-weight="700" fill="#2b2140">1 · The GM fires a beat</text>
+    <text x="440" y="121" fill="#2b2140">an Event, a Vote or a Wildcard</text>
+
+    <rect x="610" y="170" width="230" height="64" rx="12" fill="#b9a7f0"/>
+    <text x="725" y="198" font-weight="700" fill="#2b2140">2 · People decide</text>
+    <text x="725" y="219" fill="#2b2140">talk, argue, vote, choose</text>
+
+    <rect x="560" y="300" width="250" height="64" rx="12" fill="#8fd3c7"/>
+    <text x="685" y="328" font-weight="700" fill="#16383E">3 · Group values move</text>
+    <text x="685" y="349" fill="#16383E">each choice nudges a few numbers</text>
+
+    <rect x="70" y="300" width="270" height="64" rx="12" fill="#ffb27a"/>
+    <text x="205" y="328" font-weight="700" fill="#4a1f05">4 · The whole town reacts</text>
+    <text x="205" y="349" fill="#4a1f05">global values + the Overall Index</text>
+
+    <rect x="40" y="170" width="250" height="64" rx="12" fill="#16383E"/>
+    <text x="165" y="198" font-weight="700" fill="#ffffff">5 · The GM reads the room</text>
+    <text x="165" y="219" fill="#d8eeea">…and picks the next beat</text>
+  </g>
+
+  <!-- arrows -->
+  <g fill="none" stroke="#4a3a78" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M550 110 C 640 110, 700 130, 715 166"/>
+    <path d="M720 236 C 720 260, 710 275, 700 296"/>
+    <path d="M556 332 L 346 332"/>
+    <path d="M190 296 C 180 270, 172 255, 168 238"/>
+    <path d="M200 168 C 230 120, 280 108, 326 106"/>
+  </g>
+
+  <text x="440" y="410" text-anchor="middle" font-size="14" fill="#5b5470">The numbers are simple and public — the drama comes from the people in the room.</text>
+</svg>

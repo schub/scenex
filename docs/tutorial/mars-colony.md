@@ -1,9 +1,11 @@
 # Appendix: The Mars Colony scenario
 
-[← Show-day checklist](12-show-day.md) · [Contents](index.md) · [Complete content →](mars-colony-content.md)
+[← Common Ground at a glance](common-ground.md) · [Contents](index.md) · [Complete content →](mars-colony-content.md)
 
-Mars Colony is the example scenario of this tutorial — and a complete,
-playable megagame in its own right.
+Mars Colony is this tutorial's **second example**: a short, complete megagame
+in a completely different world, which shows that Scenex isn't tied to one
+kind of story. Where Common Ground doesn't use a building block — conditions,
+labels, real endings, mixed formulas — the tutorial shows it in Mars Colony.
 
 ![Jezero Crater at dawn](images/jezero-crater.png)
 
@@ -97,4 +99,4 @@ These are deliberate placeholders, to be refined after the first playtest:
 
 ---
 
-[← Show-day checklist](12-show-day.md) · [Contents](index.md) · [Complete content →](mars-colony-content.md)
+[← Common Ground at a glance](common-ground.md) · [Contents](index.md) · [Complete content →](mars-colony-content.md)
