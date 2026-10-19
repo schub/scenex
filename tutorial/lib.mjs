@@ -1,8 +1,8 @@
 // Shared browser helpers for the tutorial generators (screenshots and video).
 
 export const BASE = process.env.TUTORIAL_BASE_URL || "http://localhost:4100";
-export const EMAIL = process.env.TUTORIAL_EMAIL || "director@mars-colony.example";
-export const PASSWORD = process.env.TUTORIAL_PASSWORD || "red-planet-2026";
+export const EMAIL = process.env.TUTORIAL_EMAIL || "director@scenex.example";
+export const PASSWORD = process.env.TUTORIAL_PASSWORD || "common-ground-2026";
 
 // Every page the tutorial shows is a LiveView; act only once it is connected,
 // otherwise input typed before the socket joins is silently lost.
@@ -26,10 +26,22 @@ export async function login(page) {
   await page.waitForURL((u) => !u.pathname.includes("log-in"));
 }
 
-export async function openEditor(page) {
+// Opens a scenario's editor from the list, by its handle as listed there.
+export async function openEditor(page, handle) {
   await page.goto(BASE + "/scenarios");
   await live(page);
-  await page.click("text=Open editor");
+  // The "Open editor" link in the card whose title is exactly this handle.
+  const href = await page.evaluate((h) => {
+    const title = [...document.querySelectorAll("*")].find(
+      (el) => el.children.length === 0 && el.textContent.trim() === h
+    );
+    let card = title?.parentElement;
+    while (card && ![...card.querySelectorAll("a")].some((a) => a.textContent.includes("Open editor"))) {
+      card = card.parentElement;
+    }
+    return [...card.querySelectorAll("a")].find((a) => a.textContent.includes("Open editor")).href;
+  }, handle);
+  await page.goto(href);
   await page.waitForURL(/\/scenarios\/[0-9a-f-]+$/);
   await live(page);
   return page.url();

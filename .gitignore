@@ -40,3 +40,4 @@ npm-debug.log
 # Tutorial generator (tutorial/run.sh)
 /tutorial/node_modules/
 /tutorial/video/build/
+/tutorial/video/cache/

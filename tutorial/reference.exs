@@ -1,16 +1,16 @@
-# Writes docs/tutorial/mars-colony-content.md: every value, group, beat,
-# option and effect of the seeded Mars Colony scenario, straight from the
-# database — so the tutorial's reference never drifts from the content.
+# Writes a Markdown reference of one scenario — every value, group, beat,
+# option and effect, straight from the database — so the tutorial's
+# reference pages never drift from the content.
 #
-#     mix run tutorial/reference.exs [output-path]
+#     mix run tutorial/reference.exs <scenario-handle> <output-path> <back-link>
 
 Logger.configure(level: :warning)
 
 alias Scenex.{Authoring, I18n, Repo}
 alias Scenex.Authoring.Scenario
 
-out = List.first(System.argv()) || "docs/tutorial/mars-colony-content.md"
-scenario = Repo.get_by!(Scenario, handle: "mars_colony")
+[handle, out, back] = System.argv()
+scenario = Repo.get_by!(Scenario, handle: handle)
 t = fn map -> I18n.t(map, "en") || "" end
 
 values = Authoring.list_value_dimensions(scenario)
@@ -53,13 +53,12 @@ plain = fn text -> text |> String.replace(~r/^\*\*[^*]+\*\*\s*—\s*/, "") end
 esc = fn s -> s |> String.replace("|", "\\|") |> String.replace("\n", " ") end
 
 header = """
-# Mars Colony — complete content
+# #{t.(scenario.name)} — complete content
 
 > Generated from the database by `tutorial/reference.exs` — don't edit by
-> hand; change the scenario (`priv/repo/seeds_mars_colony.exs` or the editor)
-> and run `tutorial/run.sh` again.
+> hand; change the scenario and run `tutorial/run.sh` again.
 
-[← Mars Colony](mars-colony.md) · [Contents](index.md)
+[← Back](#{back}) · [Contents](index.md)
 
 **Overall Index:** #{t.(scenario.overall_index_name)} =
 `#{scenario.overall_index_formula}` (#{fmt.(scenario.overall_index_min)}–#{fmt.(scenario.overall_index_max)})
