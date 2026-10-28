@@ -18,18 +18,18 @@ here="$(cd "$(dirname "$0")" && pwd)"
 db="${1:?database url}"
 media="${2:?production media dir}"
 out="${3:-$here/../../../../data/common-ground}"
-handle="${SCENARIO_HANDLE:-COMMON GROUND}"
+key="${SCENARIO_KEY:-COMMON GROUND}"
 
 rm -rf "$out"
 mkdir -p "$out/media"
 cd "$out"
 
-psql "$db" -q -v handle="$handle" -f "$here/export.sql"
+psql "$db" -q -v key="$key" -f "$here/export.sql"
 
 # Media: one folder per file id, as in the production media dir.
 tail -n +2 media_files.csv | cut -d, -f1 | while read -r id; do
   cp -R "$media/$id" "media/$id"
 done
 
-echo "Exported \"$handle\" to $out"
+echo "Exported \"$key\" to $out"
 wc -l ./*.csv | sed 's/^/  /'

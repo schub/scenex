@@ -19,9 +19,9 @@ defmodule Scenex.Authoring.Ending do
   @timestamps_opts [type: :utc_datetime]
 
   schema "endings" do
-    field :handle, :string
+    field :key, :string
     field :title, :map, default: %{}
-    field :narrative, :map, default: %{}
+    field :description, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :condition, :string
     field :priority, :integer, default: 0
@@ -35,22 +35,22 @@ defmodule Scenex.Authoring.Ending do
     ending
     |> cast(attrs, [
       :scenario_id,
-      :handle,
+      :key,
       :title,
-      :narrative,
+      :description,
       :director_notes,
       :condition,
       :priority
     ])
-    |> validate_required([:scenario_id, :handle])
+    |> validate_required([:scenario_id, :key])
     |> validate_localized_required(:title)
     |> validate_condition(:condition,
       allow_self: false,
       keys: Keyword.get(opts, :value_keys)
     )
     |> assoc_constraint(:scenario)
-    |> unique_constraint(:handle,
-      name: :endings_scenario_id_handle_index,
+    |> unique_constraint(:key,
+      name: :endings_scenario_id_key_index,
       message: "is already used in this scenario"
     )
   end

@@ -27,7 +27,7 @@ defmodule ScenexWeb.PlayLive.Group do
     <Layouts.play flash={@flash} header={false}>
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h1 class="text-3xl font-bold">
-          {I18n.t!(@group.name, @locale, default: @group.handle)}
+          {I18n.t!(@group.name, @locale)}
         </h1>
         <div class="flex items-center gap-3">
           <span class={["badge", status_badge(@snap.status)]}>{status_label(@snap.status)}</span>
@@ -40,7 +40,7 @@ defmodule ScenexWeb.PlayLive.Group do
       <div :if={@snap.group_values_visible} class="mt-4 flex flex-wrap justify-center gap-10">
         <div :for={vd <- value_dims(@snap)} class="text-center">
           <div class="text-2xl font-semibold opacity-70">
-            {I18n.t!(vd.name, @locale, default: vd.key)}
+            {I18n.t!(vd.name, @locale)}
           </div>
           <.value_bar
             value={Sim.get(@snap.sim, vd.id, @group.id)}
@@ -72,7 +72,7 @@ defmodule ScenexWeb.PlayLive.Group do
           class="rounded-box border border-base-300 p-4 space-y-3"
         >
           <h3 class="text-xl font-semibold">
-            {I18n.t!(element.title, @locale, default: element.handle)}
+            {I18n.t!(element.title, @locale)}
           </h3>
 
           <%!-- The deadline countdown: a draining progress bar, full width,
@@ -90,7 +90,7 @@ defmodule ScenexWeb.PlayLive.Group do
             </div>
           </div>
 
-          <.markdown text={I18n.t(element.narrative, @locale)} class="text-base" />
+          <.markdown text={I18n.t(element.description, @locale)} class="text-base" />
 
           <div class="flex flex-col gap-3">
             <button
@@ -113,7 +113,7 @@ defmodule ScenexWeb.PlayLive.Group do
             >
               <span class="w-full">
                 <.markdown
-                  text={I18n.t!(option.text, @locale, default: option.handle)}
+                  text={I18n.t!(option.name, @locale)}
                   class="text-base font-normal"
                 />
                 <span :for={l <- option.labels} class={["badge badge-xs ml-1", label_class(l.color)]}>
@@ -151,7 +151,7 @@ defmodule ScenexWeb.PlayLive.Group do
           <h3 class="text-xl font-bold">{gettext("Lock in your decision?")}</h3>
           <div class="rounded-box bg-base-200 p-3">
             <.markdown
-              text={I18n.t!(option.text, @locale, default: option.handle)}
+              text={I18n.t!(option.name, @locale)}
               class="text-base"
             />
           </div>
@@ -196,7 +196,7 @@ defmodule ScenexWeb.PlayLive.Group do
            group: token.group,
            session_id: token.session_id,
            locale: locale,
-           page_title: token.group.handle,
+           page_title: I18n.t!(token.group.name, locale),
            snap: snap,
            pending: nil
          )}

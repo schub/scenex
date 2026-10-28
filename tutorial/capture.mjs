@@ -91,15 +91,15 @@ async function codes(groups) {
   return page.$$eval("a[target=_blank]", (as) => as.map((a) => a.href));
 }
 
-async function choose(card, handles) {
-  for (const h of handles) {
+async function choose(card, keys) {
+  for (const h of keys) {
     await card.locator(`[phx-click=choose]:has-text("${h}")`).first().click();
     await settle(page, 250);
   }
 }
 
-async function showPage(handle, display, name) {
-  await page.click(`[phx-click=show_page]:has-text("${handle}")`);
+async function showPage(key, display, name) {
+  await page.click(`[phx-click=show_page]:has-text("${key}")`);
   await settle(page, 900);
   if (name) await shot(name, display);
 }

@@ -30,32 +30,32 @@ defmodule ScenexWeb.SessionLiveTest do
         max: 4.0
       )
 
-    gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+    gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
-    event = timeline_element_fixture(scenario, handle: "Blackout", position: 1)
+    event = timeline_element_fixture(scenario, key: "Blackout", position: 1)
 
     {:ok, crack} =
-      Authoring.create_decision_option(event, gov, %{handle: "Crack", text: %{"en" => "Crack"}})
+      Authoring.create_decision_option(event, gov, %{key: "Crack", name: %{"en" => "Crack"}})
 
     Authoring.set_option_effect(crack, stability, 2.0)
 
     {:ok, election} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Referendum",
+        key: "Referendum",
         title: %{"en" => "Referendum"},
         kind: :election,
         position: 2
       })
 
     {:ok, yes} =
-      Authoring.create_decision_option(election, nil, %{handle: "Yes", text: %{"en" => "Yes"}})
+      Authoring.create_decision_option(election, nil, %{key: "Yes", name: %{"en" => "Yes"}})
 
     Authoring.set_option_effect(yes, stability, gov, 2.0)
 
     {:ok, sidequest} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Leak",
+        key: "Leak",
         title: %{"en" => "Leak"},
         kind: :sidequest,
         position: 3
@@ -63,14 +63,14 @@ defmodule ScenexWeb.SessionLiveTest do
 
     {:ok, success} =
       Authoring.create_decision_option(sidequest, nil, %{
-        handle: "Published",
-        text: %{"en" => "Published"},
+        key: "Published",
+        name: %{"en" => "Published"},
         outcome: :success
       })
 
     {:ok, ending} =
       Authoring.create_ending(scenario, %{
-        handle: "Stabilized",
+        key: "Stabilized",
         title: %{"en" => "Stabilized"},
         condition: "global(stability) >= 6"
       })
@@ -99,7 +99,7 @@ defmodule ScenexWeb.SessionLiveTest do
 
   test "creating a session from the index opens the console", ctx do
     %{conn: conn, scenario: scenario} = ctx
-    opp = group_fixture(scenario, handle: "Opp", name: %{"en" => "Opposition"})
+    opp = group_fixture(scenario, key: "Opp", name: %{"en" => "Opposition"})
 
     {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/sessions")
     assert html =~ "Premiere"
@@ -373,7 +373,7 @@ defmodule ScenexWeb.SessionLiveTest do
   end
 
   test "the GM can show and clear a full-screen page", ctx do
-    {:ok, page} = Authoring.create_page(ctx.scenario, %{handle: "Welcome"})
+    {:ok, page} = Authoring.create_page(ctx.scenario, %{key: "Welcome"})
 
     {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
     on_exit(fn -> Play.stop_running(session.id) end)
@@ -445,10 +445,10 @@ defmodule ScenexWeb.SessionLiveTest do
       })
 
     {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "Breakdown"}, position: 0})
 
     {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "In Bloom"}, position: 1})
 
     {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
 

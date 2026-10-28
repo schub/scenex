@@ -13,7 +13,7 @@ you don't rebuild it: you **translate** it, maybe **add** a local touch, and
 |---|---|
 | groups, values, the Democracy Score | your translation |
 | every beat, every option, every number | your performances (sessions) |
-| the handles (internal names) | your local extra beats, if you want them |
+| the keys (internal names) | your local extra beats, if you want them |
 
 Anything you change in the shared part, **every** theatre gets in its next
 performance. So: translate freely, add carefully, and talk to the others
@@ -28,15 +28,15 @@ before changing a number.
 
 ![The Chamber of Commerce with the working locale set to German](images/translate-de.png)
 
-Only **texts** get translated: names, titles, narratives, option texts,
-descriptions, pages. Numbers, formulas, conditions and handles are the same
+Only **texts** get translated: names, titles, descriptions, pages.
+Numbers, formulas, conditions and keys are the same
 in every language.
 
 A good order of work:
 
 1. **Group names and value names** — they're on every screen.
-2. **Titles and narratives** of the beats.
-3. **Option texts** — short! They have to fit on a phone.
+2. **Titles and descriptions** of the beats.
+3. **Option names** — short! They have to fit on a phone.
 4. **Pages.** Common Ground's pages are pictures, some with English text in
    them. Make your own version of the picture, upload it in **Media**, and
    put its link into the page *in your language*.
@@ -63,23 +63,23 @@ forced to play it: beats only happen when a game master triggers them.
 
 To keep the shared scenario tidy:
 
-- **Start the handle with your country or city code** — for example
+- **Start the key with your country or city code** — for example
   `XY · Harbour Festival`. Everyone sees at a glance whose beat it is.
 - **Mention it in its director's notes**: *"Local extra — other theatres
   skip this."*
 - **Don't change the shared beats.** If you think an option or a number
   should change for everybody, talk to the others first.
 
-## Never translate a handle
+## Never translate a key
 
-Handles are the internal names — `Key Event 1`, `Chamber of Commerce`. They
+Keys are the internal names — `Key Event 1`, `Chamber of Commerce`. They
 are how all of us find our way around the shared scenario, so **they always
 stay in English**.
 
-It has happened: someone translated the group handles into their own
+It has happened: someone translated the group keys into their own
 language. Suddenly every other team saw names they couldn't read in their
 editor. Easy to fix, but confusing for a while. Translations go into the
-**Name** fields of your language — the handle field stays as it is.
+**Name** fields of your language — the key field stays as it is.
 
 ## Playing in your language
 

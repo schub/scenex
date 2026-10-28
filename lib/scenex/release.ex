@@ -87,7 +87,7 @@ defmodule Scenex.Release do
           user ->
             case Scenex.DemoScenario.create(user) do
               {:ok, scenario} ->
-                "Created demo scenario \"#{scenario.handle}\" owned by #{email}."
+                "Created demo scenario \"#{scenario.key}\" owned by #{email}."
 
               {:error, :already_exists} ->
                 "#{email} already has a \"CIVITAS\" scenario — nothing created."

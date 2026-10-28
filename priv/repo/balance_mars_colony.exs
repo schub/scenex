@@ -20,15 +20,15 @@ alias Scenex.Play.{Definition, Projection}
 
 runs = String.to_integer(List.first(System.argv()) || "20000")
 
-scenario = Repo.get_by!(Scenario, handle: "mars_colony")
+scenario = Repo.get_by!(Scenario, key: "mars_colony")
 definition = Definition.load(scenario)
 
-element = fn handle ->
-  Enum.find(Map.values(definition.elements), &(&1.handle == handle)) ||
-    raise "no element #{handle}"
+element = fn key ->
+  Enum.find(Map.values(definition.elements), &(&1.key == key)) ||
+    raise "no element #{key}"
 end
 
-group_handle = Map.new(definition.groups, fn {id, g} -> {id, g.handle} end)
+group_handle = Map.new(definition.groups, fn {id, g} -> {id, g.key} end)
 key_of = Map.new(definition.value_dimensions, &{&1.id, &1.key})
 
 globals_by_key = fn sim ->
@@ -40,7 +40,7 @@ vitality = fn sim ->
   v
 end
 
-bands = Enum.map(definition.overall_index_bands, fn b -> b.label["en"] end)
+bands = Enum.map(definition.overall_index_bands, fn b -> b.name["en"] end)
 
 band = fn v ->
   idx = min(trunc(v / 10 * length(bands)), length(bands) - 1)
@@ -55,7 +55,7 @@ recommended_ending = fn sim ->
   |> Enum.max_by(& &1.priority, fn -> nil end)
   |> case do
     nil -> "(none)"
-    e -> e.handle
+    e -> e.key
   end
 end
 
@@ -121,8 +121,8 @@ pick = fn policy, p, eid, slot_payload, options ->
   pick0.(pick0, policy, p, eid, slot_payload, options)
 end
 
-play_event = fn p, handle, policy, stats ->
-  el = element.(handle)
+play_event = fn p, key, policy, stats ->
+  el = element.(key)
   p = ev.(p, "element_triggered", %{"element_id" => el.id})
   before = p.sim
 
@@ -132,7 +132,7 @@ play_event = fn p, handle, policy, stats ->
 
     st =
       Enum.reduce(all -- open, st, fn o, s ->
-        Map.update(s, {:gate_closed, o.handle}, 1, &(&1 + 1))
+        Map.update(s, {:gate_closed, o.key}, 1, &(&1 + 1))
       end)
 
     payload = fn o ->
@@ -143,13 +143,13 @@ play_event = fn p, handle, policy, stats ->
     end
 
     chosen = pick.(policy, acc, el.id, payload, open)
-    st = Map.update(st, {:chosen, chosen.handle}, 1, &(&1 + 1))
+    st = Map.update(st, {:chosen, chosen.key}, 1, &(&1 + 1))
     {ev.(acc, "option_chosen", payload.(chosen).payload), st}
   end)
 end
 
-play_wildcard = fn p, handle, success? ->
-  el = element.(handle)
+play_wildcard = fn p, key, success? ->
+  el = element.(key)
   outcome = if success?, do: :success, else: :failure
   option = Enum.find(definition.options_by_element[el.id], &(&1.outcome == outcome))
 
@@ -168,7 +168,7 @@ play_vote = fn p, policy, stats ->
   end
 
   chosen = pick.(policy, p, el.id, payload, open)
-  stats = Map.update(stats, {:vote, chosen.handle}, 1, &(&1 + 1))
+  stats = Map.update(stats, {:vote, chosen.key}, 1, &(&1 + 1))
   stats = if length(open) < 3, do: Map.update(stats, :alone_gated, 1, &(&1 + 1)), else: stats
   {ev.(p, "election_resolved", payload.(chosen).payload), stats}
 end
@@ -178,7 +178,7 @@ command_id = Enum.find(definition.group_ids, &(group_handle[&1] == "command"))
 called_earth? = fn p ->
   storm = element.("the_storm")
   oid = get_in(p.decisions, [storm.id, command_id])
-  oid && definition.options[oid].handle == "Call Earth"
+  oid && definition.options[oid].key == "Call Earth"
 end
 
 checkpoints = ~w(start what_to_bring touchdown settling_in the_storm rationing end)a
@@ -318,7 +318,7 @@ end
 IO.puts("  Options never chosen at random:")
 
 all_event_options =
-  for {_eid, opts} <- definition.options_by_element, o <- opts, o.group_id, do: o.handle
+  for {_eid, opts} <- definition.options_by_element, o <- opts, o.group_id, do: o.key
 
 never = Enum.reject(all_event_options, &Map.has_key?(stats, {:chosen, &1}))
 IO.puts("    " <> if(never == [], do: "(none)", else: Enum.join(never, ", ")))

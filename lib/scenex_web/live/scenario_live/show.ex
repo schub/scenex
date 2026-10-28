@@ -95,10 +95,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
             phx-submit="save_settings"
             class="max-w-xl space-y-4"
           >
-            <.input
-              field={@settings_form[:handle]}
-              label="Handle (internal, not translated)"
-            />
+            <.input field={@settings_form[:key]} label="Key" title={key_hint()} />
             <.input
               type="text"
               name={"scenario[name][#{@locale}]"}
@@ -159,7 +156,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   phx-value-id={v.id}
                   class={selected_item(@editing_value, v)}
                 >
-                  <span class="truncate font-mono text-xs">{v.key}</span>
+                  <.keyed_name name={v.name} key={v.key} locale={@locale} />
                   <span :if={v.input_scope == :per_participant} class="badge badge-xs badge-ghost">
                     per participant
                   </span>
@@ -173,7 +170,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
             <div class="card-body">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold">
-                  {if @editing_value, do: "Edit value — #{@editing_value.key}", else: "New value"}
+                  {if @editing_value,
+                    do: "Edit value — #{editor_name(@editing_value, @locale)}",
+                    else: "New value"}
                 </h3>
                 <button
                   :if={@can_edit? and @editing_value}
@@ -193,7 +192,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 class="grid gap-3 sm:grid-cols-2"
               >
                 <fieldset disabled={not @can_edit?} class="contents">
-                  <.input field={@value_form[:key]} label="Key (slug)" />
+                  <.input field={@value_form[:key]} label="Key (used in formulas)" title={key_hint()} />
                   <.input
                     field={@value_form[:input_scope]}
                     type="select"
@@ -299,7 +298,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                       class={selected_item(@editing_value_step, s)}
                     >
                       <span class="text-lg">{s.emoji}</span>
-                      <span>{I18n.t!(s.label, @locale, default: "")}</span>
+                      <span>{I18n.t!(s.name, @locale, default: "")}</span>
                       <span class="text-xs opacity-60">position {s.position}</span>
                     </button>
                   </li>
@@ -315,8 +314,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     <.input field={@value_step_form[:emoji]} label="Emoji" />
                     <.input
                       type="text"
-                      name={"value_dimension_step[label][#{@locale}]"}
-                      value={LocalizedForm.value(@value_step_form, :label, @locale)}
+                      name={"value_dimension_step[name][#{@locale}]"}
+                      value={LocalizedForm.value(@value_step_form, :name, @locale)}
                       label={"Name (#{@locale}, optional)"}
                     />
                     <.input field={@value_step_form[:position]} type="number" label="Position" />
@@ -450,7 +449,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                         {overall_index_band_position_label(i, length(@overall_index_bands))}
                       </span>
                       <span class="truncate">
-                        {I18n.t!(b.label, @locale, default: "(untranslated)")}
+                        {I18n.t!(b.name, @locale, default: "(untranslated)")}
                       </span>
                     </button>
                   </li>
@@ -487,9 +486,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
                       <div class="sm:col-span-2">
                         <.input
                           type="text"
-                          name={"overall_index_band[label][#{@locale}]"}
-                          value={LocalizedForm.value(@overall_index_band_form, :label, @locale)}
-                          label={"Label (#{@locale})"}
+                          name={"overall_index_band[name][#{@locale}]"}
+                          value={LocalizedForm.value(@overall_index_band_form, :name, @locale)}
+                          label={"Name (#{@locale})"}
                         />
                       </div>
                       <.input
@@ -535,7 +534,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   phx-value-id={g.id}
                   class={selected_item(@editing_group, g)}
                 >
-                  <span class="truncate">{g.handle}</span>
+                  <.keyed_name name={g.name} key={g.key} locale={@locale} />
                 </button>
               </li>
               <li :if={@groups == []} class="menu-disabled"><span>No groups yet.</span></li>
@@ -546,7 +545,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
             <div class="card-body">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold">
-                  {if @editing_group, do: "Edit group — #{@editing_group.handle}", else: "New group"}
+                  {if @editing_group,
+                    do: "Edit group — #{editor_name(@editing_group, @locale)}",
+                    else: "New group"}
                 </h3>
                 <button
                   :if={@can_edit? and @editing_group}
@@ -566,7 +567,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 class="grid gap-3 sm:grid-cols-2"
               >
                 <fieldset disabled={not @can_edit?} class="contents">
-                  <.input field={@group_form[:handle]} label="Handle (internal)" />
+                  <.input field={@group_form[:key]} label="Key" title={key_hint()} />
                   <.input
                     type="text"
                     name={"group[name][#{@locale}]"}
@@ -668,7 +669,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   class={e.id == @selected_timeline_element_id && "menu-active"}
                 >
                   <span class="opacity-50">{e.position}.</span>
-                  <span class="truncate">{e.handle}</span>
+                  <.keyed_name name={e.title} key={e.key} locale={@locale} />
                   <span class="badge badge-xs badge-ghost">{kind_label(e.kind)}</span>
                   <span :if={e.deadline_seconds} title={fmt_deadline(e.deadline_seconds)}>⏱</span>
                 </button>
@@ -685,7 +686,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 <div class="flex items-center justify-between">
                   <h3 class="font-semibold">
                     {if @editing_event,
-                      do: "Edit element — #{@editing_event.handle}",
+                      do: "Edit element — #{editor_name(@editing_event, @locale)}",
                       else: "New element"}
                   </h3>
                   <button
@@ -706,7 +707,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   class="grid gap-3 sm:grid-cols-2"
                 >
                   <fieldset disabled={not @can_edit?} class="contents">
-                    <.input field={@event_form[:handle]} label="Handle (internal)" />
+                    <.input field={@event_form[:key]} label="Key" title={key_hint()} />
                     <.input
                       type="text"
                       name={"timeline_element[title][#{@locale}]"}
@@ -717,9 +718,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     <div class="sm:col-span-2">
                       <.input
                         type="textarea"
-                        name={"timeline_element[narrative][#{@locale}]"}
-                        value={LocalizedForm.value(@event_form, :narrative, @locale)}
-                        label={"Narrative (#{@locale}, Markdown)"}
+                        name={"timeline_element[description][#{@locale}]"}
+                        value={LocalizedForm.value(@event_form, :description, @locale)}
+                        label={"Description (#{@locale}, Markdown)"}
                       />
                     </div>
                     <div class="sm:col-span-2">
@@ -773,7 +774,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
                 <div :for={group <- @groups} class="space-y-2">
                   <div class="flex items-center justify-between">
-                    <h4 class="font-medium">{I18n.t!(group.name, @locale, default: group.handle)}</h4>
+                    <h4 class="font-medium">{I18n.t!(group.name, @locale, default: group.key)}</h4>
                     <button
                       :if={@can_edit?}
                       type="button"
@@ -864,9 +865,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
               <button type="button" phx-click="cancel_option" class="btn btn-xs">← Back</button>
               <div class="breadcrumbs p-0 text-sm">
                 <ul>
-                  <li>{@selected_timeline_element && @selected_timeline_element.handle}</li>
+                  <li>
+                    {@selected_timeline_element && editor_name(@selected_timeline_element, @locale)}
+                  </li>
                   <li class="font-medium">
-                    {(@editing_option && @editing_option.handle) || "New option"}
+                    {(@editing_option && editor_name(@editing_option, @locale)) || "New option"}
                   </li>
                 </ul>
               </div>
@@ -891,12 +894,12 @@ defmodule ScenexWeb.ScenarioLive.Show do
                     name="option[outcome]"
                     value={@option_outcome}
                   />
-                  <.input field={@option_form[:handle]} label="Handle (internal)" />
+                  <.input field={@option_form[:key]} label="Key" title={key_hint()} />
                   <.input
                     type="text"
-                    name={"option[text][#{@locale}]"}
-                    value={LocalizedForm.value(@option_form, :text, @locale)}
-                    label={"Option text (#{@locale})"}
+                    name={"option[name][#{@locale}]"}
+                    value={LocalizedForm.value(@option_form, :name, @locale)}
+                    label={"Name (#{@locale})"}
                   />
                   <.input
                     type="textarea"
@@ -998,7 +1001,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                         </thead>
                         <tbody>
                           <tr :for={g <- @groups}>
-                            <td class="font-medium">{I18n.t!(g.name, @locale, default: g.handle)}</td>
+                            <td class="font-medium">{I18n.t!(g.name, @locale, default: g.key)}</td>
                             <td :for={v <- per_group_values(@value_dimensions)}>
                               <input
                                 type="number"
@@ -1049,7 +1052,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 >
                   <span :if={l.icon}>{l.icon}</span>
                   <span class={["badge badge-sm", label_class(l.color)]}>
-                    {I18n.t!(l.name, @locale, default: l.handle)}
+                    {I18n.t!(l.name, @locale, default: l.key)}
                   </span>
                 </button>
               </li>
@@ -1061,7 +1064,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
             <div class="card-body">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold">
-                  {if @editing_label, do: "Edit label — #{@editing_label.handle}", else: "New label"}
+                  {if @editing_label,
+                    do: "Edit label — #{editor_name(@editing_label, @locale)}",
+                    else: "New label"}
                 </h3>
                 <button
                   :if={@can_edit? and @editing_label}
@@ -1081,7 +1086,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 class="grid gap-3 sm:grid-cols-2"
               >
                 <fieldset disabled={not @can_edit?} class="contents">
-                  <.input field={@label_form[:handle]} label="Handle (internal)" />
+                  <.input field={@label_form[:key]} label="Key" title={key_hint()} />
                   <.input
                     type="text"
                     name={"label[name][#{@locale}]"}
@@ -1140,7 +1145,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   phx-value-id={e.id}
                   class={selected_item(@editing_ending, e)}
                 >
-                  <span class="truncate">{e.handle}</span>
+                  <.keyed_name name={e.title} key={e.key} locale={@locale} />
                   <span :if={e.condition} class="badge badge-xs badge-ghost font-mono">
                     {e.priority}
                   </span>
@@ -1157,7 +1162,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold">
                   {if @editing_ending,
-                    do: "Edit ending — #{@editing_ending.handle}",
+                    do: "Edit ending — #{editor_name(@editing_ending, @locale)}",
                     else: "New ending"}
                 </h3>
                 <button
@@ -1178,7 +1183,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                 class="grid gap-3 sm:grid-cols-2"
               >
                 <fieldset disabled={not @can_edit?} class="contents">
-                  <.input field={@ending_form[:handle]} label="Handle (internal)" />
+                  <.input field={@ending_form[:key]} label="Key" title={key_hint()} />
                   <.input
                     type="text"
                     name={"ending[title][#{@locale}]"}
@@ -1188,9 +1193,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   <div class="sm:col-span-2">
                     <.input
                       type="textarea"
-                      name={"ending[narrative][#{@locale}]"}
-                      value={LocalizedForm.value(@ending_form, :narrative, @locale)}
-                      label={"Narrative (#{@locale}, Markdown)"}
+                      name={"ending[description][#{@locale}]"}
+                      value={LocalizedForm.value(@ending_form, :description, @locale)}
+                      label={"Description (#{@locale}, Markdown)"}
                     />
                   </div>
                   <div class="sm:col-span-2">
@@ -1247,7 +1252,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
                   phx-value-id={p.id}
                   class={selected_item(@editing_page, p)}
                 >
-                  <span class="truncate">{p.handle}</span>
+                  <span class="truncate">{p.key}</span>
                 </button>
               </li>
               <li :if={@pages == []} class="menu-disabled">
@@ -1260,7 +1265,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
             <div class="card-body">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold">
-                  {if @editing_page, do: "Edit page — #{@editing_page.handle}", else: "New page"}
+                  {if @editing_page, do: "Edit page — #{@editing_page.key}", else: "New page"}
                 </h3>
                 <button
                   :if={@can_edit? and @editing_page}
@@ -1281,8 +1286,9 @@ defmodule ScenexWeb.ScenarioLive.Show do
               >
                 <fieldset disabled={not @can_edit?} class="contents">
                   <.input
-                    field={@page_form[:handle]}
-                    label="Handle — also the GM's button label in the console"
+                    field={@page_form[:key]}
+                    label="Key — also the GM's button label in the console"
+                    title={key_hint()}
                   />
                   <.input field={@page_form[:position]} type="number" label="Position" />
                   <div class="sm:col-span-2">
@@ -1818,7 +1824,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
         %ValueDimension{} = vd ->
           data = socket.assigns.editing_value_step
           params = tracked_params(socket, :value_step_form, params)
-          attrs = LocalizedForm.merge(params, data || %ValueDimensionStep{}, [:label])
+          attrs = LocalizedForm.merge(params, data || %ValueDimensionStep{}, [:name])
 
           result =
             if data,
@@ -1962,7 +1968,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
     with_edit(socket, fn ->
       params = tracked_params(socket, :event_form, params)
       data = socket.assigns.editing_event || %TimelineElement{}
-      attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
+      attrs = LocalizedForm.merge(params, data, [:title, :description, :director_notes])
 
       result =
         if socket.assigns.editing_event,
@@ -2063,7 +2069,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
       timeline_element = socket.assigns.selected_timeline_element
       group = Enum.find(socket.assigns.groups, &(&1.id == socket.assigns.option_group_id))
       data = socket.assigns.editing_option || %DecisionOption{}
-      attrs = LocalizedForm.merge(params, data, [:text, :director_notes])
+      attrs = LocalizedForm.merge(params, data, [:name, :director_notes])
 
       result =
         if socket.assigns.editing_option,
@@ -2175,7 +2181,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
     with_edit(socket, fn ->
       params = tracked_params(socket, :ending_form, params)
       data = socket.assigns.editing_ending || %Ending{}
-      attrs = LocalizedForm.merge(params, data, [:title, :narrative, :director_notes])
+      attrs = LocalizedForm.merge(params, data, [:title, :description, :director_notes])
 
       result =
         if socket.assigns.editing_ending,
@@ -2277,7 +2283,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
     with_edit(socket, fn ->
       params = tracked_params(socket, :overall_index_band_form, params)
       data = socket.assigns.editing_overall_index_band || %OverallIndexBand{}
-      attrs = LocalizedForm.merge(params, data, [:label])
+      attrs = LocalizedForm.merge(params, data, [:name])
 
       result =
         if socket.assigns.editing_overall_index_band,
@@ -2623,7 +2629,7 @@ defmodule ScenexWeb.ScenarioLive.Show do
       prefix =
         case e.group_id && groups_index[e.group_id] do
           nil -> ""
-          g -> I18n.t!(g.name, locale, default: g.handle) <> ": "
+          g -> I18n.t!(g.name, locale, default: g.key) <> ": "
         end
 
       sign = if e.delta >= 0, do: "+", else: ""
@@ -2649,8 +2655,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
     ~H"""
     <li class="flex items-center justify-between gap-2 rounded bg-base-200 px-3 py-2">
       <div class="min-w-0">
-        <span class="text-sm font-medium">{@option.handle}</span>
-        <span class="text-sm opacity-70">— {I18n.t!(@option.text, @locale, default: "—")}</span>
+        <span class="text-sm font-medium">
+          {I18n.t!(@option.name, @locale, default: @option.key)}
+        </span>
+        <span class="font-mono text-xs opacity-50">{@option.key}</span>
         <span :if={@option.is_default} class="badge badge-xs badge-info ml-1">default</span>
         <span :if={@option.condition} class="badge badge-xs badge-warning ml-1 font-mono">
           {@option.condition}
@@ -2720,6 +2728,34 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   defp sidebar_classes,
     do: "space-y-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+
+  # An entity's display text in the working locale (`title` for content with a
+  # body, `name` otherwise), falling back to its key — the editor is for
+  # authors, who may see keys.
+  defp key_hint,
+    do: "Untranslated identifier for authors and the GM — never shown to the audience."
+
+  defp editor_name(%{title: title, key: key}, locale), do: I18n.t!(title, locale, default: key)
+  defp editor_name(%{name: name, key: key}, locale), do: I18n.t!(name, locale, default: key)
+
+  # A list entry: the display text in the working locale, with the untranslated
+  # key underneath for orientation across languages (omitted when identical).
+  attr :name, :map, required: true
+  attr :key, :string, required: true
+  attr :locale, :string, required: true
+
+  defp keyed_name(assigns) do
+    assigns = assign(assigns, :text, I18n.t!(assigns.name, assigns.locale, default: assigns.key))
+
+    ~H"""
+    <span class="flex min-w-0 flex-col items-start">
+      <span class="max-w-full truncate">{@text}</span>
+      <span :if={@text != @key} class="max-w-full truncate font-mono text-xs opacity-50">
+        {@key}
+      </span>
+    </span>
+    """
+  end
 
   defp selected_item(%{id: id}, %{id: id}), do: "menu-active"
   defp selected_item(_editing, _item), do: nil

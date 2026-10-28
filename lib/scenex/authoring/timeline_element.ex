@@ -23,9 +23,9 @@ defmodule Scenex.Authoring.TimelineElement do
   def triggers, do: @triggers
 
   schema "timeline_elements" do
-    field :handle, :string
+    field :key, :string
     field :title, :map, default: %{}
-    field :narrative, :map, default: %{}
+    field :description, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :position, :integer, default: 0
     field :kind, Ecto.Enum, values: @kinds, default: :event
@@ -42,21 +42,21 @@ defmodule Scenex.Authoring.TimelineElement do
     timeline_element
     |> cast(attrs, [
       :scenario_id,
-      :handle,
+      :key,
       :title,
-      :narrative,
+      :description,
       :director_notes,
       :position,
       :kind,
       :trigger,
       :deadline_seconds
     ])
-    |> validate_required([:scenario_id, :handle, :kind, :trigger])
+    |> validate_required([:scenario_id, :key, :kind, :trigger])
     |> validate_localized_required(:title)
     |> validate_number(:deadline_seconds, greater_than: 0)
     |> assoc_constraint(:scenario)
-    |> unique_constraint(:handle,
-      name: :timeline_elements_scenario_id_handle_index,
+    |> unique_constraint(:key,
+      name: :timeline_elements_scenario_id_key_index,
       message: "is already used in this scenario"
     )
   end

@@ -47,8 +47,12 @@ ask rather than doing it incidentally.
 - **Scope first.** Contexts take `current_scope` as their first argument. In
   templates use `@current_scope.user` — never `@current_user`.
 - **All schemas use `binary_id` (UUID) primary keys.**
-- **Every content entity has a `handle`** — required, never translated, unique
-  within its scope. Player-facing text lives in separate localized fields.
+- **Every content entity has a `key`** — required, never translated, unique
+  within its scope, never shown to the audience (authors and the GM see it).
+  Value keys are slugs because formulas reference them; all other keys are
+  free text. Audience-facing text lives in localized fields with one
+  vocabulary: `name` for what a thing is called, `title` for the headline of
+  content with a body, `description` for the long Markdown body.
 - **Localized content is a `jsonb` map** of `locale => string`, rendered
   through `Scenex.I18n` with fallback to the scenario's `source_locale`. UI
   chrome uses Gettext instead. Don't mix the two up.

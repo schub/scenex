@@ -59,12 +59,12 @@ editing — more in [Your Common Ground](08-your-common-ground.md).
 2. **Long texts are Markdown.** Write `**bold**` for **bold**, `*italic*`
    for *italic*, start a line with `- ` for a bullet point. Pictures from the
    media library can go right into the text.
-3. **Handles stay in English.** They're the internal names everybody uses to
+3. **Keys stay in English.** They're the internal names everybody uses to
    find things — translations go into the separate text fields.
 
 ## Settings
 
-- **Handle** — the internal name (Common Ground's is `COMMON GROUND`).
+- **Key** — the internal name (Common Ground's is `COMMON GROUND`).
 - **Name, Tagline, Description** — how you present the scenario.
 - **Director's notes** — notes for the game master about the whole show: the
   run sheet, the arc, timing.
