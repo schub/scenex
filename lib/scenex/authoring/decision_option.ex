@@ -31,8 +31,8 @@ defmodule Scenex.Authoring.DecisionOption do
   def outcomes, do: @outcomes
 
   schema "decision_options" do
-    field :handle, :string
-    field :text, :map, default: %{}
+    field :key, :string
+    field :name, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :condition, :string
     field :outcome, Ecto.Enum, values: @outcomes
@@ -61,20 +61,20 @@ defmodule Scenex.Authoring.DecisionOption do
     |> cast(attrs, [
       :timeline_element_id,
       :group_id,
-      :handle,
-      :text,
+      :key,
+      :name,
       :director_notes,
       :condition,
       :outcome,
       :is_default,
       :position
     ])
-    |> validate_required([:timeline_element_id, :handle])
-    |> validate_localized_required(:text)
+    |> validate_required([:timeline_element_id, :key])
+    |> validate_localized_required(:name)
     |> validate_by_kind(kind, Keyword.get(opts, :value_keys))
     |> assoc_constraint(:timeline_element)
-    |> unique_constraint(:handle,
-      name: :decision_options_timeline_element_id_handle_index,
+    |> unique_constraint(:key,
+      name: :decision_options_timeline_element_id_key_index,
       message: "is already used in this timeline element"
     )
   end

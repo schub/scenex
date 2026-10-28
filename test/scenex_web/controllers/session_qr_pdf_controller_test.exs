@@ -10,7 +10,7 @@ defmodule ScenexWeb.SessionQrPdfControllerTest do
 
   setup %{user: user} do
     scenario = scenario_fixture(user)
-    gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+    gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
     {:ok, session} = Play.create_session(user, scenario, %{label: "Premiere"})
     on_exit(fn -> Play.stop_running(session.id) end)
 
@@ -23,11 +23,11 @@ defmodule ScenexWeb.SessionQrPdfControllerTest do
     scenario: scenario,
     user: user
   } do
-    opp = group_fixture(scenario, handle: "Opp", name: %{"en" => "Opposition"})
+    opp = group_fixture(scenario, key: "Opp", name: %{"en" => "Opposition"})
 
     media =
       group_fixture(scenario,
-        handle: "Media",
+        key: "Media",
         name: %{"en" => "Independent Press & Broadcasters Association"}
       )
 
@@ -57,7 +57,7 @@ defmodule ScenexWeb.SessionQrPdfControllerTest do
     gov: gov,
     scenario: scenario
   } do
-    opp = group_fixture(scenario, handle: "Opp", name: %{"en" => "Opposition"})
+    opp = group_fixture(scenario, key: "Opp", name: %{"en" => "Opposition"})
 
     assert Play.list_tokens(session) == []
 

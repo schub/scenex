@@ -26,11 +26,11 @@ export async function login(page) {
   await page.waitForURL((u) => !u.pathname.includes("log-in"));
 }
 
-// Opens a scenario's editor from the list, by its handle as listed there.
-export async function openEditor(page, handle) {
+// Opens a scenario's editor from the list, by its key as listed there.
+export async function openEditor(page, key) {
   await page.goto(BASE + "/scenarios");
   await live(page);
-  // The "Open editor" link in the card whose title is exactly this handle.
+  // The "Open editor" link in the card whose title is exactly this key.
   const href = await page.evaluate((h) => {
     const title = [...document.querySelectorAll("*")].find(
       (el) => el.children.length === 0 && el.textContent.trim() === h
@@ -40,7 +40,7 @@ export async function openEditor(page, handle) {
       card = card.parentElement;
     }
     return [...card.querySelectorAll("a")].find((a) => a.textContent.includes("Open editor")).href;
-  }, handle);
+  }, key);
   await page.goto(href);
   await page.waitForURL(/\/scenarios\/[0-9a-f-]+$/);
   await live(page);
@@ -52,15 +52,15 @@ export async function tab(page, section) {
   await settle(page);
 }
 
-// A list entry in one of the editor's left-hand menus, by its handle.
-export async function pick(page, event, handle) {
-  await page.click(`[phx-click=${event}]:has-text("${handle}")`);
+// A list entry in one of the editor's left-hand menus, by its key.
+export async function pick(page, event, key) {
+  await page.click(`[phx-click=${event}]:has-text("${key}")`);
   await settle(page);
 }
 
 // The Edit button of one option row in the opened timeline element.
-export async function editOption(page, handle) {
-  await page.locator(`li:has-text("${handle}") [phx-click=edit_option]`).first().click();
+export async function editOption(page, key) {
+  await page.locator(`li:has-text("${key}") [phx-click=edit_option]`).first().click();
   await settle(page);
 }
 

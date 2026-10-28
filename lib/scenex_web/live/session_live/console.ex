@@ -139,7 +139,7 @@ defmodule ScenexWeb.SessionLive.Console do
           phx-value-id={page.id}
           class={["btn btn-xs", (@snap.active_page_id == page.id && "btn-primary") || "btn-soft"]}
         >
-          {page.handle}
+          {page.key}
         </button>
         <button
           :if={@snap.active_page_id}
@@ -169,7 +169,7 @@ defmodule ScenexWeb.SessionLive.Console do
           <tbody>
             <tr :for={g <- groups(@snap)}>
               <td class="font-medium whitespace-nowrap">
-                {I18n.t!(g.name, @locale, default: g.handle)}
+                {I18n.t!(g.name, @locale, default: g.key)}
               </td>
               <td
                 :for={vd <- value_dims(@snap)}
@@ -296,7 +296,7 @@ defmodule ScenexWeb.SessionLive.Console do
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="text-lg font-semibold">
               <span class="opacity-50">{element.position}.</span>
-              {I18n.t!(element.title, @locale, default: element.handle)}
+              {I18n.t!(element.title, @locale, default: element.key)}
             </h3>
             <span class="badge badge-sm">{kind_label(element.kind)}</span>
             <span :if={element.id in @snap.triggered} class="badge badge-sm badge-primary badge-soft">
@@ -352,7 +352,7 @@ defmodule ScenexWeb.SessionLive.Console do
             <div :if={element.kind == :event} class="space-y-2">
               <div :for={g <- groups(@snap)} class="flex flex-wrap items-center gap-2">
                 <span class="w-40 truncate text-sm font-medium">
-                  {I18n.t!(g.name, @locale, default: g.handle)}
+                  {I18n.t!(g.name, @locale, default: g.key)}
                 </span>
                 <button
                   :for={o <- options_for_group(@snap, element.id, g.id)}
@@ -366,7 +366,7 @@ defmodule ScenexWeb.SessionLive.Console do
                     decided?(@snap, element.id, g.id, o.id) && "btn-primary"
                   ]}
                 >
-                  {o.handle}
+                  {o.key}
                   <span :if={o.is_default} class="badge badge-xs badge-ghost">default</span>
                   <span :if={o.condition} class="badge badge-xs badge-warning font-mono">
                     {o.condition}
@@ -399,7 +399,7 @@ defmodule ScenexWeb.SessionLive.Console do
                     "text-sm",
                     decided?(@snap, element.id, :winner, o.id) && "font-bold text-primary"
                   ]}>
-                    {o.handle}
+                    {o.key}
                   </span>
                   <span :if={o.condition} class="badge badge-xs badge-warning font-mono">
                     {o.condition}
@@ -437,7 +437,7 @@ defmodule ScenexWeb.SessionLive.Console do
                   decided?(@snap, element.id, :outcome, o.id) && "btn-primary"
                 ]}
               >
-                {o.outcome} — {o.handle}
+                {o.outcome} — {o.key}
               </button>
             </div>
           </div>
@@ -465,7 +465,7 @@ defmodule ScenexWeb.SessionLive.Console do
             phx-value-group={g.id}
             class="btn btn-xs"
           >
-            + Code: {I18n.t!(g.name, @locale, default: g.handle)}
+            + Code: {I18n.t!(g.name, @locale, default: g.key)}
           </button>
           <button
             :if={not has_display_token?(@tokens)}
@@ -513,7 +513,7 @@ defmodule ScenexWeb.SessionLive.Console do
               @snap.ending_id == ending.id && "ring-2 ring-primary"
             ]}
           >
-            <span class="font-medium">{ending.handle}</span>
+            <span class="font-medium">{ending.key}</span>
             <span class="text-sm opacity-70">
               — {I18n.t!(ending.title, @locale, default: "—")}
             </span>
@@ -799,7 +799,7 @@ defmodule ScenexWeb.SessionLive.Console do
     labels =
       overall_index_bands(snap)
       |> Enum.reverse()
-      |> Enum.map(&I18n.t!(&1.label, locale, default: "—"))
+      |> Enum.map(&I18n.t!(&1.name, locale, default: "—"))
 
     Scale.label(
       score,
@@ -814,7 +814,7 @@ defmodule ScenexWeb.SessionLive.Console do
   defp tally_scale(vd, locale) do
     vd.steps
     |> Enum.sort_by(& &1.position, :desc)
-    |> Enum.map(&{&1.position, &1.emoji, I18n.t!(&1.label, locale, default: "")})
+    |> Enum.map(&{&1.position, &1.emoji, I18n.t!(&1.name, locale, default: "")})
   end
 
   # The step emoji standing for a mean: steps are worst-to-best, Scale.label/4
@@ -883,7 +883,7 @@ defmodule ScenexWeb.SessionLive.Console do
   defp token_label(%{kind: :display}, _locale), do: "Projected display"
 
   defp token_label(%{kind: :group, group: group}, locale),
-    do: I18n.t!(group.name, locale, default: group.handle)
+    do: I18n.t!(group.name, locale, default: group.key)
 
   defp token_url(%{kind: :display, token: token}), do: url(~p"/display/#{token}")
   defp token_url(%{token: token}), do: url(~p"/play/#{token}")

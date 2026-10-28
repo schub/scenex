@@ -8,7 +8,7 @@ The **Groups** tab lists the teams. Click one to edit it:
 
 ![Editing the Chamber of Commerce](images/groups-chamber.png)
 
-- **Handle** — the internal name.
+- **Key** — the internal name.
 - **Name** — what everyone sees.
 - **Description** — the group's role card: who they are, what they want,
   what they'll argue about. Players can read it on their board.

@@ -12,7 +12,7 @@ defmodule Scenex.Authoring.Group do
   @timestamps_opts [type: :utc_datetime]
 
   schema "groups" do
-    field :handle, :string
+    field :key, :string
     field :name, :map, default: %{}
     field :description, :map, default: %{}
     field :director_notes, :map, default: %{}
@@ -28,12 +28,12 @@ defmodule Scenex.Authoring.Group do
 
   def changeset(group, attrs) do
     group
-    |> cast(attrs, [:scenario_id, :handle, :name, :description, :director_notes, :position])
-    |> validate_required([:scenario_id, :handle])
+    |> cast(attrs, [:scenario_id, :key, :name, :description, :director_notes, :position])
+    |> validate_required([:scenario_id, :key])
     |> validate_localized_required(:name)
     |> assoc_constraint(:scenario)
-    |> unique_constraint(:handle,
-      name: :groups_scenario_id_handle_index,
+    |> unique_constraint(:key,
+      name: :groups_scenario_id_key_index,
       message: "is already used in this scenario"
     )
   end

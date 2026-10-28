@@ -33,7 +33,7 @@ const ctlChoose = async (h, title, options) => {
   }
 };
 
-async function openEditor(h, handle) {
+async function openEditor(h, key) {
   await h.go(BASE + "/scenarios");
   const path = await h.cam.evaluate((name) => {
     const title = [...document.querySelectorAll("*")].find(
@@ -44,7 +44,7 @@ async function openEditor(h, handle) {
       c = c.parentElement;
     }
     return new URL([...c.querySelectorAll("a")].find((a) => a.textContent.includes("Open editor")).href).pathname;
-  }, handle);
+  }, key);
   await h.wait(600);
   await h.click(`a[href="${path}"]`);
   await h.cam.waitForURL(/\/scenarios\/[0-9a-f-]+$/);

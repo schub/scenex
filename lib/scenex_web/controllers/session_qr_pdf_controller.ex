@@ -180,7 +180,7 @@ defmodule ScenexWeb.SessionQrPdfController do
   defp token_label(%{kind: :display}, _locale), do: "Projected display"
 
   defp token_label(%{kind: :group, group: group}, locale),
-    do: I18n.t!(group.name, locale, default: group.handle)
+    do: I18n.t!(group.name, locale)
 
   defp token_url(%{kind: :display, token: token}), do: url(~p"/display/#{token}")
   defp token_url(%{token: token}), do: url(~p"/play/#{token}")

@@ -10,7 +10,7 @@ defmodule ScenexWeb.SessionLive.Index do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        Sessions — {I18n.t!(@scenario.name, @scenario.source_locale, default: @scenario.handle)}
+        Sessions — {I18n.t!(@scenario.name, @scenario.source_locale, default: @scenario.key)}
         <:subtitle>One session is one live run of this scenario.</:subtitle>
         <:actions>
           <.link navigate={~p"/scenarios/#{@scenario.id}"} class="btn btn-sm btn-ghost">
@@ -141,7 +141,7 @@ defmodule ScenexWeb.SessionLive.Index do
   end
 
   defp group_name(group, scenario) do
-    I18n.t!(group.name, scenario.source_locale, default: group.handle)
+    I18n.t!(group.name, scenario.source_locale, default: group.key)
   end
 
   defp gm_label(session, current_user) do
