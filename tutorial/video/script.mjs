@@ -33,7 +33,7 @@ const ctlChoose = async (h, title, options) => {
   }
 };
 
-async function openEditor(h, handle) {
+async function openEditor(h, key) {
   await h.go(BASE + "/scenarios");
   const path = await h.cam.evaluate((name) => {
     const title = [...document.querySelectorAll("*")].find(
@@ -44,7 +44,7 @@ async function openEditor(h, handle) {
       c = c.parentElement;
     }
     return new URL([...c.querySelectorAll("a")].find((a) => a.textContent.includes("Open editor")).href).pathname;
-  }, handle);
+  }, key);
   await h.wait(600);
   await h.click(`a[href="${path}"]`);
   await h.cam.waitForURL(/\/scenarios\/[0-9a-f-]+$/);
@@ -468,7 +468,7 @@ export const scenes = [
       await h.click(`${vote} button:has-text('Trigger')`);
       await h.wait(600);
       for (const [option, n] of [["A - Ban", 9], ["B - Regulate", 21], ["C - Educate", 14]]) {
-        await h.fill(`${vote} div:has(> label:has-text("${option}")) input[type=number]`, String(n));
+        await h.fill(`${vote} div:has(> label:has-text("${option}")) input[name^='tally']`, String(n));
       }
       await h.click(`${vote} label:has-text('B - Regulate') input[type=radio]`);
       await h.click(`${vote} button:has-text('Declare result')`);

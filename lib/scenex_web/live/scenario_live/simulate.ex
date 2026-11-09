@@ -72,7 +72,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
           <tbody>
             <tr :for={g <- @groups}>
               <td class="font-medium whitespace-nowrap">
-                {I18n.t!(g.name, @locale, default: g.handle)}
+                {I18n.t!(g.name, @locale, default: g.key)}
               </td>
               <td
                 :for={vd <- @value_defs}
@@ -112,14 +112,14 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
         <section :for={%{timeline_element: e, options: opts} <- @timeline_elements} class="space-y-3">
           <h3 class="text-lg font-semibold">
             <span class="opacity-50">{e.position}.</span>
-            {I18n.t!(e.title, @locale, default: e.handle)}
+            {I18n.t!(e.title, @locale, default: e.key)}
             <span class="badge badge-sm ml-1">{kind_label(e.kind)}</span>
           </h3>
 
           <%!-- Event: each group picks --%>
           <div :for={g <- @groups} :if={e.kind == :event} class="space-y-1">
             <h4 class="text-sm font-medium opacity-70">
-              {I18n.t!(g.name, @locale, default: g.handle)}
+              {I18n.t!(g.name, @locale, default: g.key)}
             </h4>
             <div class="flex flex-wrap gap-2">
               <.sim_option
@@ -195,7 +195,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
               @ending_status[ending.id] == :not_matching && "opacity-50"
             ]}
           >
-            <span class="font-medium">{ending.handle}</span>
+            <span class="font-medium">{ending.key}</span>
             <span class="text-sm opacity-70">
               — {I18n.t!(ending.title, @locale, default: "—")}
             </span>
@@ -238,7 +238,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
     >
       <span class="flex items-center gap-1">
         <span :if={@option.outcome} class="badge badge-xs badge-ghost">{@option.outcome}</span>
-        {@option.handle}
+        {@option.key}
         <span :for={l <- @option.labels} class={["badge badge-xs", label_class(l.color)]}>
           {l.icon || I18n.t!(l.name, @locale, default: "?")}
         </span>
@@ -489,7 +489,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
   # The precise current band — `bands` is worst-to-best (position ascending,
   # how they're authored); Scale.label/4 wants best-to-worst.
   defp overall_index_band_label(score, scenario, bands, locale) do
-    labels = bands |> Enum.reverse() |> Enum.map(&I18n.t!(&1.label, locale, default: "—"))
+    labels = bands |> Enum.reverse() |> Enum.map(&I18n.t!(&1.name, locale, default: "—"))
     Scale.label(score, scenario.overall_index_min, scenario.overall_index_max, labels)
   end
 
@@ -550,7 +550,7 @@ defmodule ScenexWeb.ScenarioLive.Simulate do
       prefix =
         case e.group_id && groups_index[e.group_id] do
           nil -> ""
-          g -> I18n.t!(g.name, locale, default: g.handle) <> ": "
+          g -> I18n.t!(g.name, locale, default: g.key) <> ": "
         end
 
       sign = if e.delta >= 0, do: "+", else: ""

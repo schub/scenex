@@ -268,13 +268,15 @@ language.
 Hungarian, Polish… without copying the scenario. If a text isn't translated
 yet, the original language shows instead — never a blank.
 
-## 🔖 Handles
+## 🔖 Keys
 
-**What it is.** Every piece of content also has a **handle** — a short,
-internal name such as `Key Event 1`. Handles are for authors and the game
-master, are never shown to players, and are **never translated**.
+**What it is.** Every piece of content also has a **key** — a short,
+internal name such as `Key Event 1`. Keys are for authors and the game
+master, are never shown to the audience, and are **never translated**.
+A value's key is special: formulas use it, so it is written like
+`stability` — lowercase, no spaces.
 
-**Why it matters.** Handles are how everyone working on a shared scenario
+**Why it matters.** Keys are how everyone working on a shared scenario
 finds their way around. **Keep them in English**, even when you translate —
 see [Your Common Ground](08-your-common-ground.md).
 

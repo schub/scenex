@@ -27,9 +27,9 @@ the game master fires beats in any order, skips some, and holds others back.
 
 Click **+ New element** (or click a beat to edit it). Every beat has:
 
-- **Handle** — the internal name, like `Key Event 1`.
+- **Key** — the internal name, like `Key Event 1`.
 - **Title** — what the room sees: *Positive Starting Proposal*.
-- **Narrative** — the story text. Groups read it on their boards; the game
+- **Description** — the story text. Groups read it on their boards; the game
   master often reads it aloud.
 - **Director's notes** — staging and timing for the game master. They show
   up in the console, right under the beat.
@@ -46,8 +46,8 @@ Click **Edit** on an option to open it:
 
 ![An option of Key Event 1 for the Chamber of Commerce](images/timeline-option.png)
 
-- **Handle** — internal name, unique within this beat.
-- **Option text** — the one line the players read on their board.
+- **Key** — internal name, unique within this beat.
+- **Name** — the one line the players read on their board.
 - **Director's notes** — e.g. "this choice comes back in Key Event 4".
 - **Default** — chosen automatically for this group if the deadline runs
   out. (Common Ground has no defaults: a group that runs out of time simply
@@ -115,7 +115,7 @@ of Commerce:
 
 ![The Freeze Card for the Chamber of Commerce](images/timeline-wildcard.png)
 
-The narrative is the text on the card — print it, or read it to the player.
+The description is the text on the card — print it, or read it to the player.
 The director's notes say when to use it. Nothing about a Wildcard appears on
 the group boards: it's between the player and the game master.
 
@@ -125,7 +125,7 @@ When the story should react to how the evening is going, write the beat
 twice. Common Ground's *Irresistible Proposal* (Key Event 3) exists as
 *Higher Democracy Score* and *Lower Democracy Score*: the IT company makes a
 friendly partnership offer to a strong town, and tries to simply buy a weak
-one. Same title, different story, different options. The handle tells the
+one. Same title, different story, different options. The key tells the
 game master which is which; the players only ever see one.
 
 ---

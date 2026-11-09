@@ -20,20 +20,20 @@ defmodule ScenexWeb.SimulateLiveTest do
         max: 10.0
       )
 
-    gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+    gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
     timeline_element =
       timeline_element_fixture(scenario,
-        handle: "Blackout",
+        key: "Blackout",
         title: %{"en" => "Blackout"},
         position: 1
       )
 
     {:ok, option} =
       Authoring.create_decision_option(timeline_element, gov, %{
-        handle: "Crack down",
-        text: %{"en" => "Crack down"}
+        key: "Crack down",
+        name: %{"en" => "Crack down"}
       })
 
     Authoring.set_option_effect(option, stability, 2.0)
@@ -108,15 +108,15 @@ defmodule ScenexWeb.SimulateLiveTest do
     # Element 2 (after element 1) has an option gated on self(stability) >= 6.
     element2 =
       timeline_element_fixture(scenario,
-        handle: "Aftermath",
+        key: "Aftermath",
         title: %{"en" => "Aftermath"},
         position: 2
       )
 
     {:ok, gated} =
       Authoring.create_decision_option(element2, gov, %{
-        handle: "Push through",
-        text: %{"en" => "Push through"},
+        key: "Push through",
+        name: %{"en" => "Push through"},
         condition: "self(stability) >= 6"
       })
 
@@ -141,12 +141,12 @@ defmodule ScenexWeb.SimulateLiveTest do
     stability: stability,
     gov: gov
   } do
-    media = group_fixture(scenario, handle: "Media", name: %{"en" => "Media"})
+    media = group_fixture(scenario, key: "Media", name: %{"en" => "Media"})
     Authoring.set_group_initial_value(media, stability, 5.0)
 
     {:ok, election} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Emergency law",
+        key: "Emergency law",
         title: %{"en" => "Emergency law"},
         kind: :election,
         position: 2
@@ -154,8 +154,8 @@ defmodule ScenexWeb.SimulateLiveTest do
 
     {:ok, yes} =
       Authoring.create_decision_option(election, nil, %{
-        handle: "Yes",
-        text: %{"en" => "Pass it"}
+        key: "Yes",
+        name: %{"en" => "Pass it"}
       })
 
     Authoring.set_option_effect(yes, stability, gov, 3.0)
@@ -182,7 +182,7 @@ defmodule ScenexWeb.SimulateLiveTest do
   } do
     {:ok, sidequest} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Leak",
+        key: "Leak",
         title: %{"en" => "Leak"},
         kind: :sidequest,
         position: 2
@@ -190,8 +190,8 @@ defmodule ScenexWeb.SimulateLiveTest do
 
     {:ok, success} =
       Authoring.create_decision_option(sidequest, nil, %{
-        handle: "It worked",
-        text: %{"en" => "It worked"},
+        key: "It worked",
+        name: %{"en" => "It worked"},
         outcome: :success
       })
 
@@ -223,10 +223,10 @@ defmodule ScenexWeb.SimulateLiveTest do
       })
 
     {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "Breakdown"}, position: 0})
+      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "Breakdown"}, position: 0})
 
     {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{label: %{"en" => "In Bloom"}, position: 1})
+      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "In Bloom"}, position: 1})
 
     {:ok, lv, html} = live(conn, ~p"/scenarios/#{scenario.id}/simulate")
 
@@ -270,14 +270,14 @@ defmodule ScenexWeb.SimulateLiveTest do
   } do
     {:ok, _stable} =
       Authoring.create_ending(scenario, %{
-        handle: "Stabilized",
+        key: "Stabilized",
         title: %{"en" => "Stabilized"},
         condition: "global(stability) >= 6"
       })
 
     {:ok, _open} =
       Authoring.create_ending(scenario, %{
-        handle: "Muddling through",
+        key: "Muddling through",
         title: %{"en" => "Muddling through"}
       })
 

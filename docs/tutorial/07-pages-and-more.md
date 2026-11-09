@@ -12,7 +12,7 @@ game keeps running underneath.
 
 A page has:
 
-- a **handle** — which is also the button label in the game master's console,
+- a **key** — which is also the button label in the game master's console,
   so make it obvious (*Happiness Survey*, *Final – Good Ending*);
 - its **content** — text in Markdown, and/or one picture or video from the
   media library. A video on a page plays automatically, once.
@@ -28,7 +28,7 @@ The **Media** tab is the scenario's own picture and sound library (up to
 ![Common Ground's media library](images/media.png)
 
 Upload a file, copy its link, and paste it into any text — a page, a
-narrative, an option:
+description, an option:
 
 ```markdown
 ![The Hat Factory](/media/17d8d2fb-…/3.jpg)

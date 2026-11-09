@@ -10,7 +10,7 @@ defmodule Scenex.DemoScenarioTest do
     user = user_fixture()
 
     assert {:ok, scenario} = DemoScenario.create(user)
-    assert scenario.handle == "CIVITAS"
+    assert scenario.key == "CIVITAS"
     assert Authoring.get_user_role(scenario, user) == :owner
 
     assert length(Authoring.list_value_dimensions(scenario)) == 6
@@ -26,7 +26,7 @@ defmodule Scenex.DemoScenarioTest do
     wb = Enum.find(Authoring.list_value_dimensions(scenario), &(&1.key == "well_being"))
     assert Enum.map(wb.steps, & &1.emoji) == ["🙁", "😐", "🙂", "😀"]
 
-    assert Enum.map(wb.steps, &Map.get(&1.label, "en")) == [
+    assert Enum.map(wb.steps, &Map.get(&1.name, "en")) == [
              "Not happy",
              "Okay",
              "Happy",

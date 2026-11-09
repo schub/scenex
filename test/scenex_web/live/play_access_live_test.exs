@@ -31,29 +31,29 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         max: 4.0
       )
 
-    gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+    gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
     Authoring.set_group_initial_value(gov, stability, 5.0)
 
-    event = timeline_element_fixture(scenario, handle: "Blackout", position: 1)
+    event = timeline_element_fixture(scenario, key: "Blackout", position: 1)
 
     {:ok, crack} =
       Authoring.create_decision_option(event, gov, %{
-        handle: "Crack",
-        text: %{"en" => "Crack down"}
+        key: "Crack",
+        name: %{"en" => "Crack down"}
       })
 
     Authoring.set_option_effect(crack, stability, 2.0)
 
     {:ok, gated} =
       Authoring.create_decision_option(event, gov, %{
-        handle: "Gated",
-        text: %{"en" => "Locked move"},
+        key: "Gated",
+        name: %{"en" => "Locked move"},
         condition: "self(stability) >= 6"
       })
 
     {:ok, election} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Referendum",
+        key: "Referendum",
         title: %{"en" => "Referendum"},
         kind: :election,
         position: 2,
@@ -62,14 +62,14 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
     {:ok, yes} =
       Authoring.create_decision_option(election, nil, %{
-        handle: "Yes",
-        text: %{"en" => "Yes to the plan"}
+        key: "Yes",
+        name: %{"en" => "Yes to the plan"}
       })
 
     Authoring.set_option_effect(yes, stability, gov, 2.0)
 
     {:ok, ending} =
-      Authoring.create_ending(scenario, %{handle: "Fin", title: %{"en" => "The End"}})
+      Authoring.create_ending(scenario, %{key: "Fin", title: %{"en" => "The End"}})
 
     {:ok, session} = Play.create_session(gm, scenario, %{label: "Premiere"})
     on_exit(fn -> Play.stop_running(session.id) end)
@@ -120,6 +120,12 @@ defmodule ScenexWeb.PlayAccessLiveTest do
   end
 
   describe "group view" do
+    test "the browser tab shows the group's name, never its key", ctx do
+      {:ok, lv, _html} = live(build_conn(), ~p"/play/#{ctx.group_token.token}")
+
+      assert page_title(lv) =~ "Government"
+    end
+
     test "a group enters its decision via token — no login", ctx do
       {:ok, _} = Play.start_session(ctx.session.id)
       # Numbers are off by default on audience screens (bars only) — turn
@@ -314,7 +320,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
     test "narratives render as markdown with media embeds", ctx do
       {:ok, _} =
         Authoring.update_timeline_element(ctx.event, %{
-          narrative: %{
+          description: %{
             "en" => "**Chaos** in the streets.\n\n![scene](/media/abc/scene.mp4)"
           }
         })
@@ -411,17 +417,17 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         })
 
       {:ok, _} =
-        Authoring.create_overall_index_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+        Authoring.create_overall_index_band(ctx.scenario, %{name: %{"en" => "Breakdown"}})
 
       {:ok, _} =
         Authoring.create_overall_index_band(ctx.scenario, %{
-          label: %{"en" => "Fragile"},
+          name: %{"en" => "Fragile"},
           position: 1
         })
 
       {:ok, _} =
         Authoring.create_overall_index_band(ctx.scenario, %{
-          label: %{"en" => "In Bloom"},
+          name: %{"en" => "In Bloom"},
           position: 2
         })
 
@@ -454,11 +460,11 @@ defmodule ScenexWeb.PlayAccessLiveTest do
         })
 
       {:ok, _} =
-        Authoring.create_overall_index_band(ctx.scenario, %{label: %{"en" => "Breakdown"}})
+        Authoring.create_overall_index_band(ctx.scenario, %{name: %{"en" => "Breakdown"}})
 
       {:ok, _} =
         Authoring.create_overall_index_band(ctx.scenario, %{
-          label: %{"en" => "In Bloom"},
+          name: %{"en" => "In Bloom"},
           position: 1
         })
 
@@ -523,7 +529,7 @@ defmodule ScenexWeb.PlayAccessLiveTest do
     test "a GM-selected page takes over the scoreboard entirely", ctx do
       {:ok, page} =
         Authoring.create_page(ctx.scenario, %{
-          handle: "Welcome",
+          key: "Welcome",
           content: %{"en" => "# Bem-vindos\n\nO jogo comeca em breve."}
         })
 
@@ -553,7 +559,9 @@ defmodule ScenexWeb.PlayAccessLiveTest do
 
     test "the current beat shows the title only — no narrative content", ctx do
       {:ok, _} =
-        Authoring.update_timeline_element(ctx.event, %{narrative: %{"en" => "**Chaos** spreads."}})
+        Authoring.update_timeline_element(ctx.event, %{
+          description: %{"en" => "**Chaos** spreads."}
+        })
 
       {:ok, _} = Play.start_session(ctx.session.id)
       {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)

@@ -6,7 +6,7 @@ defmodule Scenex.DemoScenario do
   decisions shift the shared values.
 
   Idempotent per user: refuses to create a second scenario with the same
-  handle. Everything runs in one transaction — either the whole scenario
+  key. Everything runs in one transaction — either the whole scenario
   exists afterwards, or nothing does.
 
   On production, run it via the release task:
@@ -18,11 +18,11 @@ defmodule Scenex.DemoScenario do
   alias Scenex.Authoring
   alias Scenex.Repo
 
-  @handle "CIVITAS"
+  @key "CIVITAS"
 
   @spec create(User.t()) :: {:ok, Authoring.Scenario.t()} | {:error, :already_exists}
   def create(%User{} = user) do
-    if Enum.any?(Authoring.list_scenarios_for_user(user), &(&1.handle == @handle)) do
+    if Enum.any?(Authoring.list_scenarios_for_user(user), &(&1.key == @key)) do
       {:error, :already_exists}
     else
       Repo.transaction(fn -> build(user) end)
@@ -32,7 +32,7 @@ defmodule Scenex.DemoScenario do
   defp build(user) do
     {:ok, scenario} =
       Authoring.create_scenario(user, %{
-        handle: @handle,
+        key: @key,
         name: en("CIVITAS"),
         description:
           en("""
@@ -64,7 +64,7 @@ defmodule Scenex.DemoScenario do
 
     for {label, position} <- Enum.with_index(labels) do
       {:ok, _} =
-        Authoring.create_overall_index_band(scenario, %{label: en(label), position: position})
+        Authoring.create_overall_index_band(scenario, %{name: en(label), position: position})
     end
   end
 
@@ -104,7 +104,7 @@ defmodule Scenex.DemoScenario do
         Authoring.create_value_dimension_step(vd, %{
           position: position,
           emoji: emoji,
-          label: en(label)
+          name: en(label)
         })
     end
   end
@@ -114,7 +114,7 @@ defmodule Scenex.DemoScenario do
   defp create_groups(scenario, dims) do
     groups = [
       %{
-        handle: "Government",
+        key: "Government",
         name: "Government",
         position: 1,
         initials: %{
@@ -141,7 +141,7 @@ defmodule Scenex.DemoScenario do
         """
       },
       %{
-        handle: "Grassroots",
+        key: "Grassroots",
         name: "Grassroots Movement",
         position: 2,
         initials: %{
@@ -168,7 +168,7 @@ defmodule Scenex.DemoScenario do
         """
       },
       %{
-        handle: "Economy-Media",
+        key: "Economy-Media",
         name: "Economy / Media",
         position: 3,
         initials: %{
@@ -199,7 +199,7 @@ defmodule Scenex.DemoScenario do
     for spec <- groups, into: %{} do
       {:ok, group} =
         Authoring.create_group(scenario, %{
-          handle: spec.handle,
+          key: spec.key,
           name: en(spec.name),
           description: en(spec.description),
           position: spec.position
@@ -209,7 +209,7 @@ defmodule Scenex.DemoScenario do
         {:ok, _} = Authoring.set_group_initial_value(group, dims[key], initial)
       end
 
-      {spec.handle, group}
+      {spec.key, group}
     end
   end
 
@@ -217,21 +217,21 @@ defmodule Scenex.DemoScenario do
 
   defp create_labels(scenario) do
     labels = [
-      %{handle: "De-escalation", icon: "🔻", color: :success},
-      %{handle: "Escalation", icon: "🔺", color: :error},
-      %{handle: "Neutral", icon: "⚪", color: :neutral}
+      %{key: "De-escalation", icon: "🔻", color: :success},
+      %{key: "Escalation", icon: "🔺", color: :error},
+      %{key: "Neutral", icon: "⚪", color: :neutral}
     ]
 
     for spec <- labels, into: %{} do
       {:ok, label} =
         Authoring.create_label(scenario, %{
-          handle: spec.handle,
-          name: en(spec.handle),
+          key: spec.key,
+          name: en(spec.key),
           icon: spec.icon,
           color: spec.color
         })
 
-      {spec.handle, label}
+      {spec.key, label}
     end
   end
 
@@ -243,9 +243,9 @@ defmodule Scenex.DemoScenario do
         Authoring.create_timeline_element(
           scenario,
           element_spec
-          |> Map.take([:handle, :kind, :position, :deadline_seconds])
+          |> Map.take([:key, :kind, :position, :deadline_seconds])
           |> Map.put(:title, en(element_spec.title))
-          |> Map.put(:narrative, en(element_spec.narrative))
+          |> Map.put(:description, en(element_spec.description))
           |> maybe_notes(element_spec)
         )
 
@@ -253,7 +253,7 @@ defmodule Scenex.DemoScenario do
         group = option_spec[:group] && Map.fetch!(groups, option_spec.group)
 
         attrs =
-          %{handle: option_spec.handle, text: en(option_spec.text), position: index}
+          %{key: option_spec.key, name: en(option_spec.text), position: index}
           |> maybe_put(:condition, option_spec[:condition])
           |> maybe_put(:outcome, option_spec[:outcome])
 
@@ -282,12 +282,12 @@ defmodule Scenex.DemoScenario do
   defp elements do
     [
       %{
-        handle: "Mass Protests",
+        key: "Mass Protests",
         title: "Mass Protests",
         kind: :event,
         position: 1,
         deadline_seconds: 300,
-        narrative: """
+        description: """
         Public pressure • Blockades • Risk of escalation
 
         **Context:**
@@ -303,7 +303,7 @@ defmodule Scenex.DemoScenario do
         options: [
           %{
             group: "Government",
-            handle: "Deploy police in force",
+            key: "Deploy police in force",
             label: "Escalation",
             effects: [{"stability", nil, 2.0}, {"solidarity", nil, -2.0}, {"risk", nil, 2.0}],
             text: """
@@ -316,7 +316,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Offer of dialogue",
+            key: "Offer of dialogue",
             label: "De-escalation",
             effects: [{"stability", nil, -1.0}, {"solidarity", nil, 2.0}, {"risk", nil, -1.0}],
             text: """
@@ -329,7 +329,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Media campaign for calm",
+            key: "Media campaign for calm",
             label: "Neutral",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, 1.0}, {"risk", nil, 1.0}],
             text: """
@@ -342,7 +342,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Intensify the protests",
+            key: "Intensify the protests",
             label: "Escalation",
             effects: [{"stability", nil, -1.0}, {"influence", nil, 2.0}, {"risk", nil, 2.0}],
             text: """
@@ -355,7 +355,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Mediation",
+            key: "Mediation",
             label: "De-escalation",
             effects: [{"solidarity", nil, 2.0}, {"influence", nil, -1.0}, {"risk", nil, -1.0}],
             text: """
@@ -368,7 +368,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Hand over a list of demands",
+            key: "Hand over a list of demands",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, 1.0}],
             text: """
@@ -381,7 +381,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Polarising coverage",
+            key: "Polarising coverage",
             label: "Escalation",
             effects: [{"influence", nil, 2.0}, {"risk", nil, 2.0}],
             text: """
@@ -394,7 +394,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "De-escalating reporting",
+            key: "De-escalating reporting",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, -1.0}, {"risk", nil, -1.0}],
             text: """
@@ -407,7 +407,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Close businesses",
+            key: "Close businesses",
             label: "De-escalation",
             effects: [{"resources", nil, -2.0}, {"risk", nil, -1.0}],
             text: """
@@ -421,11 +421,11 @@ defmodule Scenex.DemoScenario do
         ]
       },
       %{
-        handle: "Economic Instability",
+        key: "Economic Instability",
         title: "Economic Instability",
         kind: :event,
         position: 2,
-        narrative: """
+        description: """
         Inflation • Uncertainty • Distribution conflicts
 
         **Context:**
@@ -441,7 +441,7 @@ defmodule Scenex.DemoScenario do
         options: [
           %{
             group: "Government",
-            handle: "Rescue package",
+            key: "Rescue package",
             label: "De-escalation",
             condition: "self(resources) >= 4",
             effects: [{"stability", nil, 2.0}, {"resources", nil, -2.0}],
@@ -455,7 +455,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Market liberalisation",
+            key: "Market liberalisation",
             label: "Neutral",
             effects: [{"solidarity", nil, -2.0}, {"resources", nil, 1.0}],
             text: """
@@ -468,7 +468,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Talks with business leaders",
+            key: "Talks with business leaders",
             label: "De-escalation",
             effects: [{"stability", nil, 1.0}, {"influence", nil, -1.0}],
             text: """
@@ -481,7 +481,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Support fund",
+            key: "Support fund",
             label: "De-escalation",
             effects: [{"solidarity", nil, 2.0}, {"resources", nil, -1.0}],
             text: """
@@ -494,7 +494,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Protests against inequality",
+            key: "Protests against inequality",
             label: "Escalation",
             effects: [{"influence", nil, 2.0}, {"risk", nil, 1.0}],
             text: """
@@ -507,7 +507,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Organise citizens' forums",
+            key: "Organise citizens' forums",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"risk", nil, -1.0}],
             text: """
@@ -520,7 +520,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Raise prices",
+            key: "Raise prices",
             label: "Neutral",
             effects: [{"solidarity", nil, -1.0}, {"resources", nil, 2.0}],
             text: """
@@ -533,7 +533,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "\"Buy local\" campaign",
+            key: "\"Buy local\" campaign",
             label: "Neutral",
             effects: [{"influence", nil, 1.0}, {"resources", nil, 1.0}],
             text: """
@@ -546,7 +546,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Transparency initiative",
+            key: "Transparency initiative",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, -1.0}],
             text: """
@@ -560,11 +560,11 @@ defmodule Scenex.DemoScenario do
         ]
       },
       %{
-        handle: "Information Chaos",
+        key: "Information Chaos",
         title: "Information Chaos",
         kind: :event,
         position: 3,
-        narrative: """
+        description: """
         Disinformation • Loss of trust • Polarisation
 
         **Context:**
@@ -580,7 +580,7 @@ defmodule Scenex.DemoScenario do
         options: [
           %{
             group: "Government",
-            handle: "Fact-checking campaign",
+            key: "Fact-checking campaign",
             label: "Neutral",
             condition: "self(resources) >= 3",
             effects: [{"influence", nil, 2.0}, {"resources", nil, -1.0}],
@@ -594,7 +594,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Tighten security laws",
+            key: "Tighten security laws",
             label: "Escalation",
             effects: [{"stability", nil, 1.0}, {"solidarity", nil, -1.0}, {"risk", nil, 1.0}],
             text: """
@@ -607,7 +607,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Government",
-            handle: "Social media shutdowns",
+            key: "Social media shutdowns",
             label: "Escalation",
             effects: [{"influence", nil, -1.0}, {"risk", nil, 1.0}],
             text: """
@@ -620,7 +620,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Dialogue work",
+            key: "Dialogue work",
             label: "De-escalation",
             effects: [{"solidarity", nil, 2.0}, {"influence", nil, -1.0}],
             text: """
@@ -633,7 +633,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Spread counter-narratives",
+            key: "Spread counter-narratives",
             label: "Escalation",
             effects: [{"influence", nil, 1.0}, {"risk", nil, 1.0}],
             text: """
@@ -646,7 +646,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Grassroots",
-            handle: "Strengthen institutions",
+            key: "Strengthen institutions",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, 1.0}],
             text: """
@@ -659,7 +659,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Sensationalist journalism",
+            key: "Sensationalist journalism",
             label: "Escalation",
             effects: [{"influence", nil, 2.0}, {"risk", nil, 2.0}],
             text: """
@@ -672,7 +672,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Clear factual reporting",
+            key: "Clear factual reporting",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, -1.0}],
             text: """
@@ -685,7 +685,7 @@ defmodule Scenex.DemoScenario do
           },
           %{
             group: "Economy-Media",
-            handle: "Editorial: \"Save democracy\"",
+            key: "Editorial: \"Save democracy\"",
             label: "De-escalation",
             effects: [{"solidarity", nil, 1.0}, {"influence", nil, 1.0}],
             text: """
@@ -699,11 +699,11 @@ defmodule Scenex.DemoScenario do
         ]
       },
       %{
-        handle: "Investigation: The Dossier",
+        key: "Investigation: The Dossier",
         title: "Investigation: The Dossier",
         kind: :sidequest,
         position: 4,
-        narrative: """
+        description: """
         An anonymous tip: decisions in the crisis task force were allegedly
         made behind the backs of the official bodies. An internal dossier is
         said to exist.
@@ -720,7 +720,7 @@ defmodule Scenex.DemoScenario do
         """,
         options: [
           %{
-            handle: "Dossier published",
+            key: "Dossier published",
             outcome: :success,
             effects: [
               {"stability", "Government", -1.0},
@@ -731,7 +731,7 @@ defmodule Scenex.DemoScenario do
             text: "The investigation succeeds: the dossier is published and confirmed."
           },
           %{
-            handle: "Investigation exposed",
+            key: "Investigation exposed",
             outcome: :failure,
             effects: [{"influence", "Economy-Media", -1.0}, {"risk", "Economy-Media", 1.0}],
             text: """
@@ -741,12 +741,12 @@ defmodule Scenex.DemoScenario do
         ]
       },
       %{
-        handle: "Referendum: Emergency Laws",
+        key: "Referendum: Emergency Laws",
         title: "Referendum: Emergency Laws",
         kind: :election,
         position: 5,
         deadline_seconds: 30,
-        narrative: """
+        description: """
         The crises keep piling up. The government puts a package of emergency
         laws to a public vote: faster decisions, expanded powers, less
         participation — temporary, of course.
@@ -764,7 +764,7 @@ defmodule Scenex.DemoScenario do
         """,
         options: [
           %{
-            handle: "Yes — emergency laws",
+            key: "Yes — emergency laws",
             label: "Escalation",
             condition: "global(risk) >= 6",
             effects: [
@@ -782,7 +782,7 @@ defmodule Scenex.DemoScenario do
             """
           },
           %{
-            handle: "No — democratic means",
+            key: "No — democratic means",
             label: "De-escalation",
             effects: [
               {"stability", "Government", -1.0},
@@ -807,43 +807,43 @@ defmodule Scenex.DemoScenario do
   defp create_endings(scenario) do
     endings = [
       %{
-        handle: "Fragile Normality",
+        key: "Fragile Normality",
         title: "Fragile Normality",
         priority: 0,
-        narrative: """
+        description: """
         The town has survived the crises — somehow. Nothing collapsed,
         nothing has healed. Everyday life returns, and with it the question
         of whether next time will take more than muddling through.
         """
       },
       %{
-        handle: "Renewed Solidarity",
+        key: "Renewed Solidarity",
         title: "Renewed Solidarity",
         condition: "global(solidarity) >= 6.5",
         priority: 20,
-        narrative: """
+        description: """
         The crises have left their marks — and uncovered something: the
         groups have learned to listen to each other. Not every problem is
         solved, but the town is deciding together again.
         """
       },
       %{
-        handle: "Authoritarian Stabilisation",
+        key: "Authoritarian Stabilisation",
         title: "Authoritarian Stabilisation",
         condition: "global(stability) >= 7",
         priority: 30,
-        narrative: """
+        description: """
         Order reigns — but at what price? Decisions are made quickly; dissent
         has grown quieter. The town functions. Whether it is still a
         democracy is a question nobody dares to ask out loud.
         """
       },
       %{
-        handle: "Collapse",
+        key: "Collapse",
         title: "Systemic Collapse",
         condition: "global(risk) >= 8",
         priority: 40,
-        narrative: """
+        description: """
         The escalation can no longer be contained. Institutions function only
         on paper; nobody trusts anybody. The town is no longer a community,
         just camps existing side by side.
@@ -856,9 +856,9 @@ defmodule Scenex.DemoScenario do
         Authoring.create_ending(
           scenario,
           spec
-          |> Map.take([:handle, :condition, :priority])
+          |> Map.take([:key, :condition, :priority])
           |> Map.put(:title, en(spec.title))
-          |> Map.put(:narrative, en(spec.narrative))
+          |> Map.put(:description, en(spec.description))
         )
     end
   end

@@ -51,10 +51,27 @@ end
 
 if old = Repo.get(Scenario, scenario_id), do: Repo.delete!(old)
 
+# Exports taken before the key/name consolidation (migration
+# 20261026223649) carry the old column names; map them onto the new ones.
+legacy_columns = %{
+  "handle" => "key",
+  "narrative" => "description",
+  "text" => "name",
+  "label" => "name"
+}
+
 copy_script =
   Enum.map_join(tables, "\n", fn table ->
     file = Path.join(common_ground_dir, "#{table}.csv")
-    columns = file |> File.stream!() |> Enum.at(0) |> String.trim()
+
+    columns =
+      file
+      |> File.stream!()
+      |> Enum.at(0)
+      |> String.trim()
+      |> String.split(",")
+      |> Enum.map_join(",", &Map.get(legacy_columns, &1, &1))
+
     "\\copy #{table}(#{columns}) from '#{file}' csv header"
   end)
 

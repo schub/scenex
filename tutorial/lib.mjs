@@ -26,11 +26,11 @@ export async function login(page) {
   await page.waitForURL((u) => !u.pathname.includes("log-in"));
 }
 
-// Opens a scenario's editor from the list, by its handle as listed there.
-export async function openEditor(page, handle) {
+// Opens a scenario's editor from the list, by its key as listed there.
+export async function openEditor(page, key) {
   await page.goto(BASE + "/scenarios");
   await live(page);
-  // The "Open editor" link in the card whose title is exactly this handle.
+  // The "Open editor" link in the card whose title is exactly this key.
   const href = await page.evaluate((h) => {
     const title = [...document.querySelectorAll("*")].find(
       (el) => el.children.length === 0 && el.textContent.trim() === h
@@ -40,7 +40,7 @@ export async function openEditor(page, handle) {
       card = card.parentElement;
     }
     return [...card.querySelectorAll("a")].find((a) => a.textContent.includes("Open editor")).href;
-  }, handle);
+  }, key);
   await page.goto(href);
   await page.waitForURL(/\/scenarios\/[0-9a-f-]+$/);
   await live(page);
@@ -52,21 +52,40 @@ export async function tab(page, section) {
   await settle(page);
 }
 
-// A list entry in one of the editor's left-hand menus, by its handle.
-export async function pick(page, event, handle) {
-  await page.click(`[phx-click=${event}]:has-text("${handle}")`);
+// A list entry in one of the editor's left-hand menus, by its key.
+export async function pick(page, event, key) {
+  await page.click(`[phx-click=${event}]:has-text("${key}")`);
   await settle(page);
 }
 
 // The Edit button of one option row in the opened timeline element.
-export async function editOption(page, handle) {
-  await page.locator(`li:has-text("${handle}") [phx-click=edit_option]`).first().click();
+export async function editOption(page, key) {
+  await page.locator(`li:has-text("${key}") [phx-click=edit_option]`).first().click();
   await settle(page);
 }
 
 // A timeline element's card in the GM console.
 export function consoleElement(page, title) {
   return page.locator("section").filter({ has: page.locator(`h3:has-text("${title}")`) }).first();
+}
+
+// Chromium on macOS formats <input type="number"> by the system region (and no
+// launch flag or locale overrides it), so a German Mac shows "8,0" in an
+// English tutorial. For screenshots and the video only, number fields become
+// text fields, which show the value exactly as the server renders it ("8.0").
+// LiveView may patch the type back, hence the observer.
+export function numbersAsText() {
+  const convert = (root) =>
+    root.querySelectorAll?.('input[type="number"]').forEach((input) => {
+      input.type = "text";
+    });
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.target.matches?.('input[type="number"]')) m.target.type = "text";
+      m.addedNodes.forEach((n) => n.nodeType === 1 && (n.matches('input[type="number"]') ? (n.type = "text") : convert(n)));
+    }
+  }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["type"] });
+  document.addEventListener("DOMContentLoaded", () => convert(document));
 }
 
 export async function newContext(browser, extra = {}) {
@@ -76,6 +95,7 @@ export async function newContext(browser, extra = {}) {
     colorScheme: "light",
     ...extra
   });
+  await context.addInitScript(numbersAsText);
   // The console asks for confirmation before start/end/close.
   context.on("page", (p) => p.on("dialog", (d) => d.accept()));
   return context;

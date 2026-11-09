@@ -50,9 +50,9 @@ defmodule ScenexWeb.PlayLive.Display do
             class="rounded-box bg-base-200 p-6 space-y-3"
           >
             <h2 class="text-3xl font-bold">
-              {I18n.t!(ending.title, @locale, default: ending.handle)}
+              {I18n.t!(ending.title, @locale)}
             </h2>
-            <.markdown text={I18n.t(ending.narrative, @locale)} class="text-xl" />
+            <.markdown text={I18n.t(ending.description, @locale)} class="text-xl" />
           </section>
 
           <section
@@ -61,7 +61,7 @@ defmodule ScenexWeb.PlayLive.Display do
             class="rounded-box bg-base-200 p-6 space-y-3"
           >
             <h2 class="text-2xl font-bold">
-              {I18n.t!(element.title, @locale, default: element.handle)}
+              {I18n.t!(element.title, @locale)}
               <span
                 :if={Play.element_decided?(@snap, element)}
                 class="badge badge-lg badge-success ml-2 align-middle"
@@ -96,7 +96,7 @@ defmodule ScenexWeb.PlayLive.Display do
               <div class="flex flex-wrap items-baseline gap-3">
                 <span class="badge badge-lg badge-success">{gettext("Result")}</span>
                 <span class="text-2xl font-bold">
-                  {I18n.t!(winner.text, @locale, default: winner.handle)}
+                  {I18n.t!(winner.name, @locale)}
                 </span>
               </div>
               <div
@@ -104,7 +104,7 @@ defmodule ScenexWeb.PlayLive.Display do
                 class="flex flex-wrap gap-x-6 gap-y-1 text-lg opacity-80"
               >
                 <span :for={{option, count} <- vote_lines(@snap, element)}>
-                  {I18n.t!(option.text, @locale, default: option.handle)}:
+                  {I18n.t!(option.name, @locale)}:
                   <span class="font-semibold tabular-nums">{count}</span>
                 </span>
               </div>
@@ -121,7 +121,7 @@ defmodule ScenexWeb.PlayLive.Display do
           >
             <div :for={vd <- value_dims(@snap)} class="text-center">
               <div class="text-2xl font-semibold opacity-70">
-                {I18n.t!(vd.name, @locale, default: vd.key)}
+                {I18n.t!(vd.name, @locale)}
               </div>
               <.value_bar
                 value={@snap.globals[vd.id]}
@@ -143,7 +143,7 @@ defmodule ScenexWeb.PlayLive.Display do
             class="flex min-h-0 flex-1 items-center justify-center gap-10 px-16"
           >
             <div class="w-64 shrink-0 text-right text-2xl font-semibold opacity-70">
-              {I18n.t!(vd.name, @locale, default: vd.key)}
+              {I18n.t!(vd.name, @locale)}
             </div>
             <.scale_gauge
               value={@snap.globals[vd.id]}
@@ -284,14 +284,14 @@ defmodule ScenexWeb.PlayLive.Display do
   defp overall_index_low_label(snap, locale) do
     case List.first(overall_index_bands(snap)) do
       nil -> nil
-      band -> I18n.t!(band.label, locale, default: "")
+      band -> I18n.t!(band.name, locale, default: "")
     end
   end
 
   defp overall_index_high_label(snap, locale) do
     case List.last(overall_index_bands(snap)) do
       nil -> nil
-      band -> I18n.t!(band.label, locale, default: "")
+      band -> I18n.t!(band.name, locale, default: "")
     end
   end
 

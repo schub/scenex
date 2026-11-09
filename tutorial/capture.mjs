@@ -91,15 +91,15 @@ async function codes(groups) {
   return page.$$eval("a[target=_blank]", (as) => as.map((a) => a.href));
 }
 
-async function choose(card, handles) {
-  for (const h of handles) {
+async function choose(card, keys) {
+  for (const h of keys) {
     await card.locator(`[phx-click=choose]:has-text("${h}")`).first().click();
     await settle(page, 250);
   }
 }
 
-async function showPage(handle, display, name) {
-  await page.click(`[phx-click=show_page]:has-text("${handle}")`);
+async function showPage(key, display, name) {
+  await page.click(`[phx-click=show_page]:has-text("${key}")`);
   await settle(page, 900);
   if (name) await shot(name, display);
 }
@@ -324,7 +324,7 @@ for (const [option, votes] of [
   ["Social Media Policy B - Regulate", 21],
   ["Social Media Policy C - Educate", 14]
 ]) {
-  await vote.locator(`div:has(> label:has-text("${option}")) input[type=number]`).fill(String(votes));
+  await vote.locator(`div:has(> label:has-text("${option}")) input[name^='tally']`).fill(String(votes));
 }
 await vote.locator("label:has-text('Social Media Policy B - Regulate') input[type=radio]").check();
 await shot("console-vote", vote);

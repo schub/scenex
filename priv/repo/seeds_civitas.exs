@@ -3,7 +3,7 @@
 # Loads the paper-prototype content from
 # docs/legacy-docu/Mini-Megagame-Toolkit/designs into the database as a real
 # scenario owned by the account below. Re-runnable: it deletes any existing
-# scenario with handle "CIVITAS" first (children cascade).
+# scenario with key "CIVITAS" first (children cascade).
 #
 #     mix run priv/repo/seeds_civitas.exs
 
@@ -15,7 +15,7 @@ alias Scenex.Authoring.Scenario
 owner_email = System.get_env("CIVITAS_OWNER_EMAIL", "schub@example.com")
 owner = Repo.get_by!(Accounts.User, email: owner_email)
 
-Repo.all(from g in Scenario, where: g.handle == "CIVITAS") |> Enum.each(&Repo.delete/1)
+Repo.all(from g in Scenario, where: g.key == "CIVITAS") |> Enum.each(&Repo.delete/1)
 
 # ── Markdown helpers ────────────────────────────────────────────────────────
 bullets = fn items -> Enum.map_join(items, "\n", &("- " <> &1)) end
@@ -59,7 +59,7 @@ end
 # ── Scenario ────────────────────────────────────────────────────────────────────
 {:ok, scenario} =
   Authoring.create_scenario(owner, %{
-    handle: "CIVITAS",
+    key: "CIVITAS",
     name: %{"de" => "CIVITAS", "en" => "CIVITAS"},
     description: %{
       "de" =>
@@ -110,7 +110,7 @@ key_of = %{
 groups = [
   %{
     gid: "G-REG",
-    handle: "Regierung",
+    key: "Regierung",
     name: "Regierung",
     pos: 1,
     desc:
@@ -129,7 +129,7 @@ groups = [
   },
   %{
     gid: "G-BAS",
-    handle: "Basisbewegung",
+    key: "Basisbewegung",
     name: "Basisbewegung",
     pos: 2,
     desc:
@@ -148,7 +148,7 @@ groups = [
   },
   %{
     gid: "G-ECO",
-    handle: "Wirtschaft-Medien",
+    key: "Wirtschaft-Medien",
     name: "Wirtschaft / Medien",
     pos: 3,
     desc:
@@ -174,7 +174,7 @@ group_by_gid =
   Map.new(groups, fn g ->
     {:ok, grp} =
       Authoring.create_group(scenario, %{
-        handle: g.handle,
+        key: g.key,
         name: %{"de" => g.name},
         description: %{"de" => g.desc},
         position: g.pos
@@ -200,10 +200,10 @@ labels = [
 ]
 
 label_by_name =
-  Map.new(labels, fn {handle, de, en, color, icon, pos} ->
+  Map.new(labels, fn {key, de, en, color, icon, pos} ->
     {:ok, l} =
       Authoring.create_label(scenario, %{
-        handle: handle,
+        key: key,
         name: %{"de" => de, "en" => en},
         color: color,
         icon: icon,
@@ -227,7 +227,7 @@ timeline_elements = [
     eid: "E-01",
     title: "Massive Proteste",
     pos: 1,
-    narrative:
+    description:
       event_narr.(
         "Öffentlicher Druck • Blockaden • Eskalationsgefahr",
         [
@@ -246,7 +246,7 @@ timeline_elements = [
     eid: "E-02",
     title: "Ökonomische Instabilität",
     pos: 2,
-    narrative:
+    description:
       event_narr.(
         "Inflation • Unsicherheit • Verteilungskonflikte",
         [
@@ -265,7 +265,7 @@ timeline_elements = [
     eid: "E-03",
     title: "Informationschaos",
     pos: 3,
-    narrative:
+    description:
       event_narr.(
         "Falschinformationen • Vertrauensverlust • Polarisierung",
         [
@@ -286,9 +286,9 @@ event_by_eid =
   Map.new(timeline_elements, fn e ->
     {:ok, ev} =
       Authoring.create_timeline_element(scenario, %{
-        handle: e.title,
+        key: e.title,
         title: %{"de" => e.title},
-        narrative: %{"de" => e.narrative},
+        description: %{"de" => e.description},
         kind: :event,
         position: e.pos
       })
@@ -450,8 +450,8 @@ end
 Enum.each(options, fn {eid, gid, pos, name, marker, context, pros, cons, effects} ->
   {:ok, opt} =
     Authoring.create_decision_option(event_by_eid[eid], group_by_gid[gid], %{
-      handle: name,
-      text: %{"de" => opt_text.(context, pros, cons)},
+      key: name,
+      name: %{"de" => opt_text.(context, pros, cons)},
       position: pos
     })
 
@@ -470,11 +470,11 @@ gates = [
   {"E-03", "Faktencheck-Kampagne", "self(resources) >= 3"}
 ]
 
-Enum.each(gates, fn {eid, handle, condition} ->
+Enum.each(gates, fn {eid, key, condition} ->
   opt =
     event_by_eid[eid]
     |> Authoring.list_decision_options()
-    |> Enum.find(&(&1.handle == handle))
+    |> Enum.find(&(&1.key == key))
 
   {:ok, _} = Authoring.update_decision_option(opt, %{condition: condition})
 end)
@@ -492,9 +492,9 @@ end
 # ── Sidequest: the dossier (individual scale) ───────────────────────────────
 {:ok, sidequest} =
   Authoring.create_timeline_element(scenario, %{
-    handle: "Recherche: Das Dossier",
+    key: "Recherche: Das Dossier",
     title: %{"de" => "Recherche: Das Dossier"},
-    narrative: %{
+    description: %{
       "de" => """
       Ein anonymer Hinweis: Im Krisenstab sollen Entscheidungen an den
       offiziellen Gremien vorbei getroffen worden sein. Es existiert angeblich
@@ -519,8 +519,8 @@ end
 
 {:ok, sq_success} =
   Authoring.create_decision_option(sidequest, nil, %{
-    handle: "Dossier veröffentlicht",
-    text: %{"de" => "Die Recherche gelingt: Das Dossier wird öffentlich und bestätigt."},
+    key: "Dossier veröffentlicht",
+    name: %{"de" => "Die Recherche gelingt: Das Dossier wird öffentlich und bestätigt."},
     outcome: :success,
     position: 1
   })
@@ -532,8 +532,8 @@ set_matrix.(sq_success, [
 
 {:ok, sq_failure} =
   Authoring.create_decision_option(sidequest, nil, %{
-    handle: "Recherche aufgeflogen",
-    text: %{"de" => "Die Quelle platzt, der Vorwurf wirkt haltlos — der Schuss geht nach hinten los."},
+    key: "Recherche aufgeflogen",
+    name: %{"de" => "Die Quelle platzt, der Vorwurf wirkt haltlos — der Schuss geht nach hinten los."},
     outcome: :failure,
     position: 2
   })
@@ -545,9 +545,9 @@ set_matrix.(sq_failure, [
 # ── Election: emergency-powers referendum (collective scale, finale) ────────
 {:ok, election} =
   Authoring.create_timeline_element(scenario, %{
-    handle: "Referendum: Notstandsgesetze",
+    key: "Referendum: Notstandsgesetze",
     title: %{"de" => "Referendum: Notstandsgesetze"},
-    narrative: %{
+    description: %{
       "de" => """
       Die Krisen häufen sich. Die Regierung legt der Stadt ein Paket von
       Notstandsgesetzen zur Abstimmung vor: schnellere Entscheidungen,
@@ -574,8 +574,8 @@ set_matrix.(sq_failure, [
 
 {:ok, el_yes} =
   Authoring.create_decision_option(election, nil, %{
-    handle: "Ja — Notstandsgesetze",
-    text: %{
+    key: "Ja — Notstandsgesetze",
+    name: %{
       "de" =>
         "Das Paket wird angenommen: Ordnung und Tempo zuerst, Kontrolle und Mitsprache später."
     },
@@ -593,8 +593,8 @@ set_matrix.(el_yes, [
 
 {:ok, el_no} =
   Authoring.create_decision_option(election, nil, %{
-    handle: "Nein — demokratische Mittel",
-    text: %{
+    key: "Nein — demokratische Mittel",
+    name: %{
       "de" =>
         "Das Paket wird abgelehnt: Die Krise wird mit den normalen demokratischen Verfahren bewältigt — langsamer, aber legitim."
     },
@@ -641,12 +641,12 @@ endings = [
    "Der Standard-Ausgang, wenn kein anderes Ende empfohlen wird. Nüchtern und offen enden."}
 ]
 
-Enum.each(endings, fn {handle, title, condition, priority, narrative, notes} ->
+Enum.each(endings, fn {key, title, condition, priority, description, notes} ->
   {:ok, _} =
     Authoring.create_ending(scenario, %{
-      handle: handle,
+      key: key,
       title: %{"de" => title},
-      narrative: %{"de" => narrative},
+      description: %{"de" => description},
       director_notes: %{"de" => notes},
       condition: condition,
       priority: priority

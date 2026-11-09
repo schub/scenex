@@ -10,24 +10,46 @@ defmodule ScenexWeb.ScenarioLiveTest do
   setup :register_and_log_in_user
 
   describe "Index" do
-    test "creating a scenario redirects into the editor", %{conn: conn} do
+    test "creating a scenario redirects into the editor", %{conn: conn, user: user} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios")
 
       assert {:ok, _show_lv, html} =
                lv
                |> form("#new-scenario", %{
-                 "scenario" => %{"handle" => "My Scenario", "source_locale" => "en"}
+                 "scenario" => %{
+                   "name" => "My Scenario",
+                   "key" => "my-scenario",
+                   "source_locale" => "en"
+                 }
                })
                |> render_submit()
                |> follow_redirect(conn)
 
       assert html =~ "My Scenario"
+
+      assert [%{key: "my-scenario", name: %{"en" => "My Scenario"}}] =
+               Authoring.list_scenarios_for_user(user)
     end
 
-    test "lists scenarios the user can see", %{conn: conn, user: user} do
-      scenario = scenario_fixture(user, handle: "Listed Scenario")
+    test "creating a scenario needs both a name and a key", %{conn: conn, user: user} do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios")
+
+      html =
+        lv
+        |> form("#new-scenario", %{
+          "scenario" => %{"name" => "No Key", "key" => "", "source_locale" => "en"}
+        })
+        |> render_submit()
+
+      assert html =~ "Name and key can&#39;t be blank."
+      assert Authoring.list_scenarios_for_user(user) == []
+    end
+
+    test "lists scenarios by name, with the key alongside", %{conn: conn, user: user} do
+      scenario = scenario_fixture(user, key: "listed", name: %{"en" => "Listed Scenario"})
       {:ok, _lv, html} = live(conn, ~p"/scenarios")
       assert html =~ "Listed Scenario"
+      assert html =~ "listed"
       assert html =~ "/scenarios/#{scenario.id}"
     end
   end
@@ -66,7 +88,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
       # One save persists both locales.
       lv
       |> form(~s(form[phx-submit="save_settings"]), %{
-        "scenario" => %{"handle" => scenario.handle}
+        "scenario" => %{"key" => scenario.key}
       })
       |> render_submit()
 
@@ -97,7 +119,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
       lv
       |> form(~s(form[phx-submit="save_settings"]), %{
         "scenario" => %{
-          "handle" => scenario.handle,
+          "key" => scenario.key,
           "tagline" => %{"en" => "Democracy under pressure"}
         }
       })
@@ -189,11 +211,22 @@ defmodule ScenexWeb.ScenarioLiveTest do
       html =
         lv
         |> form(~s(form[phx-submit="save_group"]), %{
-          "group" => %{"handle" => "Gov", "name" => %{"en" => "Government"}, "position" => "0"}
+          "group" => %{"key" => "Gov", "name" => %{"en" => "Government"}, "position" => "0"}
         })
         |> render_submit()
 
       assert html =~ "Government"
+    end
+
+    test "list entries show the name in the working locale, with the key underneath",
+         %{conn: conn, scenario: scenario} do
+      group_fixture(scenario, key: "Gov", name: %{"en" => "Government", "de" => "Regierung"})
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      lv |> element("button[phx-value-section=groups]") |> render_click()
+
+      assert has_element?(lv, "button[phx-click=edit_group] span", "Government")
+      assert has_element?(lv, "button[phx-click=edit_group] span.font-mono", "Gov")
     end
 
     test "redirects when the scenario is not accessible", %{conn: conn} do
@@ -212,7 +245,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_event"]), %{
           "timeline_element" => %{
-            "handle" => "Blackout",
+            "key" => "Blackout",
             "title" => %{"en" => "Blackout"},
             "kind" => "event",
             "position" => "0"
@@ -231,7 +264,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_label"]), %{
           "label" => %{
-            "handle" => "Aggressive",
+            "key" => "Aggressive",
             "name" => %{"en" => "Aggressive"},
             "color" => "error",
             "position" => "0"
@@ -298,8 +331,8 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_option"]), %{
           "option" => %{
-            "handle" => "Ration",
-            "text" => %{"en" => "Ration power"},
+            "key" => "Ration",
+            "name" => %{"en" => "Ration power"},
             "position" => "0",
             "labels" => [label.id]
           },
@@ -318,12 +351,12 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
     test "edits an election option with an outcome matrix", %{conn: conn, scenario: scenario} do
       value = value_dimension_fixture(scenario, key: "stability", name: %{"en" => "Stability"})
-      gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
-      media = group_fixture(scenario, handle: "Media", name: %{"en" => "Media"})
+      gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
+      media = group_fixture(scenario, key: "Media", name: %{"en" => "Media"})
 
       {:ok, election} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Emergency law",
+          key: "Emergency law",
           title: %{"en" => "Emergency law"},
           kind: :election
         })
@@ -347,8 +380,8 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_option"]), %{
           "option" => %{
-            "handle" => "Yes",
-            "text" => %{"en" => "Pass the law"},
+            "key" => "Yes",
+            "name" => %{"en" => "Pass the law"},
             "position" => "0",
             "condition" => "global(stability) < 8"
           },
@@ -371,11 +404,11 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
     test "defines sidequest success and failure outcomes", %{conn: conn, scenario: scenario} do
       value = value_dimension_fixture(scenario, key: "solidarity", name: %{"en" => "Solidarity"})
-      gov = group_fixture(scenario, handle: "Gov", name: %{"en" => "Government"})
+      gov = group_fixture(scenario, key: "Gov", name: %{"en" => "Government"})
 
       {:ok, sidequest} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Leak the memo",
+          key: "Leak the memo",
           title: %{"en" => "Leak the memo"},
           kind: :sidequest
         })
@@ -399,8 +432,8 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_option"]), %{
           "option" => %{
-            "handle" => "Memo published",
-            "text" => %{"en" => "The memo goes public"},
+            "key" => "Memo published",
+            "name" => %{"en" => "The memo goes public"},
             "position" => "0",
             "outcome" => "success"
           },
@@ -430,7 +463,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_ending"]), %{
           "ending" => %{
-            "handle" => "Collapse",
+            "key" => "Collapse",
             "title" => %{"en" => "Systemic collapse"},
             "condition" => "global(risk) >= 8",
             "priority" => "10"
@@ -446,7 +479,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_ending"]), %{
           "ending" => %{
-            "handle" => "Bad",
+            "key" => "Bad",
             "title" => %{"en" => "Bad"},
             "condition" => "self(risk) >= 8"
           }
@@ -464,7 +497,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         lv
         |> form(~s(form[phx-submit="save_page"]), %{
           "page" => %{
-            "handle" => "Welcome",
+            "key" => "Welcome",
             "content" => %{"en" => "# Bem-vindos"},
             "position" => "0"
           }
@@ -520,13 +553,13 @@ defmodule ScenexWeb.ScenarioLiveTest do
       html =
         lv
         |> form(~s(form[phx-submit="save_overall_index_band"]), %{
-          "overall_index_band" => %{"label" => %{"en" => "Breakdown"}, "position" => "0"}
+          "overall_index_band" => %{"name" => %{"en" => "Breakdown"}, "position" => "0"}
         })
         |> render_submit()
 
       assert html =~ "Breakdown"
       [band] = Authoring.list_overall_index_bands(scenario)
-      assert band.label == %{"en" => "Breakdown"}
+      assert band.name == %{"en" => "Breakdown"}
 
       lv
       |> element(~s{button[phx-click=edit_overall_index_band][phx-value-id="#{band.id}"]})
@@ -534,11 +567,11 @@ defmodule ScenexWeb.ScenarioLiveTest do
 
       lv
       |> form(~s(form[phx-submit="save_overall_index_band"]), %{
-        "overall_index_band" => %{"label" => %{"en" => "Collapse"}}
+        "overall_index_band" => %{"name" => %{"en" => "Collapse"}}
       })
       |> render_submit()
 
-      assert Authoring.get_overall_index_band!(band.id).label == %{"en" => "Collapse"}
+      assert Authoring.get_overall_index_band!(band.id).name == %{"en" => "Collapse"}
 
       lv
       |> element(~s{button[phx-click=delete_overall_index_band][phx-value-id="#{band.id}"]})
@@ -568,7 +601,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
         "value_dimension_step" => %{
           "emoji" => "🤩",
           "position" => "5",
-          "label" => %{"en" => "Ecstatic"}
+          "name" => %{"en" => "Ecstatic"}
         }
       })
       |> render_submit()
@@ -576,7 +609,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
       steps = Authoring.list_value_dimension_steps(vd)
       assert length(steps) == 5
       added = Enum.find(steps, &(&1.emoji == "🤩"))
-      assert added.label == %{"en" => "Ecstatic"}
+      assert added.name == %{"en" => "Ecstatic"}
 
       lv
       |> element(~s{button[phx-click=edit_value_step][phx-value-id="#{added.id}"]})
@@ -641,7 +674,7 @@ defmodule ScenexWeb.ScenarioLiveTest do
       lv
       |> form(~s(form[phx-submit="save_group"]), %{
         "group" => %{
-          "handle" => group.handle,
+          "key" => group.key,
           "name" => %{"en" => "Government"},
           "director_notes" => %{"en" => "Seat them near the stage."},
           "position" => "0"

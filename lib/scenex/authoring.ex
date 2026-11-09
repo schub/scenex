@@ -252,7 +252,7 @@ defmodule Scenex.Authoring do
   end
 
   defp scenario_display_name(%Scenario{} = scenario) do
-    Scenex.I18n.t!(scenario.name, scenario.source_locale, default: scenario.handle)
+    Scenex.I18n.t!(scenario.name, scenario.source_locale, default: scenario.key)
   end
 
   # ── Value dimensions ────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ defmodule Scenex.Authoring do
   deleted outright; the rest are **archived** (`archived_at` set) — invisible
   to the editor and to new sessions, but existing sessions keep replaying
   with them. Check `archived_at` on the returned group to tell which
-  happened. Archived handles are reusable (partial unique index).
+  happened. Archived keys are reusable (partial unique index).
   """
   # Already archived (e.g. a double-clicked Delete): nothing left to do.
   def delete_group(%Group{archived_at: %DateTime{}} = group), do: {:ok, group}
@@ -646,7 +646,7 @@ defmodule Scenex.Authoring do
     Repo.all(
       from e in Ending,
         where: e.scenario_id == ^scenario.id,
-        order_by: [desc: e.priority, asc: e.handle]
+        order_by: [desc: e.priority, asc: e.key]
     )
   end
 

@@ -33,40 +33,40 @@ defmodule Scenex.PlayTest do
         max: 4.0
       )
 
-    gov = group_fixture(scenario, handle: "Gov")
-    media = group_fixture(scenario, handle: "Media")
+    gov = group_fixture(scenario, key: "Gov")
+    media = group_fixture(scenario, key: "Media")
     Authoring.set_group_initial_value(gov, stability, 5.0)
     Authoring.set_group_initial_value(media, stability, 5.0)
 
-    event = timeline_element_fixture(scenario, handle: "Blackout", position: 1)
+    event = timeline_element_fixture(scenario, key: "Blackout", position: 1)
 
     {:ok, crack} =
-      Authoring.create_decision_option(event, gov, %{handle: "Crack", text: %{"en" => "Crack"}})
+      Authoring.create_decision_option(event, gov, %{key: "Crack", name: %{"en" => "Crack"}})
 
     Authoring.set_option_effect(crack, stability, 2.0)
 
     {:ok, talk} =
-      Authoring.create_decision_option(event, gov, %{handle: "Talk", text: %{"en" => "Talk"}})
+      Authoring.create_decision_option(event, gov, %{key: "Talk", name: %{"en" => "Talk"}})
 
     Authoring.set_option_effect(talk, stability, -1.0)
 
     {:ok, election} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Referendum",
+        key: "Referendum",
         title: %{"en" => "Referendum"},
         kind: :election,
         position: 2
       })
 
     {:ok, yes} =
-      Authoring.create_decision_option(election, nil, %{handle: "Yes", text: %{"en" => "Yes"}})
+      Authoring.create_decision_option(election, nil, %{key: "Yes", name: %{"en" => "Yes"}})
 
     Authoring.set_option_effect(yes, stability, gov, 3.0)
     Authoring.set_option_effect(yes, stability, media, -2.0)
 
     {:ok, sidequest} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Leak",
+        key: "Leak",
         title: %{"en" => "Leak"},
         kind: :sidequest,
         position: 3
@@ -74,8 +74,8 @@ defmodule Scenex.PlayTest do
 
     {:ok, success} =
       Authoring.create_decision_option(sidequest, nil, %{
-        handle: "Published",
-        text: %{"en" => "Published"},
+        key: "Published",
+        name: %{"en" => "Published"},
         outcome: :success
       })
 
@@ -83,7 +83,7 @@ defmodule Scenex.PlayTest do
 
     {:ok, stable_end} =
       Authoring.create_ending(scenario, %{
-        handle: "Stabilized",
+        key: "Stabilized",
         title: %{"en" => "Stabilized"},
         condition: "global(stability) >= 6"
       })
@@ -436,7 +436,7 @@ defmodule Scenex.PlayTest do
     # An event element with a deadline; gov and media each have a default.
     {:ok, timed} =
       Authoring.create_timeline_element(scenario, %{
-        handle: "Timed",
+        key: "Timed",
         title: %{"en" => "Timed"},
         position: 4,
         deadline_seconds: 3600
@@ -444,8 +444,8 @@ defmodule Scenex.PlayTest do
 
     {:ok, gov_default} =
       Authoring.create_decision_option(timed, gov, %{
-        handle: "Gov default",
-        text: %{"en" => "Gov default"},
+        key: "Gov default",
+        name: %{"en" => "Gov default"},
         is_default: true
       })
 
@@ -453,15 +453,15 @@ defmodule Scenex.PlayTest do
 
     {:ok, _media_default} =
       Authoring.create_decision_option(timed, media, %{
-        handle: "Media default",
-        text: %{"en" => "Media default"},
+        key: "Media default",
+        name: %{"en" => "Media default"},
         is_default: true
       })
 
     {:ok, media_active} =
       Authoring.create_decision_option(timed, media, %{
-        handle: "Media active",
-        text: %{"en" => "Media active"}
+        key: "Media active",
+        name: %{"en" => "Media active"}
       })
 
     Authoring.set_option_effect(media_active, stability, 1.0)
@@ -494,8 +494,8 @@ defmodule Scenex.PlayTest do
 
       {:ok, media_opt} =
         Authoring.create_decision_option(ctx.event, ctx.media, %{
-          handle: "MediaMove",
-          text: %{"en" => "Media move"}
+          key: "MediaMove",
+          name: %{"en" => "Media move"}
         })
 
       {:ok, _} = Play.start_session(session.id)
@@ -520,7 +520,7 @@ defmodule Scenex.PlayTest do
 
       {:ok, timed} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Timed",
+          key: "Timed",
           title: %{"en" => "Timed"},
           position: 4,
           deadline_seconds: 3600
@@ -528,8 +528,8 @@ defmodule Scenex.PlayTest do
 
       {:ok, _gov_default} =
         Authoring.create_decision_option(timed, gov, %{
-          handle: "Gov default",
-          text: %{"en" => "Gov default"},
+          key: "Gov default",
+          name: %{"en" => "Gov default"},
           is_default: true
         })
 
@@ -689,7 +689,7 @@ defmodule Scenex.PlayTest do
   describe "pages" do
     test "the GM can show a page at any session status, and clear it", ctx do
       {:ok, page} =
-        Authoring.create_page(ctx.scenario, %{handle: "Welcome", content: %{"en" => "Hello"}})
+        Authoring.create_page(ctx.scenario, %{key: "Welcome", content: %{"en" => "Hello"}})
 
       {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
       on_exit(fn -> Play.stop_running(session.id) end)
@@ -714,7 +714,7 @@ defmodule Scenex.PlayTest do
     end
 
     test "survives a session-process restart (replay)", ctx do
-      {:ok, page} = Authoring.create_page(ctx.scenario, %{handle: "Welcome"})
+      {:ok, page} = Authoring.create_page(ctx.scenario, %{key: "Welcome"})
 
       {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
       on_exit(fn -> Play.stop_running(session.id) end)
@@ -756,14 +756,14 @@ defmodule Scenex.PlayTest do
 
   describe "group selection per session" do
     test "a session runs with only its selected groups; excluded groups vanish", ctx do
-      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+      fringe = group_fixture(ctx.scenario, key: "Fringe")
       Authoring.set_group_initial_value(fringe, ctx.stability, 5.0)
       # An event option for the excluded group and an election effect on it —
       # both must be invisible / inert in this session.
       {:ok, fringe_opt} =
         Authoring.create_decision_option(ctx.event, fringe, %{
-          handle: "FringeMove",
-          text: %{"en" => "Fringe move"}
+          key: "FringeMove",
+          name: %{"en" => "Fringe move"}
         })
 
       Authoring.set_option_effect(ctx.yes, ctx.stability, fringe, 5.0)
@@ -833,7 +833,7 @@ defmodule Scenex.PlayTest do
     end
 
     test "group tokens are only issued for selected groups", ctx do
-      fringe = group_fixture(ctx.scenario, handle: "Fringe")
+      fringe = group_fixture(ctx.scenario, key: "Fringe")
 
       {:ok, session} =
         Play.create_session(ctx.user, ctx.scenario, %{
@@ -868,14 +868,14 @@ defmodule Scenex.PlayTest do
       snap = Play.snapshot(ctx.session.id)
       assert Map.has_key?(snap.definition.groups, archived.id)
 
-      # The freed handle is reusable (uniqueness applies to active groups only).
+      # The freed key is reusable (uniqueness applies to active groups only).
       assert {:ok, _} =
-               Authoring.create_group(ctx.scenario, %{handle: "Gov", name: %{"en" => "New Gov"}})
+               Authoring.create_group(ctx.scenario, %{key: "Gov", name: %{"en" => "New Gov"}})
     end
 
     test "a group never used by a session is deleted outright", ctx do
       # The setup session predates Temp, so no session references it.
-      unreferenced = group_fixture(ctx.scenario, handle: "Temp")
+      unreferenced = group_fixture(ctx.scenario, key: "Temp")
 
       assert {:ok, %{archived_at: nil}} = Authoring.delete_group(unreferenced)
       assert Authoring.get_group(ctx.scenario, unreferenced.id) == nil
@@ -883,7 +883,7 @@ defmodule Scenex.PlayTest do
 
     test "with legacy full-pool sessions around, every group counts as in use", ctx do
       Repo.delete_all(Scenex.Play.SessionGroup)
-      late = group_fixture(ctx.scenario, handle: "Late")
+      late = group_fixture(ctx.scenario, key: "Late")
 
       # The legacy session's history could involve any of the pool.
       assert {:ok, %{archived_at: %DateTime{}}} = Authoring.delete_group(late)

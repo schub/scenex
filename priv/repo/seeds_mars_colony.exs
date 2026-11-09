@@ -4,7 +4,7 @@
 # colony teams, five values, a Prologue on Earth, a constructive Act 1 and a
 # dust-storm crisis in Act 2. Authored in English (the source locale).
 #
-# Re-runnable: it deletes any existing scenario with handle "mars_colony"
+# Re-runnable: it deletes any existing scenario with key "mars_colony"
 # first (children cascade), then rebuilds it for the owner below. It refuses
 # if that scenario already has live sessions.
 #
@@ -25,7 +25,7 @@ owner =
   Repo.get_by(Accounts.User, email: owner_email) ||
     raise "No account for #{owner_email} — register it first, or set MARS_OWNER_EMAIL."
 
-existing = Repo.all(from s in Scenario, where: s.handle == "mars_colony")
+existing = Repo.all(from s in Scenario, where: s.key == "mars_colony")
 
 # Sessions keep an append-only log against the scenario's groups; never delete
 # them as a side effect of re-seeding.
@@ -44,7 +44,7 @@ en = fn text -> %{"en" => String.trim(text)} end
 # ── Scenario ────────────────────────────────────────────────────────────────
 {:ok, scenario} =
   Authoring.create_scenario(owner, %{
-    handle: "mars_colony",
+    key: "mars_colony",
     name: en.("Mars Colony"),
     tagline: en.("Twenty-five people. One red planet. No second chances."),
     description:
@@ -108,7 +108,7 @@ en = fn text -> %{"en" => String.trim(text)} end
 ]
 |> Enum.with_index(1)
 |> Enum.each(fn {label, pos} ->
-  {:ok, _} = Authoring.create_overall_index_band(scenario, %{label: en.(label), position: pos})
+  {:ok, _} = Authoring.create_overall_index_band(scenario, %{name: en.(label), position: pos})
 end)
 
 # ── Media ───────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ value_by_key =
   {:ok, _} =
     Authoring.create_value_dimension_step(morale, %{
       emoji: emoji,
-      label: en.(label),
+      name: en.(label),
       position: pos
     })
 end)
@@ -213,7 +213,7 @@ end
 
 groups = [
   %{
-    handle: "engineering",
+    key: "engineering",
     name: "Engineering & Habitat",
     desc:
       group_desc.(
@@ -226,7 +226,7 @@ groups = [
     start: %{"life_support" => 7, "supplies" => 5, "progress" => 3, "risk" => 5}
   },
   %{
-    handle: "science",
+    key: "science",
     name: "Science & Exploration",
     desc:
       group_desc.(
@@ -239,7 +239,7 @@ groups = [
     start: %{"life_support" => 5, "supplies" => 3, "progress" => 7, "risk" => 5}
   },
   %{
-    handle: "agriculture",
+    key: "agriculture",
     name: "Agriculture & Life Systems",
     desc:
       group_desc.(
@@ -255,7 +255,7 @@ groups = [
     start: %{"life_support" => 7, "supplies" => 5, "progress" => 5, "risk" => 7}
   },
   %{
-    handle: "medical",
+    key: "medical",
     name: "Medical & Crew Welfare",
     desc:
       group_desc.(
@@ -271,7 +271,7 @@ groups = [
     start: %{"life_support" => 5, "supplies" => 3, "progress" => 5, "risk" => 3}
   },
   %{
-    handle: "command",
+    key: "command",
     name: "Command & Earth Relations",
     desc:
       group_desc.(
@@ -294,7 +294,7 @@ group_by_handle =
   |> Map.new(fn {g, pos} ->
     {:ok, grp} =
       Authoring.create_group(scenario, %{
-        handle: g.handle,
+        key: g.key,
         name: en.(g.name),
         description: en.(g.desc),
         director_notes: en.(g.notes),
@@ -305,7 +305,7 @@ group_by_handle =
       {:ok, _} = Authoring.set_group_initial_value(grp, value_by_key[key], v * 1.0)
     end)
 
-    {g.handle, grp}
+    {g.key, grp}
   end)
 
 # ── Labels ──────────────────────────────────────────────────────────────────
@@ -318,10 +318,10 @@ label_by_handle =
      "Helps the colony as a whole more than the team itself."}
   ]
   |> Enum.with_index(1)
-  |> Map.new(fn {{handle, name, color, icon, notes}, pos} ->
+  |> Map.new(fn {{key, name, color, icon, notes}, pos} ->
     {:ok, l} =
       Authoring.create_label(scenario, %{
-        handle: handle,
+        key: key,
         name: en.(name),
         color: color,
         icon: icon,
@@ -329,7 +329,7 @@ label_by_handle =
         position: pos
       })
 
-    {handle, l}
+    {key, l}
   end)
 
 # ── Helpers for timeline content ────────────────────────────────────────────
@@ -344,7 +344,7 @@ create_element = fn attrs ->
       scenario,
       attrs
       |> Map.update(:title, nil, en)
-      |> Map.update(:narrative, %{}, en)
+      |> Map.update(:description, %{}, en)
       |> Map.update(:director_notes, %{}, en)
     )
 
@@ -366,9 +366,9 @@ add_event_options = fn element, per_team ->
     |> Enum.each(fn {{title, line, labels, effects, extra}, pos} ->
       {:ok, opt} =
         Authoring.create_decision_option(element, group, %{
-          # Handles are unique per element: titles never repeat within a beat.
-          handle: title,
-          text: en.(option_text.(title, line)),
+          # Keys are unique per element: titles never repeat within a beat.
+          key: title,
+          name: en.(option_text.(title, line)),
           condition: extra[:condition],
           is_default: Keyword.get(extra, :default, false),
           director_notes: if(extra[:notes], do: en.(extra[:notes]), else: %{}),
@@ -402,11 +402,11 @@ end
 add_outcomes = fn element, outcomes ->
   outcomes
   |> Enum.with_index(1)
-  |> Enum.each(fn {{outcome, handle, text, rows}, pos} ->
+  |> Enum.each(fn {{outcome, key, text, rows}, pos} ->
     {:ok, opt} =
       Authoring.create_decision_option(element, nil, %{
-        handle: handle,
-        text: en.(text),
+        key: key,
+        name: en.(text),
         outcome: outcome,
         position: pos
       })
@@ -418,12 +418,12 @@ end
 # ── Prologue: What to Bring ─────────────────────────────────────────────────
 what_to_bring =
   create_element.(%{
-    handle: "what_to_bring",
+    key: "what_to_bring",
     kind: :event,
     position: 1,
     deadline_seconds: 300,
     title: "What to Bring",
-    narrative: """
+    description: """
     **Prologue — Cape Canaveral, the night before launch.**
 
     The rocket is fuelled. The cargo hold has room for exactly one more
@@ -494,11 +494,11 @@ add_event_options.(what_to_bring, %{
 # ── Act 1: Touchdown ────────────────────────────────────────────────────────
 touchdown =
   create_element.(%{
-    handle: "touchdown",
+    key: "touchdown",
     kind: :event,
     position: 2,
     title: "Touchdown",
-    narrative: """
+    description: """
     **Act 1 — Sol 1, Jezero Crater.**
 
     ![Jezero Crater](#{crater_url})
@@ -561,11 +561,11 @@ add_event_options.(touchdown, %{
 # ── Act 1: Settling In ──────────────────────────────────────────────────────
 settling_in =
   create_element.(%{
-    handle: "settling_in",
+    key: "settling_in",
     kind: :event,
     position: 3,
     title: "Settling In",
-    narrative: """
+    description: """
     **Act 1 — Sol 30.**
 
     The colony has a rhythm now: wake-up call, oatmeal, work, the evening
@@ -640,11 +640,11 @@ add_event_options.(settling_in, %{
 # ── Wildcards (GM-adjudicated, any time) ────────────────────────────────────
 green_thumb =
   create_element.(%{
-    handle: "green_thumb",
+    key: "green_thumb",
     kind: :sidequest,
     position: 4,
     title: "Green Thumb",
-    narrative: """
+    description: """
     One of the farmers has a wild idea: grow potatoes in pure Mars soil,
     treated with a trick nobody has tried yet. But the experiment needs a
     corner of the Science lab — and nobody asked Science.
@@ -667,11 +667,11 @@ add_outcomes.(green_thumb, [
 
 the_find =
   create_element.(%{
-    handle: "the_find",
+    key: "the_find",
     kind: :sidequest,
     position: 5,
     title: "The Find",
-    narrative: """
+    description: """
     The drill brings up something strange: layered crystals with a pattern
     no one can explain. It could be the discovery of the century — or
     nothing at all.
@@ -696,12 +696,12 @@ add_outcomes.(the_find, [
 # ── Act 2: The Storm ────────────────────────────────────────────────────────
 the_storm =
   create_element.(%{
-    handle: "the_storm",
+    key: "the_storm",
     kind: :event,
     position: 6,
     deadline_seconds: 240,
     title: "The Storm",
-    narrative: """
+    description: """
     **Act 2 — Sol 112.**
 
     The sky turns orange, then brown, then black. A dust storm the size of a
@@ -786,11 +786,11 @@ end
 
 rationing_holding =
   create_element.(%{
-    handle: "rationing_holding",
+    key: "rationing_holding",
     kind: :event,
     position: 7,
     title: "Rationing",
-    narrative: """
+    description: """
     **Act 2 — Sol 130.** The storm has lasted eighteen days.
 
     The colony has held together so far — but the power budget is a
@@ -835,11 +835,11 @@ add_event_options.(rationing_holding, %{
 
 rationing_struggling =
   create_element.(%{
-    handle: "rationing_struggling",
+    key: "rationing_struggling",
     kind: :event,
     position: 8,
     title: "Rationing",
-    narrative: """
+    description: """
     **Act 2 — Sol 130.** The storm has lasted eighteen days.
 
     Things are bad. Two habitat modules are already dark and cold. People
@@ -887,11 +887,11 @@ add_event_options.(rationing_struggling, %{
 # ── More Wildcards for Act 2 ────────────────────────────────────────────────
 jury_rig =
   create_element.(%{
-    handle: "jury_rig_it",
+    key: "jury_rig_it",
     kind: :sidequest,
     position: 9,
     title: "Jury-Rig It",
-    narrative: """
+    description: """
     An engineer knows a shortcut: rewire the greenhouse's backup pump to
     power the airlock heaters. It would work. Probably. But the pump belongs
     to Agriculture.
@@ -914,11 +914,11 @@ add_outcomes.(jury_rig, [
 
 triage =
   create_element.(%{
-    handle: "triage",
+    key: "triage",
     kind: :sidequest,
     position: 10,
     title: "Triage",
-    narrative: """
+    description: """
     Three colonists are sick, and there is medicine for two. Someone has to
     decide — and someone has to announce it to the colony.
 
@@ -942,11 +942,11 @@ add_outcomes.(triage, [
 
 off_the_record =
   create_element.(%{
-    handle: "off_the_record",
+    key: "off_the_record",
     kind: :sidequest,
     position: 11,
     title: "Off the Record",
-    narrative: """
+    description: """
     You overheard something you weren't supposed to: Earth has already
     replied to the colony's emergency call — and their offer has strings
     attached.
@@ -971,12 +971,12 @@ add_outcomes.(off_the_record, [
 # ── Act 2: the Vote ─────────────────────────────────────────────────────────
 earths_offer =
   create_element.(%{
-    handle: "earths_offer",
+    key: "earths_offer",
     kind: :election,
     position: 12,
     deadline_seconds: 480,
     title: "Earth's Offer",
-    narrative: """
+    description: """
     **Act 2 — Sol 140.** Mission Control has answered the emergency call.
 
     A resupply rocket can launch next week — but someone has to pay for it.
@@ -1001,8 +1001,8 @@ earths_offer =
 
 {:ok, sponsor} =
   Authoring.create_decision_option(earths_offer, nil, %{
-    handle: "Sponsor deal",
-    text: en.("Take the sponsor deal"),
+    key: "Sponsor deal",
+    name: en.("Take the sponsor deal"),
     is_default: true,
     position: 1
   })
@@ -1019,8 +1019,8 @@ set_matrix.(sponsor, %{
 
 {:ok, extend} =
   Authoring.create_decision_option(earths_offer, nil, %{
-    handle: "Extend the mission",
-    text: en.("Extend the mission"),
+    key: "Extend the mission",
+    name: en.("Extend the mission"),
     position: 2
   })
 
@@ -1036,8 +1036,8 @@ set_matrix.(extend, %{
 
 {:ok, alone} =
   Authoring.create_decision_option(earths_offer, nil, %{
-    handle: "Go it alone",
-    text: en.("Go it alone"),
+    key: "Go it alone",
+    name: en.("Go it alone"),
     condition: "global(supplies) >= 3",
     director_notes:
       en.("Gated: only on the ballot if the colony still has Supplies of 3 or more."),
@@ -1091,12 +1091,12 @@ endings = [
    "Sobering, never hopeless — this is for teenagers. End on the sunrise line, then go straight to the debrief: what would have changed the outcome?"}
 ]
 
-Enum.each(endings, fn {handle, title, condition, priority, narrative, notes} ->
+Enum.each(endings, fn {key, title, condition, priority, description, notes} ->
   {:ok, _} =
     Authoring.create_ending(scenario, %{
-      handle: handle,
+      key: key,
       title: en.(title),
-      narrative: en.(narrative),
+      description: en.(description),
       director_notes: en.(notes),
       condition: condition,
       priority: priority
@@ -1165,9 +1165,9 @@ pages = [
 
 pages
 |> Enum.with_index(1)
-|> Enum.each(fn {{handle, content}, pos} ->
+|> Enum.each(fn {{key, content}, pos} ->
   {:ok, _} =
-    Authoring.create_page(scenario, %{handle: handle, content: en.(content), position: pos})
+    Authoring.create_page(scenario, %{key: key, content: en.(content), position: pos})
 end)
 
 IO.puts("""

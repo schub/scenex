@@ -22,7 +22,7 @@ defmodule Scenex.Authoring.OverallIndexBand do
   @timestamps_opts [type: :utc_datetime]
 
   schema "overall_index_bands" do
-    field :label, :map, default: %{}
+    field :name, :map, default: %{}
     field :position, :integer, default: 0
 
     belongs_to :scenario, Scenario
@@ -32,9 +32,9 @@ defmodule Scenex.Authoring.OverallIndexBand do
 
   def changeset(band, attrs) do
     band
-    |> cast(attrs, [:scenario_id, :label, :position])
+    |> cast(attrs, [:scenario_id, :name, :position])
     |> validate_required([:scenario_id])
-    |> validate_localized_required(:label)
+    |> validate_localized_required(:name)
     |> assoc_constraint(:scenario)
   end
 end

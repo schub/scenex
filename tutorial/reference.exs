@@ -2,15 +2,15 @@
 # option and effect, straight from the database — so the tutorial's
 # reference pages never drift from the content.
 #
-#     mix run tutorial/reference.exs <scenario-handle> <output-path> <back-link>
+#     mix run tutorial/reference.exs <scenario-key> <output-path> <back-link>
 
 Logger.configure(level: :warning)
 
 alias Scenex.{Authoring, I18n, Repo}
 alias Scenex.Authoring.Scenario
 
-[handle, out, back] = System.argv()
-scenario = Repo.get_by!(Scenario, handle: handle)
+[key, out, back] = System.argv()
+scenario = Repo.get_by!(Scenario, key: key)
 t = fn map -> I18n.t(map, "en") || "" end
 
 values = Authoring.list_value_dimensions(scenario)
@@ -109,20 +109,20 @@ beats =
                 default = if o.is_default, do: " ⏱", else: ""
                 gate = if o.condition, do: "`#{o.condition}`", else: ""
 
-                "| #{group_name[o.group_id]} | **#{esc.(o.handle)}**#{default} — #{esc.(plain.(t.(o.text)))} | #{option_labels.(o)} | #{effects.(o)} | #{gate} |"
+                "| #{group_name[o.group_id]} | **#{esc.(o.key)}**#{default} — #{esc.(plain.(t.(o.name)))} | #{option_labels.(o)} | #{effects.(o)} | #{gate} |"
               end)
 
           _ ->
             "| Outcome | Effects | Gate |\n|---|---|---|\n" <>
               Enum.map_join(options, "\n", fn o ->
-                name = if o.outcome, do: "#{o.outcome}: #{o.handle}", else: o.handle
+                name = if o.outcome, do: "#{o.outcome}: #{o.key}", else: o.key
                 default = if o.is_default, do: " ⏱", else: ""
                 gate = if o.condition, do: "`#{o.condition}`", else: ""
                 "| **#{esc.(name)}**#{default} | #{effects.(o)} | #{gate} |"
               end)
         end
 
-      "### #{el.position}. #{t.(el.title)} (`#{el.handle}`)\n\n*#{kind[el.kind]}#{deadline}*\n\n#{rows}\n"
+      "### #{el.position}. #{t.(el.title)} (`#{el.key}`)\n\n*#{kind[el.kind]}#{deadline}*\n\n#{rows}\n"
     end) <> "\n⏱ after an option = the default applied when the deadline runs out.\n\n"
 
 endings =

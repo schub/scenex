@@ -21,7 +21,7 @@ defmodule Scenex.Authoring.Label do
   def colors, do: @colors
 
   schema "labels" do
-    field :handle, :string
+    field :key, :string
     field :name, :map, default: %{}
     field :director_notes, :map, default: %{}
     field :color, Ecto.Enum, values: @colors, default: :neutral
@@ -35,12 +35,12 @@ defmodule Scenex.Authoring.Label do
 
   def changeset(label, attrs) do
     label
-    |> cast(attrs, [:scenario_id, :handle, :name, :director_notes, :color, :icon, :position])
-    |> validate_required([:scenario_id, :handle, :color])
+    |> cast(attrs, [:scenario_id, :key, :name, :director_notes, :color, :icon, :position])
+    |> validate_required([:scenario_id, :key, :color])
     |> validate_localized_required(:name)
     |> assoc_constraint(:scenario)
-    |> unique_constraint(:handle,
-      name: :labels_scenario_id_handle_index,
+    |> unique_constraint(:key,
+      name: :labels_scenario_id_key_index,
       message: "is already used in this scenario"
     )
   end

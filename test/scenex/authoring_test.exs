@@ -12,7 +12,7 @@ defmodule Scenex.AuthoringTest do
       user = user_fixture()
 
       assert {:ok, scenario} =
-               Authoring.create_scenario(user, %{handle: "Lux", name: %{"en" => "Lux"}})
+               Authoring.create_scenario(user, %{key: "Lux", name: %{"en" => "Lux"}})
 
       assert Authoring.get_user_role(scenario, user) == :owner
       assert Authoring.is_owner?(scenario, user)
@@ -231,26 +231,26 @@ defmodule Scenex.AuthoringTest do
     end
   end
 
-  describe "handle uniqueness" do
-    test "two groups in the same scenario can't share a handle" do
+  describe "key uniqueness" do
+    test "two groups in the same scenario can't share a key" do
       user = user_fixture()
       scenario = scenario_fixture(user)
 
-      assert {:ok, _} = Authoring.create_group(scenario, %{handle: "Gov", name: %{"en" => "A"}})
+      assert {:ok, _} = Authoring.create_group(scenario, %{key: "Gov", name: %{"en" => "A"}})
 
       assert {:error, cs} =
-               Authoring.create_group(scenario, %{handle: "Gov", name: %{"en" => "B"}})
+               Authoring.create_group(scenario, %{key: "Gov", name: %{"en" => "B"}})
 
-      assert %{handle: ["is already used in this scenario"]} = errors_on(cs)
+      assert %{key: ["is already used in this scenario"]} = errors_on(cs)
     end
 
-    test "the same handle is allowed in a different scenario" do
+    test "the same key is allowed in a different scenario" do
       user = user_fixture()
       game1 = scenario_fixture(user)
       game2 = scenario_fixture(user)
 
-      assert {:ok, _} = Authoring.create_group(game1, %{handle: "Gov", name: %{"en" => "A"}})
-      assert {:ok, _} = Authoring.create_group(game2, %{handle: "Gov", name: %{"en" => "B"}})
+      assert {:ok, _} = Authoring.create_group(game1, %{key: "Gov", name: %{"en" => "A"}})
+      assert {:ok, _} = Authoring.create_group(game2, %{key: "Gov", name: %{"en" => "B"}})
     end
   end
 
@@ -266,31 +266,31 @@ defmodule Scenex.AuthoringTest do
     test "election options take no group and no self() gate", %{scenario: scenario, group: group} do
       {:ok, election} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Emergency law",
+          key: "Emergency law",
           title: %{"en" => "Emergency law"},
           kind: :election
         })
 
       assert {:ok, option} =
                Authoring.create_decision_option(election, nil, %{
-                 handle: "Yes",
-                 text: %{"en" => "Pass the law"}
+                 key: "Yes",
+                 name: %{"en" => "Pass the law"}
                })
 
       assert option.group_id == nil
 
       assert {:error, cs} =
                Authoring.create_decision_option(election, group, %{
-                 handle: "No",
-                 text: %{"en" => "Reject"}
+                 key: "No",
+                 name: %{"en" => "Reject"}
                })
 
       assert %{group_id: [_]} = errors_on(cs)
 
       assert {:error, cs2} =
                Authoring.create_decision_option(election, nil, %{
-                 handle: "Radical",
-                 text: %{"en" => "Radical option"},
+                 key: "Radical",
+                 name: %{"en" => "Radical option"},
                  condition: "self(resources) >= 3"
                })
 
@@ -299,8 +299,8 @@ defmodule Scenex.AuthoringTest do
 
       assert {:ok, _} =
                Authoring.create_decision_option(election, nil, %{
-                 handle: "Gated",
-                 text: %{"en" => "Gated option"},
+                 key: "Gated",
+                 name: %{"en" => "Gated option"},
                  condition: "global(resources) >= 3"
                })
     end
@@ -308,23 +308,23 @@ defmodule Scenex.AuthoringTest do
     test "sidequest options need an outcome and allow no gate", %{scenario: scenario} do
       {:ok, sidequest} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Leak the memo",
+          key: "Leak the memo",
           title: %{"en" => "Leak the memo"},
           kind: :sidequest
         })
 
       assert {:error, cs} =
                Authoring.create_decision_option(sidequest, nil, %{
-                 handle: "Done",
-                 text: %{"en" => "It worked"}
+                 key: "Done",
+                 name: %{"en" => "It worked"}
                })
 
       assert %{outcome: ["can't be blank"]} = errors_on(cs)
 
       assert {:ok, success} =
                Authoring.create_decision_option(sidequest, nil, %{
-                 handle: "Success",
-                 text: %{"en" => "It worked"},
+                 key: "Success",
+                 name: %{"en" => "It worked"},
                  outcome: :success
                })
 
@@ -332,8 +332,8 @@ defmodule Scenex.AuthoringTest do
 
       assert {:error, cs2} =
                Authoring.create_decision_option(sidequest, nil, %{
-                 handle: "Gated",
-                 text: %{"en" => "Nope"},
+                 key: "Gated",
+                 name: %{"en" => "Nope"},
                  outcome: :failure,
                  condition: "global(resources) > 1"
                })
@@ -349,15 +349,15 @@ defmodule Scenex.AuthoringTest do
 
       assert {:ok, _} =
                Authoring.create_decision_option(element, group, %{
-                 handle: "Bailout",
-                 text: %{"en" => "Bailout"},
+                 key: "Bailout",
+                 name: %{"en" => "Bailout"},
                  condition: "self(resources) >= 3"
                })
 
       assert {:error, cs} =
                Authoring.create_decision_option(element, group, %{
-                 handle: "Bad gate",
-                 text: %{"en" => "Bad gate"},
+                 key: "Bad gate",
+                 name: %{"en" => "Bad gate"},
                  condition: "self(wealth) >= 3"
                })
 
@@ -366,8 +366,8 @@ defmodule Scenex.AuthoringTest do
 
       assert {:error, cs2} =
                Authoring.create_decision_option(element, group, %{
-                 handle: "No outcome",
-                 text: %{"en" => "No outcome"},
+                 key: "No outcome",
+                 name: %{"en" => "No outcome"},
                  outcome: :success
                })
 
@@ -379,19 +379,19 @@ defmodule Scenex.AuthoringTest do
     setup do
       user = user_fixture()
       scenario = scenario_fixture(user)
-      gov = group_fixture(scenario, handle: "Gov")
-      media = group_fixture(scenario, handle: "Media")
+      gov = group_fixture(scenario, key: "Gov")
+      media = group_fixture(scenario, key: "Media")
       vd = value_dimension_fixture(scenario)
 
       {:ok, election} =
         Authoring.create_timeline_element(scenario, %{
-          handle: "Vote",
+          key: "Vote",
           title: %{"en" => "Vote"},
           kind: :election
         })
 
       {:ok, option} =
-        Authoring.create_decision_option(election, nil, %{handle: "Yes", text: %{"en" => "Yes"}})
+        Authoring.create_decision_option(election, nil, %{key: "Yes", name: %{"en" => "Yes"}})
 
       %{option: option, vd: vd, gov: gov, media: media}
     end
@@ -439,7 +439,7 @@ defmodule Scenex.AuthoringTest do
     test "creates, updates, and lists by priority", %{scenario: scenario} do
       assert {:ok, collapse} =
                Authoring.create_ending(scenario, %{
-                 handle: "Collapse",
+                 key: "Collapse",
                  title: %{"en" => "Systemic collapse"},
                  condition: "global(risk) >= 8",
                  priority: 10
@@ -447,7 +447,7 @@ defmodule Scenex.AuthoringTest do
 
       assert {:ok, _default} =
                Authoring.create_ending(scenario, %{
-                 handle: "Muddling through",
+                 key: "Muddling through",
                  title: %{"en" => "Muddling through"}
                })
 
@@ -462,7 +462,7 @@ defmodule Scenex.AuthoringTest do
     test "validates the condition (globals only, known keys)", %{scenario: scenario} do
       assert {:error, cs} =
                Authoring.create_ending(scenario, %{
-                 handle: "Bad",
+                 key: "Bad",
                  title: %{"en" => "Bad"},
                  condition: "self(risk) >= 8"
                })
@@ -472,7 +472,7 @@ defmodule Scenex.AuthoringTest do
 
       assert {:error, cs2} =
                Authoring.create_ending(scenario, %{
-                 handle: "Bad key",
+                 key: "Bad key",
                  title: %{"en" => "Bad key"},
                  condition: "global(chaos) >= 8"
                })
@@ -480,14 +480,14 @@ defmodule Scenex.AuthoringTest do
       assert %{condition: [_]} = errors_on(cs2)
     end
 
-    test "handles are unique per scenario", %{scenario: scenario} do
+    test "keys are unique per scenario", %{scenario: scenario} do
       assert {:ok, _} =
-               Authoring.create_ending(scenario, %{handle: "End", title: %{"en" => "End"}})
+               Authoring.create_ending(scenario, %{key: "End", title: %{"en" => "End"}})
 
       assert {:error, cs} =
-               Authoring.create_ending(scenario, %{handle: "End", title: %{"en" => "Other"}})
+               Authoring.create_ending(scenario, %{key: "End", title: %{"en" => "Other"}})
 
-      assert %{handle: [_]} = errors_on(cs)
+      assert %{key: [_]} = errors_on(cs)
     end
   end
 
@@ -499,14 +499,14 @@ defmodule Scenex.AuthoringTest do
     test "creates, updates, lists by position, and deletes", %{scenario: scenario} do
       assert {:ok, welcome} =
                Authoring.create_page(scenario, %{
-                 handle: "Welcome",
+                 key: "Welcome",
                  content: %{"en" => "# Welcome\n\nTake your seats."},
                  position: 0
                })
 
       assert {:ok, sponsors} =
                Authoring.create_page(scenario, %{
-                 handle: "Sponsors",
+                 key: "Sponsors",
                  content: %{"en" => "![logo](/media/abc/logo.png)"},
                  position: 1
                })
@@ -531,19 +531,19 @@ defmodule Scenex.AuthoringTest do
     test "content is optional — a page can be blank (e.g. a deliberate blackout)", %{
       scenario: scenario
     } do
-      assert {:ok, page} = Authoring.create_page(scenario, %{handle: "Blank"})
+      assert {:ok, page} = Authoring.create_page(scenario, %{key: "Blank"})
       assert page.content == %{}
     end
 
-    test "requires a handle", %{scenario: scenario} do
+    test "requires a key", %{scenario: scenario} do
       assert {:error, cs} = Authoring.create_page(scenario, %{})
-      assert %{handle: ["can't be blank"]} = errors_on(cs)
+      assert %{key: ["can't be blank"]} = errors_on(cs)
     end
 
-    test "handles are unique per scenario", %{scenario: scenario} do
-      assert {:ok, _} = Authoring.create_page(scenario, %{handle: "Dup"})
-      assert {:error, cs} = Authoring.create_page(scenario, %{handle: "Dup"})
-      assert %{handle: [_]} = errors_on(cs)
+    test "keys are unique per scenario", %{scenario: scenario} do
+      assert {:ok, _} = Authoring.create_page(scenario, %{key: "Dup"})
+      assert {:error, cs} = Authoring.create_page(scenario, %{key: "Dup"})
+      assert %{key: [_]} = errors_on(cs)
     end
   end
 
@@ -555,13 +555,13 @@ defmodule Scenex.AuthoringTest do
     test "creates, updates, lists by position, and deletes", %{scenario: scenario} do
       assert {:ok, breakdown} =
                Authoring.create_overall_index_band(scenario, %{
-                 label: %{"en" => "Breakdown"},
+                 name: %{"en" => "Breakdown"},
                  position: 0
                })
 
       assert {:ok, in_bloom} =
                Authoring.create_overall_index_band(scenario, %{
-                 label: %{"en" => "In Bloom"},
+                 name: %{"en" => "In Bloom"},
                  position: 1
                })
 
@@ -587,9 +587,9 @@ defmodule Scenex.AuthoringTest do
 
     test "requires a label", %{scenario: scenario} do
       assert {:error, cs} =
-               Authoring.create_overall_index_band(scenario, %{label: %{"en" => ""}})
+               Authoring.create_overall_index_band(scenario, %{name: %{"en" => ""}})
 
-      assert %{label: ["can't be blank"]} = errors_on(cs)
+      assert %{name: ["can't be blank"]} = errors_on(cs)
     end
   end
 
@@ -607,13 +607,13 @@ defmodule Scenex.AuthoringTest do
                Authoring.create_value_dimension_step(vd, %{
                  position: 2,
                  emoji: "🙂",
-                 label: %{"en" => "Good"}
+                 name: %{"en" => "Good"}
                })
 
-      assert best.label == %{"en" => "Good"}
+      assert best.name == %{"en" => "Good"}
       assert {:ok, worst} = Authoring.create_value_dimension_step(vd, %{position: 1, emoji: "🙁"})
       # Label is optional.
-      assert worst.label == %{}
+      assert worst.name == %{}
 
       assert Enum.map(Authoring.list_value_dimension_steps(vd), & &1.id) == [worst.id, best.id]
 
@@ -683,8 +683,8 @@ defmodule Scenex.AuthoringTest do
     } do
       assert {:ok, option} =
                Authoring.create_decision_option(timeline_element, group, %{
-                 handle: "Ration",
-                 text: %{"en" => "Ration"}
+                 key: "Ration",
+                 name: %{"en" => "Ration"}
                })
 
       assert option.timeline_element_id == timeline_element.id

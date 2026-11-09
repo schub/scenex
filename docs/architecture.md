@@ -101,9 +101,14 @@ The graph hangs off `Scenex.Authoring.Scenario`. Rather than restate every
 field here, see the schema moduledocs under `lib/scenex/authoring/`. The
 concepts worth knowing before you read them:
 
-**Handles vs. localized fields.** Every content entity carries a `handle` — a
-required, non-translated organizational label, unique within its scope, used
-by authors and the GM. Player-facing text lives in separate localized fields.
+**Keys vs. localized fields.** Every content entity carries a `key` — a
+required, non-translated identifier, unique within its scope, used by authors
+and the GM and never shown to the audience. A value's key is a slug, because
+formulas and conditions reference it; every other key is free text.
+Audience-facing text lives in localized fields named the same way everywhere:
+`name` (what a thing is called — groups, values, labels, options, steps,
+bands), `title` (the headline of content with a body — timeline elements,
+endings) and `description` (the long Markdown body).
 
 **`input_scope` on a value.** `:per_group` means each faction holds a number
 and the global is aggregated across groups. `:per_participant` means
@@ -187,7 +192,7 @@ This is a data-model decision, not a feature. Two distinct mechanisms:
 
 **UI chrome** — buttons, labels, errors — goes through Gettext.
 
-**Authored content** — value names, group names, narratives, option texts,
+**Authored content** — value names, group names, descriptions, option names,
 endings, director's notes — is stored as a plain `jsonb` map of
 `locale => string` and rendered per viewer by `Scenex.I18n`, falling back to
 the scenario's `source_locale` and then to any translation that exists, so a

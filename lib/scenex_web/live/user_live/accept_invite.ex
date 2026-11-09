@@ -82,7 +82,7 @@ defmodule ScenexWeb.UserLive.AcceptInvite do
       invitation ->
         scenario_name =
           Scenex.I18n.t!(invitation.scenario.name, invitation.scenario.source_locale,
-            default: invitation.scenario.handle
+            default: invitation.scenario.key
           )
 
         current_user = socket.assigns.current_scope && socket.assigns.current_scope.user

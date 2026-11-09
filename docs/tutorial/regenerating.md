@@ -80,14 +80,20 @@ Image names are stable: `capture.mjs` saves `shot("console-vote")` as
   `node video/storyboard.mjs` turns it into `video/storyboard.md`, a table
   to review the text before recording.
 - `tutorial/video/record.mjs` — speaks every line (`voice.mjs`), then plays
-  the storyboard in a recorded browser with a visible pointer, holding each
-  scene as long as its line plus a short pause. It also renders one caption
-  image per scene.
-- `tutorial/video/assemble.mjs` — combines picture, voice and captions with
-  `ffmpeg` into `tutorial/video/build/scenex-tutorial.mp4` (1280×800: the
-  720p picture plus a caption bar underneath) and a `.srt` subtitle file.
-  Browser recordings run a few percent slow under load; the assembler
-  measures that and corrects it, so voice and picture stay in sync.
+  the storyboard in the browser, holding each scene as long as its line plus
+  a short pause. The picture comes from Chrome's screencast, every frame with
+  the time it was painted — the same clock that places the voice, so the two
+  stay exactly in sync. A pointer appears only while it moves (to click or
+  point at something) and fades out when it comes to rest.
+- `tutorial/video/assemble.mjs` — combines picture and voice with `ffmpeg`
+  into `tutorial/video/build/scenex-tutorial.mp4` (1280×720) with the
+  captions as a switchable subtitle track, plus the same captions as `.srt`.
+  `TUTORIAL_BURN_CAPTIONS=1` burns them into a bar below the picture
+  instead.
+- Checks: `video/contact-sheet.sh` (one still per scene),
+  `video/frames-at.sh 3:29` (a strip around one moment),
+  `video/sync-check.mjs` (picture vs. voice at the hard cuts),
+  `video/credits.mjs` (ElevenLabs usage).
 
 ### Voices
 
