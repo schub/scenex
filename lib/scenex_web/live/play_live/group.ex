@@ -182,6 +182,7 @@ defmodule ScenexWeb.PlayLive.Group do
       {:ok, %{kind: :group} = token} ->
         if connected?(socket) do
           Play.subscribe(token.session_id)
+          Play.track_client(token.session_id, :group)
           :timer.send_interval(1000, :tick)
         end
 

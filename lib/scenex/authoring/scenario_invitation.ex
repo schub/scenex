@@ -20,6 +20,7 @@ defmodule Scenex.Authoring.ScenarioInvitation do
   @hash_algorithm :sha256
   @rand_size 32
   @validity_in_days 7
+  def validity_in_days, do: @validity_in_days
 
   # Owners are created by owning, not by invitation.
   @invitable_roles [:author, :viewer]

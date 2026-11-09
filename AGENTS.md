@@ -76,6 +76,11 @@ ask rather than doing it incidentally.
   suite — the same gate `release.sh` enforces.
 - **Generate migrations with `mix ecto.gen.migration name`.** Never hand-write
   a timestamp.
+- **In the fisher container** the database is the `db` container (`PGHOST=db`
+  is picked up by `config/dev.exs` and `config/test.exs`). Run the dev server
+  with `PHX_BIND=0.0.0.0 mix phx.server` on port **4000** and open
+  `http://fisher.orb.local:4000`. Prometheus metrics are on port **9568**
+  (`/metrics`).
 - Work happens on `dev`. Releases and deploys are scripted and manual — see
   [`docs/releasing.md`](docs/releasing.md). Don't invent release steps.
 
@@ -87,6 +92,7 @@ ask rather than doing it incidentally.
 | Layers, invariants, how a live session runs | [`docs/architecture.md`](docs/architecture.md) |
 | Production VM, env vars, edge proxy | [`docs/deployment.md`](docs/deployment.md) |
 | Branch model, versioning, releasing | [`docs/releasing.md`](docs/releasing.md) |
+| Why it is built this way (decision records) | [`docs/adr/`](docs/adr/README.md) |
 | User tutorial (authors, GMs) and its generator | [`docs/tutorial/`](docs/tutorial/index.md), [`tutorial/`](tutorial/run.sh) |
 | Game design source material (concepts, playtests) | `studio/docs/` — one level up, not in this repo |
 

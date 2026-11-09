@@ -11,7 +11,7 @@ config :bcrypt_elixir, :log_rounds, 1
 config :scenex, Scenex.Repo,
   username: "dev",
   password: "dev",
-  hostname: "localhost",
+  hostname: System.get_env("PGHOST", "localhost"),
   database: "scenex_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
@@ -22,6 +22,9 @@ config :scenex, ScenexWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "jaiq3WfMOPH9UpRG2+mZG4A9O8yAJBO01LtvYuW5a2a6Z6+drv6M4z6gE6JTqI3u",
   server: false
+
+# No metrics collection: its database polling would run outside the sandbox.
+config :scenex, Scenex.PromEx, disabled: true
 
 # In test we don't send emails
 config :scenex, Scenex.Mailer, adapter: Swoosh.Adapters.Test

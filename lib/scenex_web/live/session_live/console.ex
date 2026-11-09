@@ -568,6 +568,7 @@ defmodule ScenexWeb.SessionLive.Console do
   defp mount_console(socket, session, scenario) do
     if connected?(socket) do
       Play.subscribe(session.id)
+      Play.track_client(session.id, :gm)
       :timer.send_interval(1000, :tick)
     end
 

@@ -14,3 +14,4 @@ step, with the *Mars Colony* scenario as the worked example.
 - [Architecture](architecture.md) — the three layers, the invariants, how a live session runs
 - [Deployment](deployment.md) — the production server
 - [Releasing](releasing.md) — branches, versions, releases
+- [Decision records](adr/README.md) — why it is built this way

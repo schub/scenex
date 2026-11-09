@@ -188,6 +188,7 @@ defmodule ScenexWeb.PlayLive.Display do
       {:ok, %{kind: :display} = token} ->
         if connected?(socket) do
           Play.subscribe(token.session_id)
+          Play.track_client(token.session_id, :display)
           :timer.send_interval(1000, :tick)
         end
 
