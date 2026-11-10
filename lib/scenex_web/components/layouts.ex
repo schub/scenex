@@ -31,11 +31,44 @@ defmodule ScenexWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :fill, :boolean,
+    default: false,
+    doc: "exactly fill the viewport: the page never scrolls, the content manages its own"
+
   slot :inner_block, required: true
+
+  def app(%{fill: true} = assigns) do
+    ~H"""
+    <div class="flex h-dvh flex-col">
+      <.app_navbar current_scope={@current_scope} />
+      <main class="min-h-0 flex-1 px-4 pb-4 sm:px-6 lg:px-8">
+        {render_slot(@inner_block)}
+      </main>
+    </div>
+
+    <.flash_group flash={@flash} />
+    """
+  end
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
+    <.app_navbar current_scope={@current_scope} />
+
+    <main class="px-4 py-8 sm:px-6 lg:px-8">
+      <div class="space-y-4">
+        {render_slot(@inner_block)}
+      </div>
+    </main>
+
+    <.flash_group flash={@flash} />
+    """
+  end
+
+  attr :current_scope, :map, default: nil
+
+  defp app_navbar(assigns) do
+    ~H"""
+    <header class="navbar shrink-0 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
         <a href="/" class="flex w-fit items-center gap-2">
           <span class="text-lg font-semibold">Scenex</span>
@@ -54,14 +87,6 @@ defmodule ScenexWeb.Layouts do
         <.theme_toggle />
       </div>
     </header>
-
-    <main class="px-4 py-8 sm:px-6 lg:px-8">
-      <div class="space-y-4">
-        {render_slot(@inner_block)}
-      </div>
-    </main>
-
-    <.flash_group flash={@flash} />
     """
   end
 

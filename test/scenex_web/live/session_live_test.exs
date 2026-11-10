@@ -150,7 +150,7 @@ defmodule ScenexWeb.SessionLiveTest do
     assert html =~ "live"
 
     # Trigger the event and enter gov's decision -> stability 7
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
+    lv |> element("#beat-row-#{ctx.event.id} button[phx-click=trigger]") |> render_click()
 
     html =
       lv
@@ -165,7 +165,7 @@ defmodule ScenexWeb.SessionLiveTest do
 
     # Election: tally + winner -> gov 9
     lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
+    |> element("#beat-row-#{ctx.election.id} button[phx-click=trigger]")
     |> render_click()
 
     html =
@@ -183,7 +183,7 @@ defmodule ScenexWeb.SessionLiveTest do
 
     # Sidequest adjudication
     lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.sidequest.id}"]})
+    |> element("#beat-row-#{ctx.sidequest.id} button[phx-click=trigger]")
     |> render_click()
 
     lv
@@ -237,7 +237,7 @@ defmodule ScenexWeb.SessionLiveTest do
     lv |> element("button[phx-click=start]") |> render_click()
 
     lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
+    |> element("#beat-row-#{ctx.election.id} button[phx-click=trigger]")
     |> render_click()
 
     lv
@@ -478,7 +478,7 @@ defmodule ScenexWeb.SessionLiveTest do
     assert html =~ "Breakdown"
 
     lv |> element("button[phx-click=start]") |> render_click()
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{event.id}"]}) |> render_click()
+    lv |> element("#beat-row-#{event.id} button[phx-click=trigger]") |> render_click()
 
     # +2 stability -> avg 7 -> best band ("In Bloom").
     html =
@@ -515,7 +515,7 @@ defmodule ScenexWeb.SessionLiveTest do
     lv |> element("button[phx-click=start]") |> render_click()
     refute has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
 
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
+    lv |> element("#beat-row-#{ctx.event.id} button[phx-click=trigger]") |> render_click()
     assert has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
 
     html =
