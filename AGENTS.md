@@ -80,9 +80,33 @@ ask rather than doing it incidentally.
   is picked up by `config/dev.exs` and `config/test.exs`). Run the dev server
   with `PHX_BIND=0.0.0.0 mix phx.server` on port **4000** and open
   `http://fisher.orb.local:4000`. Prometheus metrics are on port **9568**
-  (`/metrics`).
-- Work happens on `dev`. Releases and deploys are scripted and manual — see
-  [`docs/releasing.md`](docs/releasing.md). Don't invent release steps.
+  (`/metrics`). Code reloading needs `inotify-tools`; without it the server
+  silently keeps serving the code it started with.
+
+### Working from issues
+
+Several agents work on this repo at once. GitHub Issues are the task list;
+[decision records](docs/adr/README.md) say *why*, never *what's left to do*.
+
+1. **Work from an issue.** If there is none for the task, create one with a
+   "done when". Skip issues labelled `status:in-progress` by someone else, or
+   `status:blocked`.
+2. **Claim it** with `agent:cursor` or `agent:claude-code` plus
+   `status:in-progress`. All agents push as the same GitHub account, so
+   labels — not assignees — say who is on it.
+3. **Work in your own checkout**, on `feature/<issue>-<slug>` off `dev`.
+   Never share a working tree with another agent or with Markus.
+4. **Open a pull request into `dev`** that says `Closes #<issue>`, after
+   `mix precommit` passes. Swap the label to `status:needs-review`. Merge
+   only when Markus says so; CI must be green.
+5. **Keep issues small** and out of each other's files — two agents in
+   `console.ex` at once is a merge conflict waiting to happen.
+
+### Releases and deploys
+
+Agents never release or deploy, and never push to `main`. Markus does both
+from his own checkout with the scripted, manual process in
+[`docs/releasing.md`](docs/releasing.md).
 
 ## Where documentation lives
 
