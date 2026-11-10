@@ -104,8 +104,9 @@ Several agents work on this repo at once. GitHub Issues are the task list;
 
 ### Releases and deploys
 
-Agents never release or deploy, and never push to `main`. Markus does both
-from his own checkout with the scripted, manual process in
+Agents release only when Markus asks, and only through `./release.sh` (the
+`release` skill) — it is the one thing that touches `main`. Agents never
+deploy: Markus pulls `main` in his own checkout and runs `./deploy.sh`. See
 [`docs/releasing.md`](docs/releasing.md).
 
 ## Where documentation lives
