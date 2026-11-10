@@ -75,7 +75,7 @@ defmodule ScenexWeb.PlayLive.Display do
             <% deadline = deadline_status(@snap, element) %>
             <div
               :if={not Play.element_decided?(@snap, element) and deadline}
-              class="space-y-1"
+              class="space-y-1 pb-4"
             >
               <div class="text-right font-mono text-lg tabular-nums opacity-70">
                 {fmt_clock(deadline.left_ms)}
