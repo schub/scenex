@@ -94,7 +94,7 @@ defmodule ScenexWeb.PlayLive.Display do
             <ul
               :if={ballot_shown?(@snap, element)}
               id={"ballot-#{element.id}"}
-              class="grid gap-3 sm:grid-cols-2"
+              class="space-y-3"
             >
               <li
                 :for={option <- ballot_options(@snap, element)}
