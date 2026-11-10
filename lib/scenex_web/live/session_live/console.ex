@@ -330,11 +330,30 @@ defmodule ScenexWeb.SessionLive.Console do
               Trigger
             </button>
             <button
+              :if={
+                element.kind == :election and element.id in @snap.triggered and
+                  element.id not in @snap.closed
+              }
+              id={"toggle-ballot-#{element.id}"}
+              phx-click="toggle_ballot"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class={[
+                "btn btn-sm ml-auto",
+                (element.id in @snap.ballots_shown && "btn-primary") || "btn-ghost"
+              ]}
+              title="Show this vote's options on the scoreboard"
+            >
+              {if element.id in @snap.ballots_shown,
+                do: "👁 Options on screen",
+                else: "🚫 Options on screen"}
+            </button>
+            <button
               :if={element.id in @snap.triggered and element.id not in @snap.closed}
               phx-click="close_element"
               phx-value-id={element.id}
               disabled={@snap.status not in [:live, :paused]}
-              class="btn btn-sm btn-ghost ml-auto"
+              class={["btn btn-sm btn-ghost", element.kind != :election && "ml-auto"]}
               data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
             >
               ⏹ Close event
@@ -617,6 +636,11 @@ defmodule ScenexWeb.SessionLive.Console do
 
   def handle_event("trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.trigger_element(&1, element_id))
+
+  def handle_event("toggle_ballot", %{"id" => element_id}, socket) do
+    visible = element_id not in socket.assigns.snap.ballots_shown
+    run(socket, &Play.set_ballot_visible(&1, element_id, visible))
+  end
 
   def handle_event("close_element", %{"id" => element_id}, socket),
     do: run(socket, &Play.close_element(&1, element_id))

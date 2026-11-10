@@ -75,7 +75,7 @@ defmodule ScenexWeb.PlayLive.Display do
             <% deadline = deadline_status(@snap, element) %>
             <div
               :if={not Play.element_decided?(@snap, element) and deadline}
-              class="space-y-1"
+              class="space-y-1 pb-4"
             >
               <div class="text-right font-mono text-lg tabular-nums opacity-70">
                 {fmt_clock(deadline.left_ms)}
@@ -88,9 +88,41 @@ defmodule ScenexWeb.PlayLive.Display do
               </div>
             </div>
 
-            <%!-- Election result, once declared --%>
+            <%!-- Ballot options, when the GM reveals them; once declared, the
+            winner stands out and the rest fade. --%>
+            <% winner = declared_winner(@snap, element) %>
+            <ul
+              :if={ballot_shown?(@snap, element)}
+              id={"ballot-#{element.id}"}
+              class="space-y-3"
+            >
+              <li
+                :for={option <- ballot_options(@snap, element)}
+                id={"ballot-option-#{option.id}"}
+                class={[
+                  "flex items-baseline justify-between gap-4 rounded-box border-2 px-5 py-3 transition-all duration-500",
+                  winner == nil && "border-base-300 bg-base-100",
+                  winner && winner.id == option.id &&
+                    "border-success bg-success/15 scale-[1.02] shadow-lg",
+                  winner && winner.id != option.id && "border-transparent bg-base-100 opacity-35"
+                ]}
+              >
+                <span class="flex items-baseline gap-3 text-2xl font-semibold">
+                  <span :if={winner && winner.id == option.id} class="text-success">✓</span>
+                  {I18n.t!(option.name, @locale)}
+                </span>
+                <span
+                  :if={count = winner && (@snap.vote_tallies[element.id] || %{})[option.id]}
+                  class="font-mono text-2xl tabular-nums"
+                >
+                  {count}
+                </span>
+              </li>
+            </ul>
+
+            <%!-- Election result, once declared, when the ballot isn't shown --%>
             <div
-              :if={winner = declared_winner(@snap, element)}
+              :if={winner && not ballot_shown?(@snap, element)}
               class="rounded-box bg-base-100 p-4 space-y-2"
             >
               <div class="flex flex-wrap items-baseline gap-3">
@@ -319,6 +351,19 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   defp declared_winner(_snap, _element), do: nil
+
+  defp ballot_shown?(snap, %{kind: :election, id: id}), do: id in snap.ballots_shown
+  defp ballot_shown?(_snap, _element), do: false
+
+  # Ballot order; options whose condition is closed can't win, so the room
+  # never sees them — unless the GM declared one anyway.
+  defp ballot_options(snap, element) do
+    winner_id = get_in(snap.decisions, [element.id, :winner])
+
+    for option <- snap.definition.options_by_element[element.id] || [],
+        option.id == winner_id or Play.gate_open?(snap, element.id, option),
+        do: option
+  end
 
   # The declared hand count, in ballot order; options without a count are
   # omitted (a lapsed-deadline default winner has no tally).

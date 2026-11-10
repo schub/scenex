@@ -434,6 +434,27 @@ defmodule ScenexWeb.SessionLiveTest do
     assert Play.snapshot(session.id).board_sections[wellbeing.id] == false
   end
 
+  test "the GM reveals a vote's options on the scoreboard per vote", ctx do
+    %{conn: conn, session: session, election: election} = ctx
+    {:ok, _} = Play.start_session(session.id)
+    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+
+    # Only once the vote is triggered — and only for votes.
+    refute has_element?(lv, "#toggle-ballot-#{election.id}")
+    {:ok, _} = Play.trigger_element(session.id, election.id)
+    assert has_element?(lv, "#toggle-ballot-#{election.id}", "🚫 Options on screen")
+
+    lv |> element("#toggle-ballot-#{election.id}") |> render_click()
+    assert has_element?(lv, "#toggle-ballot-#{election.id}", "👁 Options on screen")
+    assert Play.snapshot(session.id).ballots_shown == [election.id]
+
+    lv |> element("#toggle-ballot-#{election.id}") |> render_click()
+    assert Play.snapshot(session.id).ballots_shown == []
+
+    {:ok, _} = Play.close_element(session.id, election.id)
+    refute has_element?(lv, "#toggle-ballot-#{election.id}")
+  end
+
   test "the console shows the overall index and its precise current band, updating live", ctx do
     %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx
 

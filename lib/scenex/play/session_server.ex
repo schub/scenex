@@ -315,6 +315,14 @@ defmodule Scenex.Play.SessionServer do
     end
   end
 
+  defp validate({:set_ballot_visible, element_id, visible}, state) when is_boolean(visible) do
+    with :ok <- running(state),
+         {:ok, element} <- fetch_triggered(state, element_id),
+         :ok <- expect_kind(element, :election) do
+      {:ok, "ballot_visibility_set", %{element_id: element_id, visible: visible}, %{}}
+    end
+  end
+
   defp validate({:adjudicate_sidequest, element_id, option_id}, state) do
     with :ok <- running(state),
          {:ok, element} <- fetch_triggered(state, element_id),
@@ -536,6 +544,7 @@ defmodule Scenex.Play.SessionServer do
       show_numbers: state.projection.show_numbers,
       board_sections: state.projection.board_sections,
       group_values_visible: state.projection.group_values_visible,
+      ballots_shown: state.projection.ballots_shown,
       active_page_id: state.projection.active_page_id,
       game_time_ms: current_game_time(state.session),
       definition: state.definition

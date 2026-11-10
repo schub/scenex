@@ -386,6 +386,49 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute html =~ "h-4 w-full overflow-hidden rounded-full bg-base-300"
     end
 
+    test "shows the ballot when the GM reveals it, highlights the winner, and drops it on close",
+         ctx do
+      {:ok, no} =
+        Authoring.create_decision_option(ctx.election, nil, %{
+          key: "No",
+          name: %{"en" => "No to the plan"}
+        })
+
+      {:ok, _} =
+        Authoring.create_decision_option(ctx.election, nil, %{
+          key: "Locked",
+          name: %{"en" => "Locked option"},
+          condition: "global(stability) >= 9"
+        })
+
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.election.id)
+
+      {:ok, lv, _html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      refute has_element?(lv, "#ballot-#{ctx.election.id}")
+
+      {:ok, _} = Play.set_ballot_visible(ctx.session.id, ctx.election.id, true)
+      assert has_element?(lv, "#ballot-option-#{ctx.yes.id}", "Yes to the plan")
+      assert has_element?(lv, "#ballot-option-#{no.id}", "No to the plan")
+      # A closed condition can't win, so the room never sees it.
+      refute render(lv) =~ "Locked option"
+      refute has_element?(lv, "#ballot-option-#{no.id}.opacity-35")
+
+      {:ok, _} =
+        Play.resolve_election(ctx.session.id, ctx.election.id, ctx.yes.id, %{
+          ctx.yes.id => 23,
+          no.id => 9
+        })
+
+      assert has_element?(lv, "#ballot-option-#{ctx.yes.id}.border-success", "23")
+      assert has_element?(lv, "#ballot-option-#{no.id}.opacity-35", "9")
+
+      # Closing takes the vote off the wall, whatever the toggle says.
+      {:ok, _} = Play.close_element(ctx.session.id, ctx.election.id)
+      refute has_element?(lv, "#ballot-#{ctx.election.id}")
+      refute render(lv) =~ "Yes to the plan"
+    end
+
     test "shows the latest well-being tally once one is recorded, as an emoji — never a number",
          ctx do
       {:ok, _} = Play.start_session(ctx.session.id)

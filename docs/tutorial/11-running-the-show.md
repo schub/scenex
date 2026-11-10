@@ -120,9 +120,13 @@ did they hold back? **success**. Did they interfere? **failure**.
 
 ## The Referendum
 
-Let the candidates make their speeches, then trigger the referendum. Count
+Let the candidates make their speeches, then trigger the referendum. When the
+room should see what's on the ballot, click **🚫 Options on screen** on the
+vote — the projector lists the options, and the button turns to 👁. Count
 the hands for each option, type in the numbers, pick the winner, and click
-**Declare result**:
+**Declare result**. If the options are on screen, the winner lights up among
+them and the others fade; closing the vote takes it off the projector
+either way:
 
 ![Counting the vote on the social media policy](images/console-vote.png)
 
