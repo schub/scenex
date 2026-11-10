@@ -120,13 +120,13 @@ defmodule ScenexWeb.SessionLive.Console do
           </button>
         </div>
 
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[16rem_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[16rem_minmax(0,1fr)_25rem]">
+        <div class="grid min-h-0 flex-1 auto-rows-max grid-cols-1 gap-4 overflow-y-auto lg:auto-rows-auto lg:grid-cols-[16rem_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[16rem_minmax(0,1fr)_25rem]">
           <%!-- Timeline: one compact row per beat, scrolls on its own --%>
           <nav
             id="timeline"
             phx-hook=".ActiveBeat"
             data-active={running_row_id(@snap)}
-            class="min-h-0 rounded-box border border-base-300 bg-base-100 lg:overflow-y-auto"
+            class="max-h-72 overflow-y-auto rounded-box border border-base-300 bg-base-100 lg:max-h-none lg:min-h-0"
           >
             <div class="sticky top-0 z-10 flex items-center justify-between border-b border-base-200 bg-base-100/95 px-3 py-2 backdrop-blur">
               <span class="text-xs font-semibold uppercase tracking-wider opacity-60">
@@ -201,7 +201,7 @@ defmodule ScenexWeb.SessionLive.Console do
           <%!-- The selected beat: notes, decisions, effects, controls --%>
           <section
             id="beat-detail"
-            class="min-h-0 rounded-box border border-base-300 bg-base-100 p-5 lg:overflow-y-auto"
+            class="rounded-box border border-base-300 bg-base-100 p-5 lg:min-h-0 lg:overflow-y-auto"
           >
             <%= case @selection do %>
               <% :ending -> %>
@@ -230,7 +230,7 @@ defmodule ScenexWeb.SessionLive.Console do
           />
           <aside
             id="room"
-            class="hidden min-h-0 space-y-5 rounded-box border border-base-300 bg-base-100 p-4 xl:block xl:overflow-y-auto"
+            class="hidden space-y-5 rounded-box border border-base-300 bg-base-100 p-4 xl:block xl:min-h-0 xl:overflow-y-auto"
           >
             <div class="flex items-center justify-between xl:hidden">
               <h2 class="font-semibold">The room</h2>
@@ -464,8 +464,11 @@ defmodule ScenexWeb.SessionLive.Console do
             <span class="truncate">{I18n.t!(g.name, @locale, default: g.key)}</span>
             <span :if={get_in(@snap.decisions, [@element.id, g.id])} class="text-success">✓</span>
           </div>
-          <div class="flex flex-wrap gap-3">
-            <div :for={o <- options_for_group(@snap, @element.id, g.id)} class="max-w-56 space-y-1">
+          <div class="space-y-1.5">
+            <div
+              :for={o <- options_for_group(@snap, @element.id, g.id)}
+              class="grid items-center gap-x-4 gap-y-1 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]"
+            >
               <button
                 :if={@triggered?}
                 phx-click="choose"
@@ -474,13 +477,16 @@ defmodule ScenexWeb.SessionLive.Console do
                 phx-value-option={o.id}
                 disabled={not @running?}
                 class={[
-                  "btn btn-sm h-auto min-h-8 py-1 normal-case",
+                  "btn btn-sm h-auto min-h-8 w-full justify-start py-1 text-left normal-case",
                   (decided?(@snap, @element.id, g.id, o.id) && "btn-primary") || "btn-outline"
                 ]}
               >
                 <.option_label option={o} />
               </button>
-              <span :if={not @triggered?} class="badge badge-outline h-auto py-1">
+              <span
+                :if={not @triggered?}
+                class="flex min-h-8 items-center gap-1 rounded-field border border-base-300 px-3 py-1 text-sm"
+              >
                 <.option_label option={o} />
               </span>
               <.effects option={o} snap={@snap} locale={@locale} />
