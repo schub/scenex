@@ -259,5 +259,6 @@ session's access QR codes as one printable PDF.
 - [`../README.md`](../README.md) — what Scenex is, and how to run it locally
 - [`deployment.md`](deployment.md) — the production VM, env vars, edge proxy
 - [`releasing.md`](releasing.md) — branch model, versioning, cutting a release
+- [`adr/`](adr/README.md) — architecture decision records: why each of the above was chosen
 - [`../AGENTS.md`](../AGENTS.md) — conventions for writing code here
 - `studio/docs/concept/` — the game design source material this app models

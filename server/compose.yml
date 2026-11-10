@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     ports:
       - "4000:4000"
+    # Prometheus metrics, for containers on a shared network only — never
+    # published on the VM (see docs/deployment.md §8).
+    expose:
+      - "9568"
     env_file: .env
     volumes:
       - ./media:/data/media

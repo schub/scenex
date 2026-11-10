@@ -4,7 +4,8 @@ import Config
 config :scenex, Scenex.Repo,
   username: "dev",
   password: "dev",
-  hostname: "localhost",
+  # PGHOST lets a containerised setup point at its database container.
+  hostname: System.get_env("PGHOST", "localhost"),
   # Overridable so tooling (e.g. tutorial/) can run against its own database.
   database: System.get_env("SCENEX_DEV_DATABASE", "scenex_dev"),
   stacktrace: true,
@@ -17,10 +18,13 @@ config :scenex, Scenex.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+# Binds to loopback by default, which prevents access from other machines.
+# Set PHX_BIND=0.0.0.0 to allow it (e.g. when running inside a container).
+{:ok, bind_ip} =
+  System.get_env("PHX_BIND", "127.0.0.1") |> String.to_charlist() |> :inet.parse_address()
+
 config :scenex, ScenexWeb.Endpoint,
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  http: [ip: bind_ip],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -29,6 +33,9 @@ config :scenex, ScenexWeb.Endpoint,
     esbuild: {Esbuild, :install_and_run, [:scenex, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:scenex, ~w(--watch)]}
   ]
+
+# Prometheus metrics at http://<host>:9568/metrics (see Scenex.PromEx).
+config :scenex, :metrics_server, ip: bind_ip, port: 9568
 
 # ## SSL Support
 #

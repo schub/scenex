@@ -61,6 +61,27 @@ if config_env() == :prod do
 
   config :scenex, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # Prometheus scrapes this port; it must never be proxied to the public.
+  config :scenex, :metrics_server,
+    ip: {0, 0, 0, 0, 0, 0, 0, 0},
+    port: String.to_integer(System.get_env("METRICS_PORT") || "9568")
+
+  # With a Grafana service account token, dashboards are uploaded on start and
+  # deploys are annotated on them; without one, nothing talks to Grafana.
+  config :scenex, :grafana_datasource_id, System.get_env("GRAFANA_DATASOURCE_ID", "prometheus")
+
+  with url when is_binary(url) <- System.get_env("GRAFANA_URL"),
+       token when is_binary(token) <- System.get_env("GRAFANA_TOKEN") do
+    config :scenex, Scenex.PromEx,
+      grafana: [
+        host: url,
+        auth_token: token,
+        upload_dashboards_on_start: true,
+        folder_name: "Scenex",
+        annotate_app_lifecycle: true
+      ]
+  end
+
   config :scenex, ScenexWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

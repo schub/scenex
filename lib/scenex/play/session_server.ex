@@ -12,6 +12,17 @@ defmodule Scenex.Play.SessionServer do
 
   Timers run against the **pausable game clock**: `game_time_ms` accumulates
   while live; every appended event is stamped with the current game time.
+
+  Emits `:telemetry` events (exported by `Scenex.PromEx.ScenexPlugin`):
+
+    * `[:scenex, :play, :command]` — per command; measurement `duration`
+      (native units), metadata `command`, `result` (`:ok`/`:error`) and
+      `reason` (the error, or nil).
+    * `[:scenex, :play, :event]` — per appended event; measurement `count`,
+      metadata `type` and `correction` (whether it overwrites a decision
+      slot that was already filled).
+    * `[:scenex, :play, :session, :replayed]` — on (re)start; measurements
+      `duration` (native units) and `events` (log length).
   """
   use GenServer, restart: :transient
 
@@ -47,6 +58,7 @@ defmodule Scenex.Play.SessionServer do
 
   @impl true
   def init(session_id) do
+    started = System.monotonic_time()
     session = Repo.get!(Session, session_id)
 
     definition =
@@ -69,6 +81,12 @@ defmodule Scenex.Play.SessionServer do
       timers: %{}
     }
 
+    :telemetry.execute(
+      [:scenex, :play, :session, :replayed],
+      %{duration: System.monotonic_time() - started, events: length(events)},
+      %{session_id: session_id}
+    )
+
     {:ok, schedule_deadlines(state)}
   end
 
@@ -78,22 +96,46 @@ defmodule Scenex.Play.SessionServer do
   end
 
   def handle_call({:command, command}, _from, state) do
+    started = System.monotonic_time()
+    {reply, state} = run_command(command, state)
+
+    {result, reason} =
+      case reply do
+        {:ok, _snapshot} -> {:ok, nil}
+        {:error, reason} -> {:error, reason}
+      end
+
+    :telemetry.execute(
+      [:scenex, :play, :command],
+      %{duration: System.monotonic_time() - started},
+      %{command: command_name(command), result: result, reason: reason}
+    )
+
+    {:reply, reply, state}
+  end
+
+  defp run_command(command, state) do
     case validate(command, state) do
       {:ok, type, payload, row_changes} ->
         case persist(state, type, payload, row_changes) do
           {:ok, state} ->
             state = schedule_deadlines(state)
             broadcast(state)
-            {:reply, {:ok, build_snapshot(state)}, state}
+            {{:ok, build_snapshot(state)}, state}
 
           {:error, reason} ->
-            {:reply, {:error, reason}, state}
+            {{:error, reason}, state}
         end
 
       {:error, reason} ->
-        {:reply, {:error, reason}, state}
+        {{:error, reason}, state}
     end
   end
+
+  defp command_name(command) when is_tuple(command) and is_atom(elem(command, 0)),
+    do: elem(command, 0)
+
+  defp command_name(_command), do: :unknown
 
   @impl true
   def handle_info({:deadline, element_id}, state) do
@@ -417,6 +459,11 @@ defmodule Scenex.Play.SessionServer do
 
     case result do
       {:ok, {event, session}} ->
+        :telemetry.execute([:scenex, :play, :event], %{count: 1}, %{
+          type: type,
+          correction: correction?(state.projection, type, payload)
+        })
+
         {:ok,
          %{
            state
@@ -429,6 +476,22 @@ defmodule Scenex.Play.SessionServer do
         {:error, reason}
     end
   end
+
+  # Whether an appended decision overwrites a slot that was already filled —
+  # the GM correcting an earlier call (the projection folds last-wins).
+  defp correction?(projection, type, %{element_id: element_id} = payload) do
+    slot =
+      case type do
+        "option_chosen" -> payload.group_id
+        "election_resolved" -> :winner
+        "sidequest_adjudicated" -> :outcome
+        _other -> nil
+      end
+
+    slot != nil and Map.has_key?(Map.get(projection.decisions, element_id, %{}), slot)
+  end
+
+  defp correction?(_projection, _type, _payload), do: false
 
   # The projection folds string-keyed payloads (what a JSONB round-trip
   # yields), so freshly-appended events are normalized the same way.

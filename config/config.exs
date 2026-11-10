@@ -71,6 +71,18 @@ config :scenex, Scenex.Media,
   dir: Path.expand("../priv/media", __DIR__),
   max_upload_mb: 250
 
+# Platform metrics (ADR 0026). The listener Prometheus scrapes is off unless an
+# environment turns it on with `config :scenex, :metrics_server, ip: …, port: …`;
+# Grafana dashboard upload is configured in runtime.exs.
+config :scenex, Scenex.PromEx,
+  disabled: false,
+  manual_metrics_start_delay: :no_delay,
+  drop_metrics_groups: [],
+  grafana: :disabled,
+  metrics_server: :disabled
+
+config :scenex, :metrics_server, false
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

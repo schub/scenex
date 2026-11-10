@@ -129,6 +129,30 @@ defmodule Scenex.Play do
     with {:ok, _pid} <- ensure_running(session_id), do: SessionServer.snapshot(session_id)
   end
 
+  @doc "How many session processes are running right now."
+  def count_running_sessions do
+    DynamicSupervisor.count_children(Scenex.Play.SessionSupervisor).active
+  end
+
+  # ── Connected clients (metrics only) ──────────────────────────────────
+
+  @client_roles [:gm, :group, :display]
+  def client_roles, do: @client_roles
+
+  @doc """
+  Count the calling process (a connected LiveView) as a `role` client of the
+  session until it exits. Bookkeeping for metrics; grants nothing.
+  """
+  def track_client(session_id, role) when role in @client_roles do
+    {:ok, _owner} = Registry.register(Scenex.Play.ClientRegistry, role, session_id)
+    :ok
+  end
+
+  @doc "How many clients of `role` are connected, across all sessions."
+  def count_clients(role) when role in @client_roles do
+    Registry.count_match(Scenex.Play.ClientRegistry, role, :_)
+  end
+
   # ── Commands (validated and appended by the session process) ─────────
 
   def start_session(session_id), do: command(session_id, {:start})

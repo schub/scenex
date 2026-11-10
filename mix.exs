@@ -4,7 +4,7 @@ defmodule Scenex.MixProject do
   def project do
     [
       app: :scenex,
-      version: "1.7.0",
+      version: "1.8.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -68,6 +68,7 @@ defmodule Scenex.MixProject do
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
+      {:prom_ex, "~> 1.12"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},

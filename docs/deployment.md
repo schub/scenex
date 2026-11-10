@@ -84,6 +84,10 @@ Everything below is read at runtime from the VM's `.env`
 | `SMTP_PASSWORD` | yes | — | |
 | `SMTP_PORT` | no | `587` | |
 | `DNS_CLUSTER_QUERY` | no | — | Unused with a single node |
+| `METRICS_PORT` | no | `9568` | Prometheus metrics listener (§8). Never proxy it |
+| `GRAFANA_URL` | no | — | With `GRAFANA_TOKEN`: upload dashboards on start, annotate deploys |
+| `GRAFANA_TOKEN` | no | — | Grafana service account token, role Editor |
+| `GRAFANA_DATASOURCE_ID` | no | `prometheus` | UID of the Prometheus datasource in Grafana |
 
 Mail goes out through an authenticated SMTP relay (Uberspace) which signs DKIM
 for the domain itself, so the app only authenticates and sends. TLS is
@@ -184,3 +188,51 @@ connected screens will drop and reconnect, so don't do it mid-show.
 Back up two things: the `scenex_prod` database, and
 `/opt/containers/scenex/media`. Media files are not in the database and are
 not recoverable from it.
+
+## 8. Monitoring
+
+Prometheus and Grafana already run as containers on the app VM; Scenex only
+provides a scrape target and dashboards
+([ADR 0026](adr/0026-metrics-prometheus-grafana.md)). What is measured is
+documented in `Scenex.PromEx` and `Scenex.PromEx.ScenexPlugin`.
+
+**Scrape target.** The app serves `GET /metrics` on port `9568`, a listener of
+its own that the edge nginx never sees. `compose.yml` exposes it to other
+containers but does not publish it on the VM. The Prometheus container needs a
+Docker network in common with `scenex` — attach one of them to the other's
+network, e.g. `docker network connect postgres_default prometheus`, or add the
+network to Prometheus' own compose file so it survives a recreate. Then:
+
+```yaml
+scrape_configs:
+  - job_name: scenex
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["scenex:9568"]
+```
+
+Check it from the Prometheus container: `wget -qO- http://scenex:9568/metrics`.
+
+**Dashboards.** Either set `GRAFANA_URL` (as the Scenex container reaches it,
+e.g. `http://grafana:3000`), `GRAFANA_TOKEN` and `GRAFANA_DATASOURCE_ID` in
+`.env` — every start then uploads the dashboards to a *Scenex* folder and
+marks deploys on them — or render them locally and import by hand:
+
+```bash
+GRAFANA_DATASOURCE_ID=<uid> mix scenex.dashboards    # writes tmp/grafana_dashboards/*.json
+```
+
+*Scenex - Platform* is the overview: live shows, commands, platform usage,
+health. The PromEx dashboards go deeper into Phoenix, LiveView, Ecto and the
+BEAM.
+
+**Alert: platform down.** A Grafana alert rule on the Prometheus datasource,
+sending to an email contact point (needs SMTP configured in Grafana, e.g. the
+`GF_SMTP_*` environment variables):
+
+- Query: `up{job="scenex"}`; condition: last value below 1.
+- Pending period: 5 minutes. Set *no data* and *error* handling to
+  *Alerting*, so a target that disappears from Prometheus also fires.
+
+This watches the app container, not the public path: a broken edge nginx or
+expired certificate does not trigger it.
