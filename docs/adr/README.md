@@ -52,3 +52,4 @@ Status: **Accepted** · **Accepted, rationale open** (decision is in force, the
 | [0024](0024-shared-scenario-vs-copies.md) | One shared scenario per game, or copies? | — | Proposed |
 | [0025](0025-license.md) | License for the code (and the content) | — | Proposed |
 | [0026](0026-metrics-prometheus-grafana.md) | Platform metrics: Prometheus format via PromEx, viewed in Grafana | 2026-11-09 | Accepted |
+| [0027](0027-mcp-server.md) | An MCP server lets agents author scenarios and observe live shows | — | Proposed |
