@@ -438,6 +438,8 @@ defmodule ScenexWeb.SessionLive.Console do
 
       <details
         :if={description = I18n.t(@element.description, @locale)}
+        id={"room-reads-#{@element.id}"}
+        phx-mounted={JS.ignore_attributes(["open"])}
         class="group rounded-box bg-base-200/60 px-4 py-2"
       >
         <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wider opacity-60">
