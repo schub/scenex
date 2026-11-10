@@ -182,6 +182,15 @@ defmodule Scenex.Play do
   def resolve_election(session_id, element_id, option_id, tally \\ %{}),
     do: command(session_id, {:resolve_election, element_id, option_id, tally})
 
+  @doc """
+  Show (or hide) a triggered election's ballot options on the scoreboard, so
+  the GM can time the reveal. Once declared, the winner is highlighted among
+  them. Hidden by default; closing the element takes it off the scoreboard
+  whatever this says. `{:error, {:wrong_kind, kind}}` for non-elections.
+  """
+  def set_ballot_visible(session_id, element_id, visible) when is_boolean(visible),
+    do: command(session_id, {:set_ballot_visible, element_id, visible})
+
   @doc "GM adjudication: which outcome bundle (success/failure) applies."
   def adjudicate_sidequest(session_id, element_id, option_id),
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})

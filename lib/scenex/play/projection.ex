@@ -52,6 +52,7 @@ defmodule Scenex.Play.Projection do
     show_numbers: false,
     board_sections: %{globals: true, overall_index: true, current_beat: true},
     group_values_visible: true,
+    ballots_shown: [],
     active_page_id: nil
   ]
 
@@ -123,6 +124,14 @@ defmodule Scenex.Play.Projection do
   # any session status, including before the show has started.
   defp handle(p, "page_shown", %{"page_id" => page_id}, _), do: %{p | active_page_id: page_id}
   defp handle(p, "page_cleared", _payload, _), do: %{p | active_page_id: nil}
+
+  # Which elections show their ballot options on the scoreboard — a display
+  # preference per element, so the GM can time each reveal.
+  defp handle(p, "ballot_visibility_set", %{"element_id" => eid, "visible" => true}, _),
+    do: %{p | ballots_shown: Enum.uniq(p.ballots_shown ++ [eid])}
+
+  defp handle(p, "ballot_visibility_set", %{"element_id" => eid, "visible" => false}, _),
+    do: %{p | ballots_shown: List.delete(p.ballots_shown, eid)}
 
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do
