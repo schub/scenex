@@ -671,6 +671,37 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "ballot on the scoreboard" do
+    test "hidden by default; shown and hidden per election, and it survives replay", ctx do
+      %{session: session, election: election} = ctx
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, snap} = Play.trigger_element(session.id, election.id)
+      assert snap.ballots_shown == []
+
+      assert {:ok, snap} = Play.set_ballot_visible(session.id, election.id, true)
+      assert snap.ballots_shown == [election.id]
+
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).ballots_shown == [election.id]
+
+      assert {:ok, snap} = Play.set_ballot_visible(session.id, election.id, false)
+      assert snap.ballots_shown == []
+    end
+
+    test "only for triggered elections", ctx do
+      %{session: session} = ctx
+      {:ok, _} = Play.start_session(session.id)
+
+      assert Play.set_ballot_visible(session.id, ctx.election.id, true) ==
+               {:error, :not_triggered}
+
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+
+      assert Play.set_ballot_visible(session.id, ctx.event.id, true) ==
+               {:error, {:wrong_kind, :event}}
+    end
+  end
+
   describe "group board values toggle" do
     test "visible by default; the GM can turn it off and on, and it survives replay", ctx do
       %{session: session} = ctx
