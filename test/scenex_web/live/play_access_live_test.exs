@@ -458,6 +458,33 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute has_element?(lv, "#decisions-#{ctx.event.id}")
     end
 
+    test "keeps a Wildcard secret until the GM shows it; the beat before it stays up", ctx do
+      {:ok, wildcard} =
+        Authoring.create_timeline_element(ctx.scenario, %{
+          key: "Secret",
+          title: %{"en" => "Secret mission"},
+          kind: :sidequest,
+          position: 3
+        })
+
+      {:ok, _} = Play.start_session(ctx.session.id)
+      {:ok, _} = Play.trigger_element(ctx.session.id, ctx.event.id)
+      {:ok, _} = Play.set_decisions_visible(ctx.session.id, ctx.event.id, true)
+      {:ok, _} = Play.trigger_element(ctx.session.id, wildcard.id)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/display/#{ctx.display_token.token}")
+      refute html =~ "Secret mission"
+      # Nothing gives it away: the event and its revealed decisions stay up.
+      assert html =~ "Blackout"
+      assert has_element?(lv, "#decisions-#{ctx.event.id}")
+
+      {:ok, _} = Play.set_sidequest_visible(ctx.session.id, wildcard.id, true)
+      assert render(lv) =~ "Secret mission"
+
+      {:ok, _} = Play.set_sidequest_visible(ctx.session.id, wildcard.id, false)
+      refute render(lv) =~ "Secret mission"
+    end
+
     test "shows the latest well-being tally once one is recorded, as an emoji — never a number",
          ctx do
       {:ok, _} = Play.start_session(ctx.session.id)

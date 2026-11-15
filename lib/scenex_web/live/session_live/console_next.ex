@@ -441,6 +441,22 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
               else: "🚫 Decisions on screen"}
           </button>
           <button
+            :if={@element.kind == :sidequest and @triggered? and not @closed?}
+            id={"toggle-sidequest-#{@element.id}"}
+            phx-click="toggle_sidequest"
+            phx-value-id={@element.id}
+            disabled={not @running?}
+            class={[
+              "btn btn-sm",
+              (@element.id in @snap.sidequests_shown && "btn-primary") || "btn-ghost"
+            ]}
+            title="Show this Wildcard on the scoreboard — or keep it secret"
+          >
+            {if @element.id in @snap.sidequests_shown,
+              do: "👁 On screen",
+              else: "🚫 On screen"}
+          </button>
+          <button
             :if={@triggered? and not @closed?}
             phx-click="close_element"
             phx-value-id={@element.id}
@@ -999,6 +1015,11 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
       &Play.undo_trigger(&1, element_id),
       &push_patch(&1, to: beat_path(&1.assigns.session, element_id))
     )
+  end
+
+  def handle_event("toggle_sidequest", %{"id" => element_id}, socket) do
+    visible = element_id not in socket.assigns.snap.sidequests_shown
+    run(socket, &Play.set_sidequest_visible(&1, element_id, visible))
   end
 
   def handle_event("toggle_decisions", %{"id" => element_id}, socket) do

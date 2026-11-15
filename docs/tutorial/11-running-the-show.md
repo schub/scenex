@@ -159,6 +159,10 @@ Trigger the Wildcard, and when the event is over, judge: did they hold back?
 
 ![The Freeze Card, judged a success](images/console-wildcard.png)
 
+A Wildcard starts **secret**: the projector keeps showing the beat before it,
+so only you and the player know. If the whole room should know, click
+**On screen** on the Wildcard.
+
 ## The Referendum
 
 Let the candidates make their speeches, then trigger the referendum. When the

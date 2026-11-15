@@ -833,6 +833,52 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "Wildcards on the scoreboard" do
+    test "hidden by default; shown and hidden per Wildcard; survives replay; undo clears it",
+         ctx do
+      %{session: session, sidequest: sidequest} = ctx
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, snap} = Play.trigger_element(session.id, sidequest.id)
+      assert snap.sidequests_shown == []
+
+      assert {:ok, snap} = Play.set_sidequest_visible(session.id, sidequest.id, true)
+      assert snap.sidequests_shown == [sidequest.id]
+
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).sidequests_shown == [sidequest.id]
+
+      assert {:ok, snap} = Play.set_sidequest_visible(session.id, sidequest.id, false)
+      assert snap.sidequests_shown == []
+
+      {:ok, _} = Play.set_sidequest_visible(session.id, sidequest.id, true)
+      assert {:ok, snap} = Play.undo_trigger(session.id, sidequest.id)
+      assert snap.sidequests_shown == []
+    end
+
+    test "triggering a hidden Wildcard leaves revealed decisions up", ctx do
+      %{session: session} = ctx
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _} = Play.set_decisions_visible(session.id, ctx.event.id, true)
+
+      {:ok, snap} = Play.trigger_element(session.id, ctx.sidequest.id)
+      assert snap.decisions_shown == ctx.event.id
+    end
+
+    test "only for triggered Wildcards", ctx do
+      %{session: session} = ctx
+      {:ok, _} = Play.start_session(session.id)
+
+      assert Play.set_sidequest_visible(session.id, ctx.sidequest.id, true) ==
+               {:error, :not_triggered}
+
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+
+      assert Play.set_sidequest_visible(session.id, ctx.event.id, true) ==
+               {:error, {:wrong_kind, :event}}
+    end
+  end
+
   describe "group board values toggle" do
     test "visible by default; the GM can turn it off and on, and it survives replay", ctx do
       %{session: session} = ctx

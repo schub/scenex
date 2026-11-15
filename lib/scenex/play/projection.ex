@@ -54,6 +54,7 @@ defmodule Scenex.Play.Projection do
     group_values_visible: true,
     ballots_shown: [],
     decisions_shown: nil,
+    sidequests_shown: [],
     active_page_id: nil
   ]
 
@@ -142,6 +143,14 @@ defmodule Scenex.Play.Projection do
   defp handle(p, "decisions_visibility_set", %{"element_id" => eid, "visible" => false}, _),
     do: if(p.decisions_shown == eid, do: %{p | decisions_shown: nil}, else: p)
 
+  # Which Wildcards (sidequests) the scoreboard shows — hidden by default, so
+  # one can be carried out in secret (ADR 0028).
+  defp handle(p, "sidequest_visibility_set", %{"element_id" => eid, "visible" => true}, _),
+    do: %{p | sidequests_shown: Enum.uniq(p.sidequests_shown ++ [eid])}
+
+  defp handle(p, "sidequest_visibility_set", %{"element_id" => eid, "visible" => false}, _),
+    do: %{p | sidequests_shown: List.delete(p.sidequests_shown, eid)}
+
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do
       p
@@ -150,7 +159,7 @@ defmodule Scenex.Play.Projection do
         p
         | triggered: p.triggered ++ [element_id],
           triggered_at: Map.put(p.triggered_at, element_id, game_time_ms),
-          decisions_shown: nil
+          decisions_shown: decisions_shown_after_trigger(p, element_id)
       }
     end
   end
@@ -168,6 +177,7 @@ defmodule Scenex.Play.Projection do
         decisions: Map.delete(p.decisions, eid),
         vote_tallies: Map.delete(p.vote_tallies, eid),
         ballots_shown: List.delete(p.ballots_shown, eid),
+        sidequests_shown: List.delete(p.sidequests_shown, eid),
         decisions_shown: if(p.decisions_shown == eid, do: nil, else: p.decisions_shown)
     }
   end
@@ -224,6 +234,15 @@ defmodule Scenex.Play.Projection do
   # Unknown event types are ignored — old logs stay replayable as the
   # vocabulary grows.
   defp handle(p, _type, _payload, _game_time_ms), do: p
+
+  # The next beat takes revealed decisions down — but a Wildcard, which starts
+  # hidden, must not give itself away by clearing the wall.
+  defp decisions_shown_after_trigger(p, element_id) do
+    case p.definition.elements[element_id] do
+      %{kind: :sidequest} -> p.decisions_shown
+      _ -> nil
+    end
+  end
 
   defp put_decision(p, element_id, slot, option_id) do
     decisions =
