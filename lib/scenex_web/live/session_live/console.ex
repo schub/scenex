@@ -375,11 +375,30 @@ defmodule ScenexWeb.SessionLive.Console do
                 else: "🚫 Decisions on screen"}
             </button>
             <button
+              :if={
+                element.kind == :sidequest and element.id in @snap.triggered and
+                  element.id not in @snap.closed
+              }
+              id={"toggle-sidequest-#{element.id}"}
+              phx-click="toggle_sidequest"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class={[
+                "btn btn-sm ml-auto",
+                (element.id in @snap.sidequests_shown && "btn-primary") || "btn-ghost"
+              ]}
+              title="Show this Wildcard on the scoreboard — or keep it secret"
+            >
+              {if element.id in @snap.sidequests_shown,
+                do: "👁 On screen",
+                else: "🚫 On screen"}
+            </button>
+            <button
               :if={element.id in @snap.triggered and element.id not in @snap.closed}
               phx-click="close_element"
               phx-value-id={element.id}
               disabled={@snap.status not in [:live, :paused]}
-              class={["btn btn-sm btn-ghost", element.kind == :sidequest && "ml-auto"]}
+              class="btn btn-sm btn-ghost"
               data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
             >
               ⏹ Close event
@@ -682,6 +701,11 @@ defmodule ScenexWeb.SessionLive.Console do
 
   def handle_event("undo_trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.undo_trigger(&1, element_id))
+
+  def handle_event("toggle_sidequest", %{"id" => element_id}, socket) do
+    visible = element_id not in socket.assigns.snap.sidequests_shown
+    run(socket, &Play.set_sidequest_visible(&1, element_id, visible))
+  end
 
   def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
     visible = socket.assigns.snap.decisions_shown != element_id

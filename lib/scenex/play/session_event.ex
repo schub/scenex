@@ -15,7 +15,8 @@ defmodule Scenex.Play.SessionEvent do
   `ending_selected`. Display preferences ride the same log so they survive a
   restart: `board_numbers_set`, `board_section_toggled`,
   `group_values_visibility_set`, `page_shown`, `page_cleared`,
-  `ballot_visibility_set`, `decisions_visibility_set`.
+  `ballot_visibility_set`, `decisions_visibility_set`,
+  `sidequest_visibility_set`.
   """
   use Ecto.Schema
 

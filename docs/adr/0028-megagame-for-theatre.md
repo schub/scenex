@@ -41,9 +41,8 @@ know the room, read the audience and react. Deadlines run on a game clock
   ([0006](0006-system-proposes-gm-disposes.md)).
 - No group-to-group mechanics (e.g. two groups negotiating a deal) — not
   needed for now. A fourth kind would be a new decision.
-- The GM can keep a Wildcard off the scoreboard today only with the
-  "current event" section toggle, which hides whatever beat is current; there
-  is no per-Wildcard switch.
+- Each Wildcard starts hidden on the scoreboard; the GM shows it with its own
+  "On screen" switch ([#20](https://github.com/schub/scenex/issues/20)).
 
 ## Sources
 

@@ -210,6 +210,15 @@ defmodule Scenex.Play do
   def set_decisions_visible(session_id, element_id, visible) when is_boolean(visible),
     do: command(session_id, {:set_decisions_visible, element_id, visible})
 
+  @doc """
+  Show (or hide) a triggered sidequest (UI: Wildcard) on the scoreboard. Hidden
+  by default — a Wildcard can be carried out in secret or in front of the
+  room, the GM's choice (ADR 0028). A hidden one never takes the scoreboard's
+  current-beat spot. `{:error, {:wrong_kind, kind}}` for anything else.
+  """
+  def set_sidequest_visible(session_id, element_id, visible) when is_boolean(visible),
+    do: command(session_id, {:set_sidequest_visible, element_id, visible})
+
   @doc "GM adjudication: which outcome bundle (success/failure) applies."
   def adjudicate_sidequest(session_id, element_id, option_id),
     do: command(session_id, {:adjudicate_sidequest, element_id, option_id})

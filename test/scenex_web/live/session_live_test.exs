@@ -505,6 +505,23 @@ defmodule ScenexWeb.SessionLiveTest do
         assert event.id in Play.snapshot(session.id).triggered
       end
 
+      test "the GM shows a Wildcard on the scoreboard, or keeps it secret", ctx do
+        %{conn: conn, session: session, sidequest: sidequest} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        refute has_element?(lv, "#toggle-sidequest-#{sidequest.id}")
+        {:ok, _} = Play.trigger_element(session.id, sidequest.id)
+        assert has_element?(lv, "#toggle-sidequest-#{sidequest.id}", "🚫 On screen")
+
+        lv |> element("#toggle-sidequest-#{sidequest.id}") |> render_click()
+        assert has_element?(lv, "#toggle-sidequest-#{sidequest.id}", "👁 On screen")
+        assert Play.snapshot(session.id).sidequests_shown == [sidequest.id]
+
+        lv |> element("#toggle-sidequest-#{sidequest.id}") |> render_click()
+        assert Play.snapshot(session.id).sidequests_shown == []
+      end
+
       test "the GM reveals an event's group decisions on the scoreboard", ctx do
         %{conn: conn, session: session, event: event} = ctx
         {:ok, _} = Play.start_session(session.id)
