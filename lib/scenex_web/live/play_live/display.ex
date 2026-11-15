@@ -375,21 +375,29 @@ defmodule ScenexWeb.PlayLive.Display do
 
   defp decision_reveal(assigns) do
     ~H"""
+<% choices = group_choices(@snap, @element) %>
     <ul
       id={"decisions-#{@element.id}"}
-      class="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-3"
+      class="grid gap-3"
+      style={"grid-template-columns: repeat(#{reveal_columns(length(choices))}, minmax(0, 1fr))"}
     >
       <li
-        :for={{group, option} <- group_choices(@snap, @element)}
+        :for={{group, option} <- choices}
         id={"decision-#{group.id}"}
         class={[
-          "rounded-box border-2 px-5 py-3 transition-all duration-500",
+          "min-w-0 rounded-box border-2 px-4 py-2 transition-all duration-500",
           (option && "border-primary bg-base-100") || "border-dashed border-base-300"
         ]}
       >
-        <div class="text-lg font-semibold opacity-70">{I18n.t!(group.name, @locale)}</div>
-        <.markdown :if={option} text={I18n.t!(option.name, @locale)} class="text-xl" />
-        <div :if={!option} class="text-2xl opacity-40">…</div>
+        <div class="truncate text-sm font-semibold opacity-70 2xl:text-lg">
+          {I18n.t!(group.name, @locale)}
+        </div>
+        <.markdown
+          :if={option}
+          text={I18n.t!(option.name, @locale)}
+          class="line-clamp-2 text-base 2xl:text-xl"
+        />
+        <div :if={!option} class="text-xl opacity-40 2xl:text-2xl">…</div>
       </li>
     </ul>
     """
@@ -402,6 +410,11 @@ defmodule ScenexWeb.PlayLive.Display do
     for gid <- snap.definition.group_ids,
         do: {snap.definition.groups[gid], snap.definition.options[slots[gid]]}
   end
+
+  # The wall never scrolls: one row up to five groups, otherwise two rows
+  # (so ten groups — the practical maximum — still take only two).
+  defp reveal_columns(n) when n <= 5, do: max(n, 1)
+  defp reveal_columns(n), do: div(n + 1, 2)
 
   # The revealed event, once closed — it has left the "current beat" section
   # but stays on the wall until the GM hides it or triggers the next beat.
