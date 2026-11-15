@@ -121,3 +121,11 @@ The game design material this app models — concepts, playtest feedback, the
 scenario briefs — lives one level up in `studio/docs/`, not here. Authors
 writing content for a specific production should start from
 `studio/docs/ai-context.md`.
+
+## License
+
+The code is [Apache-2.0](LICENSE). The documentation (`docs/`, including the
+tutorial) and the bundled scenario content (Mars Colony, the demo scenario)
+are [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Copyright
+2026 Markus Schubert — see [`NOTICE`](NOTICE) and
+[ADR 0025](docs/adr/0025-license.md).
