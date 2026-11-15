@@ -702,6 +702,45 @@ defmodule Scenex.PlayTest do
     end
   end
 
+  describe "group decisions on the scoreboard" do
+    test "one event at a time, outlives closing, cleared by the next trigger, survives replay",
+         ctx do
+      %{session: session, event: event} = ctx
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, snap} = Play.trigger_element(session.id, event.id)
+      assert snap.decisions_shown == nil
+
+      assert {:ok, snap} = Play.set_decisions_visible(session.id, event.id, true)
+      assert snap.decisions_shown == event.id
+
+      {:ok, snap} = Play.close_element(session.id, event.id)
+      assert snap.decisions_shown == event.id
+
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).decisions_shown == event.id
+
+      {:ok, snap} = Play.trigger_element(session.id, ctx.election.id)
+      assert snap.decisions_shown == nil
+
+      {:ok, _} = Play.set_decisions_visible(session.id, event.id, true)
+      assert {:ok, snap} = Play.set_decisions_visible(session.id, event.id, false)
+      assert snap.decisions_shown == nil
+    end
+
+    test "only for triggered events", ctx do
+      %{session: session} = ctx
+      {:ok, _} = Play.start_session(session.id)
+
+      assert Play.set_decisions_visible(session.id, ctx.event.id, true) ==
+               {:error, :not_triggered}
+
+      {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
+
+      assert Play.set_decisions_visible(session.id, ctx.election.id, true) ==
+               {:error, {:wrong_kind, :election}}
+    end
+  end
+
   describe "group board values toggle" do
     test "visible by default; the GM can turn it off and on, and it survives replay", ctx do
       %{session: session} = ctx
