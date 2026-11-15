@@ -50,7 +50,7 @@ Status: **Accepted** · **Accepted, rationale open** (decision is in force, the
 | [0022](0022-overall-index.md) | A scenario-agnostic Overall Index replaces the Democracy Score | 2026-08-28 | Accepted |
 | [0023](0023-key-name-title-vocabulary.md) | One vocabulary: key, name, title, description | 2026-10-28 | Accepted |
 | [0024](0024-shared-scenario-vs-copies.md) | One shared scenario per game, or copies? | — | Proposed |
-| [0025](0025-license.md) | License for the code (and the content) | — | Proposed |
+| [0025](0025-license.md) | Code under Apache-2.0, content and docs under CC BY 4.0 | 2026-11-15 | Accepted |
 | [0026](0026-metrics-prometheus-grafana.md) | Platform metrics: Prometheus format via PromEx, viewed in Grafana | 2026-11-09 | Accepted |
 | [0027](0027-mcp-server.md) | An MCP server lets agents author scenarios and observe live shows | — | Proposed |
 | [0028](0028-megagame-for-theatre.md) | The megagame, adapted for theatre: three kinds of beats on a GM-driven timeline | 2026-07-03 | Accepted |
