@@ -9,7 +9,6 @@ import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import {
   BASE,
-  consoleElement,
   editOption,
   live,
   login,
@@ -47,20 +46,6 @@ async function shot(name, target = page, { full = false } = {}) {
   console.log("  ✓", name);
 }
 
-// One image spanning several elements (e.g. two console cards).
-async function shotSpan(name, locators) {
-  await locators[0].scrollIntoViewIfNeeded();
-  await page.waitForTimeout(300);
-  const boxes = await Promise.all(locators.map((l) => l.boundingBox()));
-  const top = Math.min(...boxes.map((b) => b.y));
-  const bottom = Math.max(...boxes.map((b) => b.y + b.height));
-  await page.screenshot({
-    path: `${OUT}/${name}.png`,
-    clip: { x: 0, y: top - 8, width: page.viewportSize().width, height: bottom - top + 16 }
-  });
-  taken.push(name);
-  console.log("  ✓", name);
-}
 
 async function boardPage(url) {
   const board = await browser.newPage({
@@ -73,6 +58,8 @@ async function boardPage(url) {
   return board;
 }
 
+// Creating a session lands in the classic console; the tutorial uses the new
+// one (the classic console is on its way out).
 async function newSession(editorUrl, label, { locale } = {}) {
   await page.goto(editorUrl + "/sessions");
   await live(page);
@@ -81,31 +68,70 @@ async function newSession(editorUrl, label, { locale } = {}) {
   await page.click("button:has-text('Create session')");
   await page.waitForURL(/\/console$/);
   await live(page);
+  await toNewConsole();
 }
 
-async function codes(groups) {
+async function toNewConsole() {
+  await page.click("#switch-console");
+  await page.waitForURL(/\/console\/new/);
+  await live(page);
+}
+
+// The new console's three areas.
+const BEAT = "#beat-detail";
+const ROOM = "#room";
+
+// Selects a beat in the timeline list by its number ("6." — two beats can
+// share a title).
+async function beat(number) {
+  await page
+    .locator("#timeline li")
+    .filter({ hasText: new RegExp(`^\\s*${number}\\.\\s`) })
+    .locator("a")
+    .first()
+    .click();
+  await settle(page);
+  return page.locator(BEAT);
+}
+
+async function trigger(number) {
+  const detail = await beat(number);
+  await detail.locator("button:has-text('Trigger')").first().click();
+  await settle(page, 600);
+  return detail;
+}
+
+// The Access & QR drawer: makes the codes, returns their links, closes.
+async function codes(groups, { shotName } = {}) {
+  await page.click("#open-access");
+  await settle(page, 500);
+  const drawer = page.locator("#access-drawer");
   for (const g of groups) {
-    await page.click(`button:has-text("+ Code: ${g}")`);
+    await drawer.locator(`button:has-text("+ Code: ${g}")`).click();
     await settle(page, 250);
   }
-  return page.$$eval("a[target=_blank]", (as) => as.map((a) => a.href));
+  if (shotName) await shot(shotName);
+  const links = await drawer.locator("a[target=_blank]").evaluateAll((as) => as.map((a) => a.href));
+  await page.keyboard.press("Escape");
+  await settle(page);
+  return links;
 }
 
-async function choose(card, keys) {
-  for (const h of keys) {
-    await card.locator(`[phx-click=choose]:has-text("${h}")`).first().click();
+async function choose(scope, keys) {
+  for (const k of keys) {
+    await scope.locator(`[phx-click=choose]:has-text("${k}")`).first().click();
     await settle(page, 250);
   }
 }
 
 async function showPage(key, display, name) {
-  await page.click(`[phx-click=show_page]:has-text("${key}")`);
+  await page.locator(ROOM).locator(`[phx-click=show_page]:has-text("${key}")`).click();
   await settle(page, 900);
   if (name) await shot(name, display);
 }
 
 async function clearPage() {
-  await page.click("button:has-text('Back to scoreboard')");
+  await page.locator("button:has-text('Back to scoreboard')").first().click();
   await settle(page);
 }
 
@@ -214,7 +240,7 @@ await tab(page, "labels");
 await pick(page, "edit_label", "cautious");
 await shot("labels-mars");
 
-// ── Part 3: an evening of Common Ground ─────────────────────────────────────
+// ── Part 3: an evening of Common Ground (in the new GM console) ─────────────
 console.log("Session");
 await page.goto(cgEditor + "/sessions");
 await live(page);
@@ -223,10 +249,12 @@ await shot("session-new");
 await page.click("button:has-text('Create session')");
 await page.waitForURL(/\/console$/);
 await live(page);
+await page.screenshot({ path: `${OUT}/console-classic-switch.png`, clip: { x: 0, y: 0, width: 1440, height: 200 } });
+taken.push("console-classic-switch");
+await toNewConsole();
 await shot("console-draft");
 
-const links = await codes([...CG_GROUPS, "projected display"]);
-await shot("console-access", page.locator("section:has(h3:has-text('Access'))"));
+const links = await codes([...CG_GROUPS, "projected display"], { shotName: "console-access" });
 const chamberUrl = links.find((l) => l.includes("/play/"));
 const displayUrl = links.find((l) => l.includes("/display/"));
 
@@ -241,8 +269,12 @@ await shot("display-waiting", display);
 await page.bringToFront();
 await showPage("Common Ground Title", display, "display-page-title");
 await showPage("Welcome to Lux", display, "display-page-welcome");
-await page.screenshot({ path: `${OUT}/console-pages.png`, clip: { x: 0, y: 0, width: 1440, height: 330 } });
-taken.push("console-pages");
+// The room panel is taller than a laptop screen; show all of it once.
+await page.setViewportSize({ width: 1440, height: 1250 });
+await settle(page);
+await shot("console-room", page.locator(ROOM));
+await page.setViewportSize({ width: 1440, height: 900 });
+await settle(page);
 await clearPage();
 
 await page.click("button:has-text('Start session')");
@@ -253,9 +285,7 @@ const board = await boardPage(chamberUrl);
 await shot("board-waiting", board);
 
 // The warm-up: the Chamber of Commerce decides on its own tablet.
-const slogans = consoleElement(page, "Choose your slogan");
-await slogans.locator("button:has-text('Trigger')").click();
-await settle(page);
+const slogans = await trigger(1);
 await settle(board);
 await shot("board-event", board);
 await shot("display-event", display);
@@ -267,14 +297,27 @@ await settle(board);
 await shot("board-chosen", board);
 
 await choose(slogans, ["Slogan ASR 2", "Slogan CONA 1", "Slogan CA 2.0", "Slogan PS 3"]);
-await shot("console-event-decided", slogans);
-await shot("console-board", page.locator("table").first());
+await shot("console-event-decided");
+await shot("console-board", page.locator(ROOM).locator("section").first());
 await settle(display, 600);
 await shot("display-after-slogans", display);
 
+// Showing the room how everyone decided.
+await slogans.locator("button:has-text('Decisions on screen')").click();
+await settle(page, 600);
+// Just the top of the beat: title and its buttons.
+const top = await slogans.boundingBox();
+await page.screenshot({
+  path: `${OUT}/console-decisions-on-screen.png`,
+  clip: { x: top.x, y: top.y, width: top.width, height: 150 }
+});
+taken.push("console-decisions-on-screen");
+await settle(display, 600);
+await shot("display-decisions", display);
+
 // Asking the room.
 await showPage("Happiness Survey", display, "display-page-survey");
-const wellbeing = page.locator("section:has(h3:has-text('Well-Being'))");
+const wellbeing = page.locator(ROOM).locator("section:has(h3:has-text('Well-Being'))");
 for (const [score, count] of [[4, 9], [3, 14], [2, 8], [1, 3]]) {
   await wellbeing.locator(`input[name='counts[${score}]']`).fill(String(count));
 }
@@ -285,10 +328,8 @@ await shot("console-tally", wellbeing);
 await clearPage();
 
 // Key Event 1, against the clock.
-const ke1 = consoleElement(page, "Positive Starting Proposal");
-await ke1.locator("button:has-text('Trigger')").click();
-await settle(page);
-await shot("console-deadline", ke1);
+const ke1 = await trigger(2);
+await shot("console-deadline");
 await choose(ke1, [
   "A) Chamber of Commerce - public market",
   "B) Arts & CO",
@@ -297,28 +338,24 @@ await choose(ke1, [
   "A) Public Services"
 ]);
 
-// Two versions of Key Event 3: trigger only the one that fits.
-const ke3 = page.locator("section").filter({ has: page.locator("h3:has-text('Irresistable Proposal')") });
-const ke3High = ke3.filter({ hasText: "High Democracy Score" }).first();
-const ke3Low = ke3.filter({ hasText: "Low Democracy Score" }).first();
-await ke3High.locator("button:has-text('Trigger')").click();
-await settle(page);
-await shotSpan("console-shade", [ke3High, ke3Low]);
+// Two versions of Key Event 3 (6 = higher, 7 = lower): trigger the one that fits.
+await trigger(6);
+await shot("console-shade");
 
 // The Freeze Card.
-const freeze = consoleElement(page, "Freeze Card");
-await freeze.locator("button:has-text('Trigger')").click();
-await settle(page);
+const freeze = await trigger(25);
 await freeze.locator("[phx-click=adjudicate]:has-text('success')").click();
 await settle(page);
-await shot("console-wildcard", freeze);
+await shot("console-wildcard", page.locator(BEAT));
 
-// Referendum 2: the social media policy.
-const vote = consoleElement(page, "Referendum 2");
-await vote.locator("button:has-text('Trigger')").click();
-await settle(page);
+// Referendum 2: the social media policy, with its options on the wall.
+const vote = await trigger(12);
 await settle(display, 600);
 await shot("display-vote", display);
+await vote.locator("button:has-text('Options on screen')").click();
+await settle(page, 600);
+await settle(display, 600);
+await shot("display-ballot", display);
 for (const [option, votes] of [
   ["Social Media Policy A - Ban", 9],
   ["Social Media Policy B - Regulate", 21],
@@ -327,13 +364,13 @@ for (const [option, votes] of [
   await vote.locator(`div:has(> label:has-text("${option}")) input[name^='tally']`).fill(String(votes));
 }
 await vote.locator("label:has-text('Social Media Policy B - Regulate') input[type=radio]").check();
-await shot("console-vote", vote);
+await shot("console-vote");
 await vote.locator("button:has-text('Declare result')").click();
 await settle(page);
 await settle(display, 800);
 await shot("display-vote-result", display);
 
-// The finale.
+// The finale — Common Ground ends on a page (its endings are pages).
 await page.click("button:has-text('End')");
 await settle(page);
 await showPage("Final - Good Ending", display, "display-page-final");
@@ -344,8 +381,7 @@ await newSession(cgEditor, "Berlin — Probe", { locale: "de" });
 const deLinks = await codes(["Handelskammer"]);
 await page.click("button:has-text('Start session')");
 await settle(page);
-await consoleElement(page, "Wählt euren Slogan").locator("button:has-text('Trigger')").click();
-await settle(page);
+await trigger(1);
 const deBoard = await boardPage(deLinks.find((l) => l.includes("/play/")));
 await shot("board-german", deBoard);
 
@@ -362,20 +398,26 @@ await showPage("Title", marsDisplay, "display-page-mars");
 await clearPage();
 await page.click("button:has-text('Start session')");
 await settle(page);
-for (const [title, option] of [
-  ["What to Bring", "3D printer"],
-  ["Touchdown", "Solar field first"]
+for (const [number, option] of [
+  [1, "3D printer"],
+  [2, "Solar field first"]
 ]) {
-  const card = consoleElement(page, title);
-  await card.locator("button:has-text('Trigger')").click();
-  await settle(page);
-  await card.locator(`[phx-click=choose]:has-text("${option}")`).first().click();
+  const detail = await trigger(number);
+  await detail.locator(`[phx-click=choose]:has-text("${option}")`).first().click();
   await settle(page);
 }
-await consoleElement(page, "Settling In").locator("button:has-text('Trigger')").click();
-await settle(page);
+await trigger(3);
 const marsBoard = await boardPage(marsLinks.find((l) => l.includes("/play/")));
 await shot("board-gated-mars", marsBoard);
 
+// Mars Colony has real endings: end the show and let the console recommend.
+await page.bringToFront();
+await page.click("button:has-text('End')");
+await settle(page);
+await page.locator("#timeline").locator("text=Choose the ending").click();
+await settle(page);
+await shot("console-endings-mars");
+
 await browser.close();
 console.log(`\n${taken.length} screenshots in ${OUT}`);
+

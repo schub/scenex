@@ -136,7 +136,8 @@ its own.
 
 **Why it matters.** The same crisis is a different dilemma from every table.
 The Chamber of Commerce and the Voluntary Sector face the same news, but not
-the same choices.
+the same choices. Afterwards, the game master can put every group's decision
+on the projector — and the room starts talking about each other's choices.
 
 **In Common Ground:** the Key Events. In *Positive Starting Proposal*, every
 group decides what to build in its part of the old Hat Factory — the Chamber
@@ -161,8 +162,8 @@ also a decision — and the world makes it for you.)
 ## 🗳️ Votes
 
 **What it is.** One question for **the whole room**. Everybody votes — one
-person, one vote — usually by show of hands. The game master counts, enters
-the result and breaks ties.
+person, one vote — usually by show of hands. The game master can put the
+options on the projector, counts, enters the result and breaks ties.
 
 **Why it matters.** This is where groups decide *about each other*. Each
 ballot option has an **outcome matrix**: its own effects for every group. The

@@ -47,12 +47,21 @@ only the town as a whole:
   the exact number, never the band in between — the room should feel the
   trend, not do maths.
 
-While a Vote is open, the projector shows its title and countdown. The
-options themselves are presented in the room — or on a page:
+When the game master switches on **Decisions on screen** for an event, the
+projector shows what every group chose — a good start for a discussion:
+
+![Each group's decision on the projector](images/display-decisions.png)
+
+While a Vote is open, the projector shows its title and countdown:
 
 ![The projector during a vote](images/display-vote.png)
 
-After the vote, the winner and the counts:
+With **Options on screen**, it lists the ballot, so everybody can read what
+they are voting on:
+
+![The ballot on the projector](images/display-ballot.png)
+
+After the vote, the winner lights up among the options, with the counts:
 
 ![The vote result](images/display-vote-result.png)
 

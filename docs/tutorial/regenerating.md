@@ -83,8 +83,11 @@ Image names are stable: `capture.mjs` saves `shot("console-vote")` as
   the storyboard in the browser, holding each scene as long as its line plus
   a short pause. The picture comes from Chrome's screencast, every frame with
   the time it was painted — the same clock that places the voice, so the two
-  stay exactly in sync. A pointer appears only while it moves (to click or
-  point at something) and fades out when it comes to rest.
+  stay exactly in sync. The browser works at a laptop's 1600×900 (the GM
+  console is laid out for that), and the frames are scaled to 1280×720. A
+  pointer appears only while it moves (to click or point at something) and
+  fades out when it comes to rest. Screenshots and video use the **new** GM
+  console (`/console/new`).
 - `tutorial/video/assemble.mjs` — combines picture and voice with `ffmpeg`
   into `tutorial/video/build/scenex-tutorial.mp4` (1280×720) with the
   captions as a switchable subtitle track, plus the same captions as `.srt`.

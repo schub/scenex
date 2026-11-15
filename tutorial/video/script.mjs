@@ -21,14 +21,33 @@
 import { BASE } from "../lib.mjs";
 
 const CG = "COMMON GROUND";
-const card = (title) => `section:has(h3:has-text("${title}"))`;
-const KE3_HIGH = `section:has(h3:has-text("Irresistable Proposal")):has-text("High Democracy Score")`;
+
+// The new GM console: timeline (left), the selected beat (middle), the room
+// (right).
+const BEAT = "#beat-detail";
+const ROOM = "#room";
+
+// The timeline link of beat number `n` ("6." — two beats can share a title).
+const beatLink = (page, n) =>
+  page.evaluate((number) => {
+    const link = [...document.querySelectorAll("#timeline li a")].find((a) =>
+      new RegExp(`^\\s*${number}\\.\\s`).test(a.textContent)
+    );
+    return new URL(link.href).pathname + new URL(link.href).search;
+  }, n);
+
+// Selects a beat on camera.
+async function openBeat(h, n) {
+  await h.click(`#timeline a[href="${await beatLink(h.cam, n)}"]`);
+  await h.wait(500);
+}
 
 // Backstage: the GM's routine clicks the camera doesn't need to see.
-const ctlChoose = async (h, title, options) => {
-  const c = h.ctl.locator("section").filter({ has: h.ctl.locator(`h3:has-text("${title}")`) }).first();
+const ctlChoose = async (h, n, options) => {
+  await h.ctl.click(`#timeline a[href="${await beatLink(h.ctl, n)}"]`);
+  await h.ctl.waitForTimeout(400);
   for (const option of options) {
-    await c.locator(`[phx-click=choose]:has-text("${option}")`).first().click();
+    await h.ctl.locator(`${BEAT} [phx-click=choose]:has-text("${option}")`).first().click();
     await h.ctl.waitForTimeout(150);
   }
 };
@@ -227,7 +246,7 @@ export const scenes = [
       await h.top();
       await h.click('[phx-click=open_event]:has-text("WILD CARD FREEZE COC")');
       await h.wait(800);
-      await h.scroll("text=Narrative");
+      await h.scroll("text=Description");
     }
   },
   {
@@ -299,7 +318,7 @@ export const scenes = [
   },
   {
     id: "session",
-    screen: "Sessions page — a new session “Friday Premiere” is created",
+    screen: "Sessions page — a new session “Friday Premiere” is created; switch to the new GM console",
     say: "A session is one performance. Give it a name, pick the language, and the groups that play tonight.",
     act: async (h) => {
       await h.go(h.state.editor + "/sessions");
@@ -307,22 +326,40 @@ export const scenes = [
       await h.wait(600);
       await h.click("button:has-text('Create session')");
       await h.cam.waitForURL(/\/console$/);
+      await h.click("#switch-console");
+      await h.cam.waitForURL(/\/console\/new/);
       h.state.console = h.cam.url();
     }
   },
   {
+    id: "console-tour",
+    screen: "The new GM console — pointer on the timeline, the beat, the room panel",
+    say: "This is the game master's console. On the left, the timeline of the evening. In the middle, the beat you're working on. And on the right, everything about the room: the numbers, the projector, and the pages.",
+    act: async (h) => {
+      await h.wait(1500);
+      await h.point("#timeline");
+      await h.wait(2200);
+      await h.point(`${BEAT} h2`);
+      await h.wait(2500);
+      await h.point(`${ROOM} section >> nth=0`);
+    }
+  },
+  {
     id: "codes",
-    screen: "Console — Access & QR: a code for every table and the projector",
+    screen: "Console — Access & QR slides in: a code for every table and the projector",
     say: "Every table gets its own QR code, and so does the projector. You can print them all on one sheet.",
     act: async (h) => {
-      await h.scroll("h3:has-text('Access')");
+      await h.click("#open-access");
+      await h.wait(500);
       for (const team of ["Chamber of Commerce", "Arts, Culture", "Customer", "Voluntary", "Public Services", "projected display"]) {
-        await h.click(`button:has-text("+ Code: ${team}")`);
+        await h.click(`#access-drawer button:has-text("+ Code: ${team}")`);
       }
-      const links = await h.cam.$$eval("a[target=_blank]", (as) => as.map((a) => a.href));
+      const links = await h.cam.$$eval("#access-drawer a[target=_blank]", (as) => as.map((a) => a.href));
       h.state.board = links.find((l) => l.includes("/play/"));
       h.state.display = links.find((l) => l.includes("/display/"));
       await h.point("text=Download all as PDF");
+      await h.wait(800);
+      await h.cam.keyboard.press("Escape");
       await h.ctl.goto(h.state.console);
       await h.ctl.waitForSelector(".phx-connected");
     }
@@ -332,8 +369,7 @@ export const scenes = [
     screen: "Console: the GM clicks the page “Common Ground Title” → the projector shows it",
     say: "While the audience comes in, the game master puts the title on the projector.",
     act: async (h) => {
-      await h.top();
-      await h.click('[phx-click=show_page]:has-text("Common Ground Title")');
+      await h.click(`${ROOM} [phx-click=show_page]:has-text("Common Ground Title")`);
       await h.wait(600);
       await h.go(h.state.display);
     }
@@ -346,8 +382,8 @@ export const scenes = [
       await h.go(h.state.console);
       await h.click("button:has-text('Back to scoreboard')");
       await h.click("button:has-text('Start session')");
-      await h.scroll(card("Choose your slogan"));
-      await h.click(`${card("Choose your slogan")} button:has-text('Trigger')`);
+      await openBeat(h, 1);
+      await h.click(`${BEAT} button:has-text('Trigger')`);
     }
   },
   {
@@ -375,9 +411,8 @@ export const scenes = [
     say: "The game master sees every decision come in, and can fix any mistake. The last decision always counts.",
     act: async (h) => {
       await h.go(h.state.console);
-      await h.scroll(card("Choose your slogan"));
       for (const slogan of ["Slogan ASR 2", "Slogan CONA 1", "Slogan CA 2.0", "Slogan PS 3"]) {
-        await h.click(`${card("Choose your slogan")} [phx-click=choose]:has-text("${slogan}")`);
+        await h.click(`${BEAT} [phx-click=choose]:has-text("${slogan}")`);
       }
     }
   },
@@ -388,12 +423,23 @@ export const scenes = [
     act: (h) => h.go(h.state.display)
   },
   {
+    id: "decisions-on-screen",
+    screen: "Console: “Decisions on screen” → the projector shows every group's slogan",
+    say: "With one click, every group's decision appears on the projector. Now the room has something to talk about.",
+    act: async (h) => {
+      await h.go(h.state.console);
+      await h.click(`${BEAT} button:has-text('Decisions on screen')`);
+      await h.wait(600);
+      await h.go(h.state.display);
+    }
+  },
+  {
     id: "survey-ask",
     screen: "Console: the GM clicks “Happiness Survey” → the projector shows the survey page",
     say: "Time to ask the room. The game master puts up the happiness survey: how are you feeling, right now?",
     act: async (h) => {
       await h.go(h.state.console);
-      await h.click('[phx-click=show_page]:has-text("Happiness Survey")');
+      await h.click(`${ROOM} [phx-click=show_page]:has-text("Happiness Survey")`);
       await h.wait(600);
       await h.go(h.state.display);
     }
@@ -405,11 +451,11 @@ export const scenes = [
     act: async (h) => {
       await h.go(h.state.console);
       await h.click("button:has-text('Back to scoreboard')");
-      await h.scroll("section:has(h3:has-text('Well-Being'))");
+      await h.scroll(`${ROOM} section:has(h3:has-text('Well-Being'))`);
       for (const [score, count] of [[4, 9], [3, 14], [2, 8], [1, 3]]) {
-        await h.fill(`input[name='counts[${score}]']`, String(count));
+        await h.fill(`${ROOM} input[name='counts[${score}]']`, String(count));
       }
-      await h.click("button:has-text('Record tally')");
+      await h.click(`${ROOM} button:has-text('Record tally')`);
     }
   },
   {
@@ -424,11 +470,11 @@ export const scenes = [
     say: "Now the key events begin. The Positive Starting Proposal comes with a five-minute countdown, on every table, and on the wall. Pressure makes good theatre.",
     act: async (h) => {
       await h.go(h.state.console);
-      await h.scroll(card("Positive Starting Proposal"));
-      await h.click(`${card("Positive Starting Proposal")} button:has-text('Trigger')`);
+      await openBeat(h, 2);
+      await h.click(`${BEAT} button:has-text('Trigger')`);
       await h.wait(800);
       await h.go(h.state.board);
-      await ctlChoose(h, "Positive Starting Proposal", [
+      await ctlChoose(h, 2, [
         "B) Arts & CO",
         "B) Customer's Protections",
         "C) Voluntary Sector",
@@ -438,13 +484,15 @@ export const scenes = [
   },
   {
     id: "versions",
-    screen: "Console — the two versions of Key Event 3; the GM triggers the “higher Democracy Score” one",
+    screen: "Console — the two versions of Key Event 3 side by side in the timeline; the GM triggers the “higher Democracy Score” one",
     say: "Some moments are written in two versions. Is the Democracy Score high, or low? The game master looks, and fires the version of the Irresistible Proposal that fits the evening.",
     act: async (h) => {
       await h.go(h.state.console);
-      await h.scroll(KE3_HIGH);
-      await h.wait(1500);
-      await h.click(`${KE3_HIGH} button:has-text('Trigger')`);
+      await h.point(`${ROOM} :text("Democracy Score")`);
+      await h.wait(1200);
+      await openBeat(h, 6);
+      await h.wait(800);
+      await h.click(`${BEAT} button:has-text('Trigger')`);
     }
   },
   {
@@ -452,26 +500,26 @@ export const scenes = [
     screen: "Console — Freeze Card triggered and judged a success",
     say: "When a group needs it, the Freeze Card comes into play. Afterwards, one click: success.",
     act: async (h) => {
-      await h.scroll(card("Freeze Card"));
-      await h.click(`${card("Freeze Card")} button:has-text('Trigger')`);
+      await openBeat(h, 25);
+      await h.click(`${BEAT} button:has-text('Trigger')`);
       await h.wait(800);
-      await h.click(`${card("Freeze Card")} [phx-click=adjudicate]:has-text('success')`);
+      await h.click(`${BEAT} [phx-click=adjudicate]:has-text('success')`);
     }
   },
   {
     id: "referendum",
-    screen: "Console — Referendum 2: the hand count is typed in, “Regulate” wins",
-    say: "Referendum time. The candidates have made their speeches. The game master counts the hands, and declares the result.",
+    screen: "Console — Referendum 2: options on screen, the hand count typed in, “Regulate” wins",
+    say: "Referendum time. The candidates have made their speeches. The ballot goes up on the projector, the game master counts the hands, and declares the result.",
     act: async (h) => {
-      const vote = card("Referendum 2");
-      await h.scroll(vote);
-      await h.click(`${vote} button:has-text('Trigger')`);
-      await h.wait(600);
+      await openBeat(h, 12);
+      await h.click(`${BEAT} button:has-text('Trigger')`);
+      await h.wait(500);
+      await h.click(`${BEAT} button:has-text('Options on screen')`);
       for (const [option, n] of [["A - Ban", 9], ["B - Regulate", 21], ["C - Educate", 14]]) {
-        await h.fill(`${vote} div:has(> label:has-text("${option}")) input[name^='tally']`, String(n));
+        await h.fill(`${BEAT} div:has(> label:has-text("${option}")) input[name^='tally']`, String(n));
       }
-      await h.click(`${vote} label:has-text('B - Regulate') input[type=radio]`);
-      await h.click(`${vote} button:has-text('Declare result')`);
+      await h.click(`${BEAT} label:has-text('B - Regulate') input[type=radio]`);
+      await h.click(`${BEAT} button:has-text('Declare result')`);
     }
   },
   {
@@ -479,12 +527,9 @@ export const scenes = [
     // squeezes a long vote result into its bars (fine on a real 1080p
     // projector, see docs/tutorial/images/display-vote-result.png).
     id: "result",
-    screen: "Console — the live board, every group's numbers changed",
+    screen: "Console — the board in the room panel, every group's numbers changed",
     say: "And the whole town feels it: every group's numbers move.",
-    act: async (h) => {
-      await h.top();
-      await h.point("table");
-    }
+    act: (h) => h.point(`${ROOM} table`)
   },
   {
     id: "finale",
@@ -493,7 +538,7 @@ export const scenes = [
     act: async (h) => {
       await h.click("button:has-text('End')");
       await h.wait(800);
-      await h.click('[phx-click=show_page]:has-text("Final - Good Ending")');
+      await h.click(`${ROOM} [phx-click=show_page]:has-text("Final - Good Ending")`);
       await h.wait(600);
       await h.go(h.state.display);
     }
