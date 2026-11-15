@@ -138,154 +138,6 @@ defmodule ScenexWeb.SessionLiveTest do
     refute Enum.any?(Play.list_sessions(ctx.scenario), &(&1.label == "Solo night"))
   end
 
-  test "running a full session through the console", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
-
-    assert html =~ "Premiere"
-    assert html =~ "draft"
-
-    # Start
-    html = lv |> element("button[phx-click=start]") |> render_click()
-    assert html =~ "live"
-
-    # Trigger the event and enter gov's decision -> stability 7
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
-
-    html =
-      lv
-      |> element(
-        ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
-          ~s{[phx-value-option="#{ctx.crack.id}"]}
-      )
-      |> render_click()
-
-    assert html =~ "7"
-    assert html =~ "(+2)"
-
-    # Election: tally + winner -> gov 9
-    lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
-    |> render_click()
-
-    html =
-      lv
-      |> form(~s{form[phx-submit=resolve_election]}, %{
-        "winner" => ctx.yes.id,
-        "tally" => %{ctx.yes.id => "23"}
-      })
-      |> render_submit()
-
-    assert html =~ "9"
-    # Declaring confirms itself: a flash plus a "decided" badge on the element.
-    assert html =~ "Result declared"
-    assert html =~ "decided"
-
-    # Sidequest adjudication
-    lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.sidequest.id}"]})
-    |> render_click()
-
-    lv
-    |> element(
-      ~s{button[phx-click=adjudicate][phx-value-element="#{ctx.sidequest.id}"]} <>
-        ~s{[phx-value-option="#{ctx.success.id}"]}
-    )
-    |> render_click()
-
-    # End: endings panel appears; stability global 9 >= 6 -> recommended
-    html = lv |> element("button[phx-click=end_session]") |> render_click()
-    assert html =~ "Choose the ending"
-    assert html =~ "recommended"
-
-    html =
-      lv
-      |> element(~s{button[phx-click=select_ending][phx-value-id="#{ctx.ending.id}"]})
-      |> render_click()
-
-    assert html =~ "Selected"
-    assert Play.get_session!(session.id).ending_id == ctx.ending.id
-
-    # The tally landed in the log.
-    tally_event =
-      session |> Play.list_session_events() |> Enum.find(&(&1.type == "election_resolved"))
-
-    assert tally_event.payload["tally"][ctx.yes.id] == 23
-  end
-
-  test "typed tally counts survive the 1s clock refresh", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
-
-    lv |> element("button[phx-click=start]") |> render_click()
-
-    # Typing fires the change event; the clock tick re-renders — the counts
-    # must be written back into the inputs, not reset to empty.
-    lv
-    |> form(~s{form[phx-submit=record_tally]}, %{"counts" => %{"4" => "10"}})
-    |> render_change()
-
-    send(lv.pid, :tick)
-
-    assert lv |> element(~s{input[name="counts[4]"]}) |> render() =~ ~s(value="10")
-  end
-
-  test "typed election tallies and winner survive the 1s clock refresh", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
-
-    lv |> element("button[phx-click=start]") |> render_click()
-
-    lv
-    |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]})
-    |> render_click()
-
-    lv
-    |> form(~s{form[phx-submit=resolve_election]}, %{
-      "winner" => ctx.yes.id,
-      "tally" => %{ctx.yes.id => "23"}
-    })
-    |> render_change()
-
-    send(lv.pid, :tick)
-
-    assert lv |> element(~s{input[name="tally[#{ctx.yes.id}]"]}) |> render() =~ ~s(value="23")
-    assert lv |> element(~s{input[type=radio][value="#{ctx.yes.id}"]}) |> render() =~ "checked"
-  end
-
-  test "recording a well-being tally", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
-
-    assert html =~ "Well-being"
-    assert html =~ "hand count"
-
-    lv |> element("button[phx-click=start]") |> render_click()
-
-    # An empty tally is refused client-side with a flash.
-    html = lv |> form(~s{form[phx-submit=record_tally]}) |> render_submit()
-    assert html =~ "Count at least one participant"
-
-    html =
-      lv
-      |> form(~s{form[phx-submit=record_tally]}, %{
-        "counts" => %{"4" => "2", "3" => "1", "1" => "1"}
-      })
-      |> render_submit()
-
-    # Weighted mean (4+4+3+1)/4 = 3 — latest reading and a history row appear.
-    assert html =~ "🙂 3"
-    assert html =~ "Average"
-  end
-
-  test "a viewer cannot open the console", %{session: session} do
-    other = user_fixture()
-    conn = build_conn() |> log_in_user(other)
-
-    assert {:error, {:live_redirect, %{to: "/scenarios"}}} =
-             live(conn, ~p"/sessions/#{session.id}/console")
-  end
-
   describe "session ownership" do
     test "another author cannot open a session they did not create", ctx do
       other = user_fixture()
@@ -327,223 +179,423 @@ defmodule ScenexWeb.SessionLiveTest do
     end
   end
 
-  test "invalid commands surface as flash, not crashes", ctx do
+  test "the classic console is the default and links to the new one, and back", ctx do
     %{conn: conn, session: session} = ctx
     {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+    refute has_element?(lv, "#timeline")
 
-    # The button is disabled in draft, but a stale client could still send the
-    # event — the session process rejects it and the console flashes.
-    html = render_click(lv, "trigger", %{"id" => ctx.event.id})
+    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
+    assert has_element?(lv, "#timeline")
 
-    assert html =~ "Rejected"
+    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
+    refute has_element?(lv, "#timeline")
   end
 
-  test "the GM can toggle exact numbers on the audience displays", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+  # Both consoles drive the same commands; every console test runs against each.
+  for {label, path} <- [{"classic", "/console"}, {"new", "/console/new"}] do
+    @console path
 
-    assert html =~ "Show numbers on displays"
-    refute Play.snapshot(session.id).show_numbers
+    describe "#{label} console" do
+      test "running a full session through the console", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-    html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
-    assert html =~ "Hide numbers on displays"
-    assert Play.snapshot(session.id).show_numbers
+        assert html =~ "Premiere"
+        assert html =~ "draft"
 
-    html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
-    assert html =~ "Show numbers on displays"
-    refute Play.snapshot(session.id).show_numbers
-  end
+        # Start
+        html = lv |> element("button[phx-click=start]") |> render_click()
+        assert html =~ "live"
 
-  test "the GM can consolidate values early, without waiting for the next trigger", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, _} = Play.start_session(session.id)
-    {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
-    {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+        # Trigger the event and enter gov's decision -> stability 7
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]:not([id])})
+        |> render_click()
 
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
-    assert html =~ "Consolidate now"
+        html =
+          lv
+          |> element(
+            ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+              ~s{[phx-value-option="#{ctx.crack.id}"]}
+          )
+          |> render_click()
 
-    refute Play.snapshot(session.id).baseline_globals[ctx.stability.id] ==
-             Play.snapshot(session.id).globals[ctx.stability.id]
+        assert html =~ "7"
+        assert html =~ "(+2)"
 
-    lv |> element(~s{button[phx-click=consolidate_values]}) |> render_click()
+        # Election: tally + winner -> gov 9
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]:not([id])})
+        |> render_click()
 
-    snap = Play.snapshot(session.id)
-    assert snap.baseline_globals[ctx.stability.id] == snap.globals[ctx.stability.id]
-  end
+        html =
+          lv
+          |> form(~s{form[phx-submit=resolve_election]}, %{
+            "winner" => ctx.yes.id,
+            "tally" => %{ctx.yes.id => "23"}
+          })
+          |> render_submit()
 
-  test "the GM can show and clear a full-screen page", ctx do
-    {:ok, page} = Authoring.create_page(ctx.scenario, %{key: "Welcome"})
+        assert html =~ "9"
+        # Declaring confirms itself: a flash plus a "decided" badge on the element.
+        assert html =~ "Result declared"
+        assert html =~ "decided"
 
-    {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
-    on_exit(fn -> Play.stop_running(session.id) end)
+        # Sidequest adjudication
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.sidequest.id}"]:not([id])})
+        |> render_click()
 
-    {:ok, lv, html} = live(ctx.conn, ~p"/sessions/#{session.id}/console")
-    assert html =~ "Welcome"
-    refute html =~ "Back to scoreboard"
-    refute html =~ "showing a page"
+        lv
+        |> element(
+          ~s{button[phx-click=adjudicate][phx-value-element="#{ctx.sidequest.id}"]} <>
+            ~s{[phx-value-option="#{ctx.success.id}"]}
+        )
+        |> render_click()
 
-    html =
-      lv |> element(~s{button[phx-click=show_page][phx-value-id="#{page.id}"]}) |> render_click()
+        # End: endings panel appears; stability global 9 >= 6 -> recommended
+        html = lv |> element("button[phx-click=end_session]") |> render_click()
+        assert html =~ "Choose the ending"
+        assert html =~ "recommended"
 
-    assert html =~ "Back to scoreboard"
-    assert html =~ "showing a page"
-    assert Play.snapshot(session.id).active_page_id == page.id
+        html =
+          lv
+          |> element(~s{button[phx-click=select_ending][phx-value-id="#{ctx.ending.id}"]})
+          |> render_click()
 
-    html = lv |> element(~s{button[phx-click=clear_page]}) |> render_click()
-    refute html =~ "Back to scoreboard"
-    refute Play.snapshot(session.id).active_page_id
-  end
+        assert html =~ "Selected"
+        assert Play.get_session!(session.id).ending_id == ctx.ending.id
 
-  test "the GM can toggle each scoreboard section independently", ctx do
-    %{conn: conn, session: session, wellbeing: wellbeing} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+        # The tally landed in the log.
+        tally_event =
+          session |> Play.list_session_events() |> Enum.find(&(&1.type == "election_resolved"))
 
-    # A fixed section per name, plus one per per-participant value (labeled by
-    # the value's own name).
-    assert html =~ "👁 Global values"
-    assert html =~ "👁 Well-being"
-    assert html =~ "👁 Overall Index"
-    assert html =~ "👁 Current event"
+        assert tally_event.payload["tally"][ctx.yes.id] == 23
+      end
 
-    html =
-      lv
-      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
-      |> render_click()
+      test "typed tally counts survive the 1s clock refresh", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-    assert html =~ "🚫 Overall Index"
-    assert Play.snapshot(session.id).board_sections.overall_index == false
-    # Untouched sections stay visible — this is one flag per section.
-    assert Play.snapshot(session.id).board_sections.globals == true
+        lv |> element("button[phx-click=start]") |> render_click()
 
-    html =
-      lv
-      |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
-      |> render_click()
+        # Typing fires the change event; the clock tick re-renders — the counts
+        # must be written back into the inputs, not reset to empty.
+        lv
+        |> form(~s{form[phx-submit=record_tally]}, %{"counts" => %{"4" => "10"}})
+        |> render_change()
 
-    assert html =~ "👁 Overall Index"
-    assert Play.snapshot(session.id).board_sections.overall_index == true
+        send(lv.pid, :tick)
 
-    # A per-participant value's section is keyed by its id, toggled the same way.
-    html =
-      lv
-      |> element(~s{button[phx-click=toggle_board_section][phx-value-section="#{wellbeing.id}"]})
-      |> render_click()
+        assert lv |> element(~s{input[name="counts[4]"]}) |> render() =~ ~s(value="10")
+      end
 
-    assert html =~ "🚫 Well-being"
-    assert Play.snapshot(session.id).board_sections[wellbeing.id] == false
-  end
+      test "typed election tallies and winner survive the 1s clock refresh", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-  test "the GM reveals a vote's options on the scoreboard per vote", ctx do
-    %{conn: conn, session: session, election: election} = ctx
-    {:ok, _} = Play.start_session(session.id)
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+        lv |> element("button[phx-click=start]") |> render_click()
 
-    # Only once the vote is triggered — and only for votes.
-    refute has_element?(lv, "#toggle-ballot-#{election.id}")
-    {:ok, _} = Play.trigger_element(session.id, election.id)
-    assert has_element?(lv, "#toggle-ballot-#{election.id}", "🚫 Options on screen")
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.election.id}"]:not([id])})
+        |> render_click()
 
-    lv |> element("#toggle-ballot-#{election.id}") |> render_click()
-    assert has_element?(lv, "#toggle-ballot-#{election.id}", "👁 Options on screen")
-    assert Play.snapshot(session.id).ballots_shown == [election.id]
+        lv
+        |> form(~s{form[phx-submit=resolve_election]}, %{
+          "winner" => ctx.yes.id,
+          "tally" => %{ctx.yes.id => "23"}
+        })
+        |> render_change()
 
-    lv |> element("#toggle-ballot-#{election.id}") |> render_click()
-    assert Play.snapshot(session.id).ballots_shown == []
+        send(lv.pid, :tick)
 
-    {:ok, _} = Play.close_element(session.id, election.id)
-    refute has_element?(lv, "#toggle-ballot-#{election.id}")
-  end
+        assert lv |> element(~s{input[name="tally[#{ctx.yes.id}]"]}) |> render() =~ ~s(value="23")
 
-  test "the console shows the overall index and its precise current band, updating live", ctx do
-    %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx
+        assert lv |> element(~s{input[type=radio][value="#{ctx.yes.id}"]}) |> render() =~
+                 "checked"
+      end
 
-    {:ok, _} =
-      Authoring.update_scenario(scenario, %{
-        overall_index_formula: "stability",
-        overall_index_min: 0.0,
-        overall_index_max: 10.0
-      })
+      test "recording a well-being tally", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-    {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "Breakdown"}, position: 0})
+        assert html =~ "Well-being"
+        assert html =~ "hand count"
 
-    {:ok, _} =
-      Authoring.create_overall_index_band(scenario, %{name: %{"en" => "In Bloom"}, position: 1})
+        lv |> element("button[phx-click=start]") |> render_click()
 
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+        # An empty tally is refused client-side with a flash.
+        html = lv |> form(~s{form[phx-submit=record_tally]}) |> render_submit()
+        assert html =~ "Count at least one participant"
 
-    # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
-    assert html =~ "Overall Index:"
-    assert html =~ "Breakdown"
+        html =
+          lv
+          |> form(~s{form[phx-submit=record_tally]}, %{
+            "counts" => %{"4" => "2", "3" => "1", "1" => "1"}
+          })
+          |> render_submit()
 
-    lv |> element("button[phx-click=start]") |> render_click()
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{event.id}"]}) |> render_click()
+        # Weighted mean (4+4+3+1)/4 = 3 — latest reading and a history row appear.
+        assert html =~ "🙂 3"
+        assert html =~ "Average"
+      end
 
-    # +2 stability -> avg 7 -> best band ("In Bloom").
-    html =
-      lv
-      |> element(
-        ~s{button[phx-click=choose][phx-value-element="#{event.id}"]} <>
-          ~s{[phx-value-option="#{crack.id}"]}
-      )
-      |> render_click()
+      test "a viewer cannot open the console", %{session: session} do
+        other = user_fixture()
+        conn = build_conn() |> log_in_user(other)
 
-    assert html =~ "7"
-    assert html =~ "In Bloom"
-  end
+        assert {:error, {:live_redirect, %{to: "/scenarios"}}} =
+                 live(conn, "/sessions/#{session.id}" <> @console)
+      end
 
-  test "the GM can toggle group values on the group boards", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+      test "invalid commands surface as flash, not crashes", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-    assert html =~ "👁 Group values"
+        # The button is disabled in draft, but a stale client could still send the
+        # event — the session process rejects it and the console flashes.
+        html = render_click(lv, "trigger", %{"id" => ctx.event.id})
 
-    html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
-    assert html =~ "🚫 Group values"
-    refute Play.snapshot(session.id).group_values_visible
+        assert html =~ "Rejected"
+      end
 
-    html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
-    assert html =~ "👁 Group values"
-    assert Play.snapshot(session.id).group_values_visible
-  end
+      test "the GM can toggle exact numbers on the audience displays", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
 
-  test "the GM can close an event manually, deadline or not", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+        assert html =~ "Show numbers on displays"
+        refute Play.snapshot(session.id).show_numbers
 
-    lv |> element("button[phx-click=start]") |> render_click()
-    refute has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+        html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
+        assert html =~ "Hide numbers on displays"
+        assert Play.snapshot(session.id).show_numbers
 
-    lv |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]}) |> render_click()
-    assert has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+        html = lv |> element(~s{button[phx-click=toggle_board_numbers]}) |> render_click()
+        assert html =~ "Show numbers on displays"
+        refute Play.snapshot(session.id).show_numbers
+      end
 
-    html =
-      lv
-      |> element(~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
-      |> render_click()
+      test "the GM can consolidate values early, without waiting for the next trigger", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+        {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
 
-    assert html =~ "closed"
-    refute has_element?(lv, ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
-    assert ctx.event.id in Play.snapshot(session.id).closed
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
+        assert html =~ "Consolidate now"
 
-    # Still not locked — the GM can enter gov's decision after closing.
-    html =
-      lv
-      |> element(
-        ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
-          ~s{[phx-value-option="#{ctx.crack.id}"]}
-      )
-      |> render_click()
+        refute Play.snapshot(session.id).baseline_globals[ctx.stability.id] ==
+                 Play.snapshot(session.id).globals[ctx.stability.id]
 
-    assert html =~ "7"
-  end
+        lv |> element(~s{button[phx-click=consolidate_values]}) |> render_click()
 
-  test "the download-PDF link is always available, even before any code is generated", ctx do
-    %{conn: conn, session: session} = ctx
-    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+        snap = Play.snapshot(session.id)
+        assert snap.baseline_globals[ctx.stability.id] == snap.globals[ctx.stability.id]
+      end
 
-    assert html =~ "Download all as PDF"
-    assert has_element?(lv, ~s{a[href="/sessions/#{session.id}/qr_codes.pdf"]})
+      test "the GM can show and clear a full-screen page", ctx do
+        {:ok, page} = Authoring.create_page(ctx.scenario, %{key: "Welcome"})
+
+        {:ok, session} = Play.create_session(ctx.user, ctx.scenario, %{label: "Onboarding"})
+        on_exit(fn -> Play.stop_running(session.id) end)
+
+        {:ok, lv, html} = live(ctx.conn, "/sessions/#{session.id}" <> @console)
+        assert html =~ "Welcome"
+        refute html =~ "Back to scoreboard"
+        refute html =~ "showing a page"
+
+        html =
+          lv
+          |> element(~s{button[phx-click=show_page][phx-value-id="#{page.id}"]})
+          |> render_click()
+
+        assert html =~ "Back to scoreboard"
+        assert html =~ "showing a page"
+        assert Play.snapshot(session.id).active_page_id == page.id
+
+        html = lv |> element(~s{button[phx-click=clear_page]}) |> render_click()
+        refute html =~ "Back to scoreboard"
+        refute Play.snapshot(session.id).active_page_id
+      end
+
+      test "the GM can toggle each scoreboard section independently", ctx do
+        %{conn: conn, session: session, wellbeing: wellbeing} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        # A fixed section per name, plus one per per-participant value (labeled by
+        # the value's own name).
+        assert html =~ "👁 Global values"
+        assert html =~ "👁 Well-being"
+        assert html =~ "👁 Overall Index"
+        assert html =~ "👁 Current event"
+
+        html =
+          lv
+          |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
+          |> render_click()
+
+        assert html =~ "🚫 Overall Index"
+        assert Play.snapshot(session.id).board_sections.overall_index == false
+        # Untouched sections stay visible — this is one flag per section.
+        assert Play.snapshot(session.id).board_sections.globals == true
+
+        html =
+          lv
+          |> element(~s{button[phx-click=toggle_board_section][phx-value-section=overall_index]})
+          |> render_click()
+
+        assert html =~ "👁 Overall Index"
+        assert Play.snapshot(session.id).board_sections.overall_index == true
+
+        # A per-participant value's section is keyed by its id, toggled the same way.
+        html =
+          lv
+          |> element(
+            ~s{button[phx-click=toggle_board_section][phx-value-section="#{wellbeing.id}"]}
+          )
+          |> render_click()
+
+        assert html =~ "🚫 Well-being"
+        assert Play.snapshot(session.id).board_sections[wellbeing.id] == false
+      end
+
+      test "the GM reveals a vote's options on the scoreboard per vote", ctx do
+        %{conn: conn, session: session, election: election} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        # Only once the vote is triggered — and only for votes.
+        refute has_element?(lv, "#toggle-ballot-#{election.id}")
+        {:ok, _} = Play.trigger_element(session.id, election.id)
+        assert has_element?(lv, "#toggle-ballot-#{election.id}", "🚫 Options on screen")
+
+        lv |> element("#toggle-ballot-#{election.id}") |> render_click()
+        assert has_element?(lv, "#toggle-ballot-#{election.id}", "👁 Options on screen")
+        assert Play.snapshot(session.id).ballots_shown == [election.id]
+
+        lv |> element("#toggle-ballot-#{election.id}") |> render_click()
+        assert Play.snapshot(session.id).ballots_shown == []
+
+        {:ok, _} = Play.close_element(session.id, election.id)
+        refute has_element?(lv, "#toggle-ballot-#{election.id}")
+      end
+
+      test "the console shows the overall index and its precise current band, updating live",
+           ctx do
+        %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx
+
+        {:ok, _} =
+          Authoring.update_scenario(scenario, %{
+            overall_index_formula: "stability",
+            overall_index_min: 0.0,
+            overall_index_max: 10.0
+          })
+
+        {:ok, _} =
+          Authoring.create_overall_index_band(scenario, %{
+            name: %{"en" => "Breakdown"},
+            position: 0
+          })
+
+        {:ok, _} =
+          Authoring.create_overall_index_band(scenario, %{
+            name: %{"en" => "In Bloom"},
+            position: 1
+          })
+
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        # Gov stability starts at 5 -> avg 5 -> worst band ("Breakdown").
+        assert html =~ "Overall Index:"
+        assert html =~ "Breakdown"
+
+        lv |> element("button[phx-click=start]") |> render_click()
+
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{event.id}"]:not([id])})
+        |> render_click()
+
+        # +2 stability -> avg 7 -> best band ("In Bloom").
+        html =
+          lv
+          |> element(
+            ~s{button[phx-click=choose][phx-value-element="#{event.id}"]} <>
+              ~s{[phx-value-option="#{crack.id}"]}
+          )
+          |> render_click()
+
+        assert html =~ "7"
+        assert html =~ "In Bloom"
+      end
+
+      test "the GM can toggle group values on the group boards", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        assert html =~ "👁 Group values"
+
+        html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
+        assert html =~ "🚫 Group values"
+        refute Play.snapshot(session.id).group_values_visible
+
+        html = lv |> element(~s{button[phx-click=toggle_group_values]}) |> render_click()
+        assert html =~ "👁 Group values"
+        assert Play.snapshot(session.id).group_values_visible
+      end
+
+      test "the GM can close an event manually, deadline or not", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        lv |> element("button[phx-click=start]") |> render_click()
+
+        refute has_element?(
+                 lv,
+                 ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]}
+               )
+
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{ctx.event.id}"]:not([id])})
+        |> render_click()
+
+        assert has_element?(
+                 lv,
+                 ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]}
+               )
+
+        html =
+          lv
+          |> element(~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]})
+          |> render_click()
+
+        assert html =~ "closed"
+
+        refute has_element?(
+                 lv,
+                 ~s{button[phx-click=close_element][phx-value-id="#{ctx.event.id}"]}
+               )
+
+        assert ctx.event.id in Play.snapshot(session.id).closed
+
+        # Still not locked — the GM can enter gov's decision after closing.
+        html =
+          lv
+          |> element(
+            ~s{button[phx-click=choose][phx-value-element="#{ctx.event.id}"]} <>
+              ~s{[phx-value-option="#{ctx.crack.id}"]}
+          )
+          |> render_click()
+
+        assert html =~ "7"
+      end
+
+      test "the download-PDF link is always available, even before any code is generated", ctx do
+        %{conn: conn, session: session} = ctx
+        {:ok, lv, html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        assert html =~ "Download all as PDF"
+        assert has_element?(lv, ~s{a[href="/sessions/#{session.id}/qr_codes.pdf"]})
+      end
+    end
   end
 end

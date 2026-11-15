@@ -17,6 +17,9 @@ defmodule ScenexWeb.SessionLive.Console do
   a pre-authored full-screen page up on the scoreboard at any time,
   regardless of session status (before the show starts, onboarding) — a
   display override that doesn't pause or affect the game underneath.
+
+  This classic console stays the default; the redesigned
+  `ScenexWeb.SessionLive.ConsoleNext` is one click away.
   """
   use ScenexWeb, :live_view
 
@@ -71,6 +74,13 @@ defmodule ScenexWeb.SessionLive.Console do
               do: "🔢 Hide numbers on displays",
               else: "🔢 Show numbers on displays"}
           </button>
+          <.link
+            id="switch-console"
+            navigate={~p"/sessions/#{@session.id}/console/new"}
+            class="btn btn-sm btn-accent btn-soft"
+          >
+            ✨ New GM console
+          </.link>
           <.link navigate={~p"/scenarios/#{@scenario.id}/sessions"} class="btn btn-sm btn-ghost">
             ← Sessions
           </.link>

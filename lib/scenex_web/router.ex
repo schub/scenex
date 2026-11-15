@@ -66,6 +66,7 @@ defmodule ScenexWeb.Router do
       live "/scenarios/:id/simulate", ScenarioLive.Simulate, :show
       live "/scenarios/:id/sessions", SessionLive.Index, :index
       live "/sessions/:id/console", SessionLive.Console, :show
+      live "/sessions/:id/console/new", SessionLive.ConsoleNext, :show
     end
 
     get "/sessions/:id/qr_codes.pdf", SessionQrPdfController, :download
