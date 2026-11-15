@@ -986,16 +986,17 @@ earths_offer =
     director_notes: """
     Only fire this if Command chose *Call Earth* during *The Storm*.
 
-    The ballot isn't shown on any screen by itself: put up the page *Earth's
-    Offer* so the room can read the three options, and read them aloud. Then
-    give the room three minutes to campaign: each team may send one speaker.
-    Then a show of hands per option; enter the count in the console. On a
-    tie, you decide. If time runs out, the ⏱ default (the sponsor deal)
-    wins.
+    Put up the page *Earth's Offer* so the room can read what each option
+    means, and read them aloud. Give the room three minutes to campaign:
+    each team may send one speaker. Then go back to the scoreboard and
+    switch on **Options on screen**, so the room sees the ballot while it
+    votes. A show of hands per option; enter the count in the console and
+    declare the result — the winner lights up on the scoreboard. On a tie,
+    you decide. If time runs out, the ⏱ default (the sponsor deal) wins.
 
     *Go it alone* is gated on the colony's Supplies — a colony that is
-    already starving cannot afford pride. If the colony's Supplies are below
-    3, take it off the ballot and say why.
+    already starving cannot afford pride. Below 3 Supplies it drops off the
+    ballot on the scoreboard by itself; tell the room why.
     """
   })
 
