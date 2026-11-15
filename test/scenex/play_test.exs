@@ -474,7 +474,7 @@ defmodule Scenex.PlayTest do
 
     # Fire the deadline directly (deterministic — no sleeping on real timers).
     pid = Scenex.Play.SessionServer.whereis(session.id)
-    send(pid, {:deadline, timed.id})
+    send(pid, {:deadline, timed.id, Play.snapshot(session.id).triggered_at[timed.id]})
 
     snap = Play.snapshot(session.id)
 
@@ -486,6 +486,98 @@ defmodule Scenex.PlayTest do
 
     types = session |> Play.list_session_events() |> Enum.map(& &1.type)
     assert Enum.count(types, &(&1 == "deadline_lapsed")) == 1
+  end
+
+  describe "undoing a trigger" do
+    test "the beat goes back to untriggered, the board reverts, and replay agrees", ctx do
+      %{session: session, event: event} = ctx
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, before} = Play.trigger_element(session.id, event.id)
+      {:ok, snap} = Play.choose_option(session.id, event.id, ctx.gov.id, ctx.crack.id)
+      {:ok, _} = Play.set_decisions_visible(session.id, event.id, true)
+      {:ok, _} = Play.close_element(session.id, event.id)
+      assert stab(snap, ctx, ctx.gov) == 7.0
+
+      assert {:ok, snap} = Play.undo_trigger(session.id, event.id)
+      refute event.id in snap.triggered
+      refute event.id in snap.closed
+      refute Map.has_key?(snap.triggered_at, event.id)
+      refute Map.has_key?(snap.decisions, event.id)
+      assert snap.decisions_shown == nil
+      assert stab(snap, ctx, ctx.gov) == stab(before, ctx, ctx.gov)
+      # The undone effect shows as a change, like any correction.
+      assert {-2.0, _at} = snap.value_changes[{ctx.stability.id, ctx.gov.id}]
+
+      # Untriggered again: no decisions accepted until it's triggered anew.
+      assert {:error, :not_triggered} =
+               Play.choose_option(session.id, event.id, ctx.gov.id, ctx.crack.id)
+
+      # Later in the evening, at its proper place in the order.
+      {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
+      {:ok, snap} = Play.trigger_element(session.id, event.id)
+      assert snap.triggered == [ctx.election.id, event.id]
+      refute Map.has_key?(snap.decisions, event.id)
+      {:ok, snap} = Play.choose_option(session.id, event.id, ctx.gov.id, ctx.crack.id)
+      assert stab(snap, ctx, ctx.gov) == 7.0
+
+      # The log kept everything; replaying it lands on the same board.
+      types = session |> Play.list_session_events() |> Enum.map(& &1.type)
+      assert Enum.count(types, &(&1 == "element_triggered")) == 3
+      assert "trigger_undone" in types
+
+      Play.stop_running(session.id)
+      replayed = Play.snapshot(session.id)
+      assert replayed.triggered == snap.triggered
+      assert replayed.decisions == snap.decisions
+      assert replayed.sim == snap.sim
+    end
+
+    test "a deadline timer from before the undo can't fire the new trigger early", ctx do
+      %{session: session, scenario: scenario, gov: gov} = ctx
+
+      {:ok, timed} =
+        Authoring.create_timeline_element(scenario, %{
+          key: "Timed",
+          title: %{"en" => "Timed"},
+          position: 4,
+          deadline_seconds: 3600
+        })
+
+      {:ok, gov_default} =
+        Authoring.create_decision_option(timed, gov, %{
+          key: "Gov default",
+          name: %{"en" => "Gov default"},
+          is_default: true
+        })
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, first} = Play.trigger_element(session.id, timed.id)
+      stale_at = first.triggered_at[timed.id] - 1
+      {:ok, _} = Play.undo_trigger(session.id, timed.id)
+
+      pid = Scenex.Play.SessionServer.whereis(session.id)
+
+      # Untriggered: a leftover message does nothing.
+      send(pid, {:deadline, timed.id, stale_at})
+      refute Map.has_key?(Play.snapshot(session.id).decisions, timed.id)
+
+      # Re-triggered: the old trigger's message still does nothing …
+      {:ok, second} = Play.trigger_element(session.id, timed.id)
+      send(pid, {:deadline, timed.id, stale_at})
+      refute Map.has_key?(Play.snapshot(session.id).decisions, timed.id)
+
+      # … while the new trigger's own deadline applies the default as usual.
+      send(pid, {:deadline, timed.id, second.triggered_at[timed.id]})
+      assert Play.snapshot(session.id).decisions[timed.id][gov.id] == gov_default.id
+    end
+
+    test "only a triggered beat in a running session", ctx do
+      %{session: session} = ctx
+      assert {:error, :not_running} = Play.undo_trigger(session.id, ctx.event.id)
+
+      {:ok, _} = Play.start_session(session.id)
+      assert {:error, :not_triggered} = Play.undo_trigger(session.id, ctx.event.id)
+    end
   end
 
   describe "manually closing an element" do
@@ -541,7 +633,7 @@ defmodule Scenex.PlayTest do
       # Simulate a timer message that was already in the mailbox the instant
       # the GM closed — fire_deadline must still refuse to apply defaults.
       pid = Scenex.Play.SessionServer.whereis(session.id)
-      send(pid, {:deadline, timed.id})
+      send(pid, {:deadline, timed.id, Play.snapshot(session.id).triggered_at[timed.id]})
 
       snap = Play.snapshot(session.id)
       refute Map.has_key?(snap.decisions[timed.id] || %{}, gov.id)

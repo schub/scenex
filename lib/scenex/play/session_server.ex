@@ -138,8 +138,8 @@ defmodule Scenex.Play.SessionServer do
   defp command_name(_command), do: :unknown
 
   @impl true
-  def handle_info({:deadline, element_id}, state) do
-    {:noreply, fire_deadline(state, element_id)}
+  def handle_info({:deadline, element_id, triggered_at}, state) do
+    {:noreply, fire_deadline(state, element_id, triggered_at)}
   end
 
   # ── Deadline timers ───────────────────────────────────────────────────
@@ -155,7 +155,8 @@ defmodule Scenex.Play.SessionServer do
     if state.projection.status == :live do
       timers =
         for {element_id, remaining_ms} <- pending_deadlines(state), into: %{} do
-          {element_id, Process.send_after(self(), {:deadline, element_id}, max(remaining_ms, 0))}
+          message = {:deadline, element_id, state.projection.triggered_at[element_id]}
+          {element_id, Process.send_after(self(), message, max(remaining_ms, 0))}
         end
 
       %{state | timers: timers}
@@ -206,16 +207,19 @@ defmodule Scenex.Play.SessionServer do
     end
   end
 
-  defp fire_deadline(state, element_id) do
+  defp fire_deadline(state, element_id, triggered_at) do
     case state.definition.elements[element_id] do
       nil ->
         state
 
       element ->
-        # A timer already in flight when the GM closes the element can still
-        # deliver its message (cancellation isn't guaranteed) — guard here
-        # too, not just in the scheduling, so a manual close always wins.
-        if state.projection.status == :live and element_id not in state.projection.closed do
+        # A timer already in flight when the GM closes the element (or undoes
+        # its trigger) can still deliver its message — cancellation isn't
+        # guaranteed — so guard here too, not just in the scheduling. The
+        # message names the trigger it belongs to, so one left over from
+        # before an undo + re-trigger can't fire the new deadline early.
+        if state.projection.status == :live and element_id not in state.projection.closed and
+             state.projection.triggered_at[element_id] == triggered_at do
           state =
             Enum.reduce(missing_defaults(state, element), state, fn {slot, option_id}, acc ->
               payload =
@@ -280,6 +284,13 @@ defmodule Scenex.Play.SessionServer do
       if element_id in state.projection.triggered,
         do: {:error, :already_triggered},
         else: {:ok, "element_triggered", %{element_id: element_id}, %{}}
+    end
+  end
+
+  defp validate({:undo_trigger, element_id}, state) do
+    with :ok <- running(state),
+         {:ok, _element} <- fetch_triggered(state, element_id) do
+      {:ok, "trigger_undone", %{element_id: element_id}, %{}}
     end
   end
 

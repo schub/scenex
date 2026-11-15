@@ -450,6 +450,18 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
           >
             ⏹ Close event
           </button>
+          <button
+            :if={@triggered?}
+            id={"undo-trigger-#{@element.id}"}
+            phx-click="undo_trigger"
+            phx-value-id={@element.id}
+            disabled={not @running?}
+            class="btn btn-sm btn-ghost"
+            data-confirm={undo_trigger_confirm(@snap, @element)}
+            title="Mis-clicked? Put this beat back to untriggered"
+          >
+            ↩ Undo trigger
+          </button>
         </div>
       </div>
 
@@ -981,6 +993,14 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
   end
 
+  def handle_event("undo_trigger", %{"id" => element_id}, socket) do
+    run(
+      socket,
+      &Play.undo_trigger(&1, element_id),
+      &push_patch(&1, to: beat_path(&1.assigns.session, element_id))
+    )
+  end
+
   def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
     visible = socket.assigns.snap.decisions_shown != element_id
     run(socket, &Play.set_decisions_visible(&1, element_id, visible))
@@ -1339,6 +1359,17 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
 
   defp options_for_group(snap, element_id, group_id),
     do: Enum.filter(options_for_element(snap, element_id), &(&1.group_id == group_id))
+
+  defp undo_trigger_confirm(snap, element) do
+    case map_size(snap.decisions[element.id] || %{}) do
+      0 ->
+        "Undo this trigger? The beat goes back to untriggered; you can trigger it again later."
+
+      n ->
+        "Undo this trigger? The beat goes back to untriggered and its #{n} " <>
+          "#{if n == 1, do: "decision is", else: "decisions are"} discarded — the board reverts."
+    end
+  end
 
   defp decided?(snap, element_id, slot, option_id),
     do: get_in(snap.decisions, [element_id, slot]) == option_id

@@ -8,10 +8,14 @@ defmodule Scenex.Play.SessionEvent do
   `game_time_ms` stamps the pausable game clock at append time. Payloads are
   language-neutral (ids, not text).
 
-  Event types: `session_started`, `session_paused`, `session_resumed`,
-  `element_triggered`, `option_chosen`, `deadline_lapsed`,
-  `election_resolved`, `sidequest_adjudicated`, `session_ended`,
-  `ending_selected`.
+  Game events: `session_started`, `session_paused`, `session_resumed`,
+  `element_triggered`, `trigger_undone`, `element_closed`, `option_chosen`,
+  `deadline_lapsed`, `election_resolved`, `sidequest_adjudicated`,
+  `tally_recorded`, `values_consolidated`, `session_ended`,
+  `ending_selected`. Display preferences ride the same log so they survive a
+  restart: `board_numbers_set`, `board_section_toggled`,
+  `group_values_visibility_set`, `page_shown`, `page_cleared`,
+  `ballot_visibility_set`, `decisions_visibility_set`.
   """
   use Ecto.Schema
 
