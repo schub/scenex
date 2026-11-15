@@ -88,6 +88,13 @@ defmodule ScenexWeb.PlayLive.Display do
               </div>
             </div>
 
+            <.decision_reveal
+              :if={@snap.decisions_shown == element.id}
+              snap={@snap}
+              element={element}
+              locale={@locale}
+            />
+
             <%!-- Ballot options, when the GM reveals them; once declared, the
             winner stands out and the rest fade. --%>
             <% winner = declared_winner(@snap, element) %>
@@ -141,6 +148,16 @@ defmodule ScenexWeb.PlayLive.Display do
                 </span>
               </div>
             </div>
+          </section>
+
+          <%!-- A closed event's revealed choices stay up for the discussion --%>
+          <section
+            :for={element <- List.wrap(closed_reveal(@snap))}
+            :if={chosen_ending(@snap) == nil}
+            class="rounded-box bg-base-200 p-6 space-y-3"
+          >
+            <h2 class="text-2xl font-bold">{I18n.t!(element.title, @locale)}</h2>
+            <.decision_reveal snap={@snap} element={element} locale={@locale} />
           </section>
         </div>
 
@@ -351,6 +368,63 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   defp declared_winner(_snap, _element), do: nil
+
+  attr :snap, :map, required: true
+  attr :element, :map, required: true
+  attr :locale, :string, required: true
+
+  defp decision_reveal(assigns) do
+    ~H"""
+    <% choices = group_choices(@snap, @element) %>
+    <ul
+      id={"decisions-#{@element.id}"}
+      class="grid gap-3"
+      style={"grid-template-columns: repeat(#{reveal_columns(length(choices))}, minmax(0, 1fr))"}
+    >
+      <li
+        :for={{group, option} <- choices}
+        id={"decision-#{group.id}"}
+        class={[
+          "min-w-0 rounded-box border-2 px-4 py-2 transition-all duration-500",
+          (option && "border-primary bg-base-100") || "border-dashed border-base-300"
+        ]}
+      >
+        <div class="truncate text-sm font-semibold opacity-70 2xl:text-lg">
+          {I18n.t!(group.name, @locale)}
+        </div>
+        <.markdown
+          :if={option}
+          text={I18n.t!(option.name, @locale)}
+          class="line-clamp-2 text-base 2xl:text-xl"
+        />
+        <div :if={!option} class="text-xl opacity-40 2xl:text-2xl">…</div>
+      </li>
+    </ul>
+    """
+  end
+
+  # Every group in the session, with the option it chose (nil while deciding).
+  defp group_choices(snap, element) do
+    slots = snap.decisions[element.id] || %{}
+
+    for gid <- snap.definition.group_ids,
+        do: {snap.definition.groups[gid], snap.definition.options[slots[gid]]}
+  end
+
+  # The wall never scrolls: one row up to five groups, otherwise two rows
+  # (so ten groups — the practical maximum — still take only two).
+  defp reveal_columns(n) when n <= 5, do: max(n, 1)
+  defp reveal_columns(n), do: div(n + 1, 2)
+
+  # The revealed event, once closed — it has left the "current beat" section
+  # but stays on the wall until the GM hides it or triggers the next beat.
+  defp closed_reveal(%{decisions_shown: eid} = snap) when is_binary(eid) do
+    if current_element(snap) && current_element(snap).id == eid,
+      do: nil,
+      else: snap.definition.elements[eid]
+  end
+
+  defp closed_reveal(_snap), do: nil
 
   defp ballot_shown?(snap, %{kind: :election, id: id}), do: id in snap.ballots_shown
   defp ballot_shown?(_snap, _element), do: false

@@ -429,6 +429,35 @@ defmodule ScenexWeb.PlayAccessLiveTest do
       refute render(lv) =~ "Yes to the plan"
     end
 
+    test "reveals each group's choice when the GM asks, and keeps it up after close", ctx do
+      opp = group_fixture(ctx.scenario, key: "Opp", name: %{"en" => "Opposition"})
+      {:ok, session} = Play.create_session(ctx.gm, ctx.scenario, %{label: "Second night"})
+      on_exit(fn -> Play.stop_running(session.id) end)
+      {:ok, display} = Play.create_display_token(session)
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, ctx.event.id)
+      {:ok, _} = Play.choose_option(session.id, ctx.event.id, ctx.gov.id, ctx.crack.id)
+
+      {:ok, lv, _html} = live(build_conn(), ~p"/display/#{display.token}")
+      refute has_element?(lv, "#decisions-#{ctx.event.id}")
+
+      {:ok, _} = Play.set_decisions_visible(session.id, ctx.event.id, true)
+      assert has_element?(lv, "#decision-#{ctx.gov.id}", "Government")
+      assert has_element?(lv, "#decision-#{ctx.gov.id}", "Crack down")
+      # Still deciding: the group shows, its choice doesn't (yet).
+      assert has_element?(lv, "#decision-#{opp.id}", "Opposition")
+      assert has_element?(lv, "#decision-#{opp.id}", "…")
+
+      # Closing leaves the reveal up for the discussion …
+      {:ok, _} = Play.close_element(session.id, ctx.event.id)
+      assert has_element?(lv, "#decision-#{ctx.gov.id}", "Crack down")
+
+      # … the next beat takes it down.
+      {:ok, _} = Play.trigger_element(session.id, ctx.election.id)
+      refute has_element?(lv, "#decisions-#{ctx.event.id}")
+    end
+
     test "shows the latest well-being tally once one is recorded, as an emoji — never a number",
          ctx do
       {:ok, _} = Play.start_session(ctx.session.id)

@@ -17,6 +17,9 @@ defmodule ScenexWeb.SessionLive.Console do
   a pre-authored full-screen page up on the scoreboard at any time,
   regardless of session status (before the show starts, onboarding) — a
   display override that doesn't pause or affect the game underneath.
+
+  This classic console stays the default; the redesigned
+  `ScenexWeb.SessionLive.ConsoleNext` is one click away.
   """
   use ScenexWeb, :live_view
 
@@ -71,6 +74,13 @@ defmodule ScenexWeb.SessionLive.Console do
               do: "🔢 Hide numbers on displays",
               else: "🔢 Show numbers on displays"}
           </button>
+          <.link
+            id="switch-console"
+            navigate={~p"/sessions/#{@session.id}/console/new"}
+            class="btn btn-sm btn-accent btn-soft"
+          >
+            ✨ New GM console
+          </.link>
           <.link navigate={~p"/scenarios/#{@scenario.id}/sessions"} class="btn btn-sm btn-ghost">
             ← Sessions
           </.link>
@@ -349,14 +359,42 @@ defmodule ScenexWeb.SessionLive.Console do
                 else: "🚫 Options on screen"}
             </button>
             <button
+              :if={element.kind == :event and element.id in @snap.triggered}
+              id={"toggle-decisions-#{element.id}"}
+              phx-click="toggle_decisions"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class={[
+                "btn btn-sm ml-auto",
+                (@snap.decisions_shown == element.id && "btn-primary") || "btn-ghost"
+              ]}
+              title="Show each group's choice on the scoreboard"
+            >
+              {if @snap.decisions_shown == element.id,
+                do: "👁 Decisions on screen",
+                else: "🚫 Decisions on screen"}
+            </button>
+            <button
               :if={element.id in @snap.triggered and element.id not in @snap.closed}
               phx-click="close_element"
               phx-value-id={element.id}
               disabled={@snap.status not in [:live, :paused]}
-              class={["btn btn-sm btn-ghost", element.kind != :election && "ml-auto"]}
+              class={["btn btn-sm btn-ghost", element.kind == :sidequest && "ml-auto"]}
               data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
             >
               ⏹ Close event
+            </button>
+            <button
+              :if={element.id in @snap.triggered}
+              id={"undo-trigger-#{element.id}"}
+              phx-click="undo_trigger"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class="btn btn-sm btn-ghost"
+              data-confirm={undo_trigger_confirm(@snap, element)}
+              title="Mis-clicked? Put this beat back to untriggered"
+            >
+              ↩ Undo trigger
             </button>
           </div>
 
@@ -642,6 +680,14 @@ defmodule ScenexWeb.SessionLive.Console do
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
   end
 
+  def handle_event("undo_trigger", %{"id" => element_id}, socket),
+    do: run(socket, &Play.undo_trigger(&1, element_id))
+
+  def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
+    visible = socket.assigns.snap.decisions_shown != element_id
+    run(socket, &Play.set_decisions_visible(&1, element_id, visible))
+  end
+
   def handle_event("close_element", %{"id" => element_id}, socket),
     do: run(socket, &Play.close_element(&1, element_id))
 
@@ -862,6 +908,17 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp options_for_group(snap, element_id, group_id),
     do: Enum.filter(options_for_element(snap, element_id), &(&1.group_id == group_id))
+
+  defp undo_trigger_confirm(snap, element) do
+    case map_size(snap.decisions[element.id] || %{}) do
+      0 ->
+        "Undo this trigger? The beat goes back to untriggered; you can trigger it again later."
+
+      n ->
+        "Undo this trigger? The beat goes back to untriggered and its #{n} " <>
+          "#{if n == 1, do: "decision is", else: "decisions are"} discarded — the board reverts."
+    end
+  end
 
   defp decided?(snap, element_id, slot, option_id),
     do: get_in(snap.decisions, [element_id, slot]) == option_id

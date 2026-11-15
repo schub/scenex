@@ -102,6 +102,17 @@ When time runs out, a group without a decision simply stays undecided —
 Common Ground has no default options. You can still enter a decision for them.
 **⏹ Close event** ends a beat early; it never chooses anything for anyone.
 
+Triggered the wrong beat? **↩ Undo trigger** puts it back as if you had
+never clicked: its decisions are discarded (the console asks first and says
+how many), the board reverts, and you can trigger it again when its moment
+comes — with a fresh deadline.
+
+Want the room to see how everyone decided? Click **🚫 Decisions on screen**
+on the event — the projector shows each group with the option it chose (a
+group still deciding shows "…"), and the button turns to 👁. Unlike a vote,
+closing the event leaves the decisions up so the room can discuss them; they
+come down when you switch them off or trigger the next beat.
+
 ## Choosing the right version
 
 Later in the evening comes *Irresistible Proposal* — in two versions. Look at
