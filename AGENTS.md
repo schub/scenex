@@ -104,9 +104,11 @@ Several agents work on this repo at once. GitHub Issues are the task list;
 
 ### Releases and deploys
 
-Agents release only when Markus asks, and only through `./release.sh` (the
-`release` skill) — it is the one thing that touches `main`. Agents never
-deploy: Markus pulls `main` in his own checkout and runs `./deploy.sh`. See
+**Markus releases and deploys, from his own checkout.** `main` only accepts
+changes through a pull request, and the bot account (`schub-botzero`) can't
+push to it — so agents in the fisher container never run `./release.sh`.
+When Markus asks for a release, tell him to run it himself. Agents never
+deploy either: Markus pulls `main` and runs `./deploy.sh`. See
 [`docs/releasing.md`](docs/releasing.md).
 
 ## Where documentation lives

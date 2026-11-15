@@ -7,6 +7,12 @@ description: Cut a Scenex release by running ./release.sh (strips the -dev suffi
 
 The release is fully scripted — do not reimplement the steps.
 
+**Only in Markus's own checkout, with his credentials.** `main` accepts
+changes only through a pull request, and the bot account (`schub-botzero`,
+the fisher container) can't push to it — the script would push the release
+commit to `dev` and then fail on `main`. If `gh api user --jq .login` says
+`schub-botzero`, don't run it: tell Markus to run `./release.sh` himself.
+
 Run from `dev/scenex/`:
 
 ```bash
