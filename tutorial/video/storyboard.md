@@ -1,7 +1,7 @@
 # Video storyboard
 
 > Generated from `tutorial/video/script.mjs` by `node video/storyboard.mjs` —
-> edit the script, not this file. Times are estimates (≈ 8:12 in total).
+> edit the script, not this file. Times are estimates (≈ 8:41 in total).
 
 | # | ≈ at | On screen | Narration |
 |---|---|---|---|
@@ -32,21 +32,23 @@
 | 25 | 5:09 | Common Ground's dry run — slogans being picked | Back to the town. Before anyone plays, you can rehearse the numbers on your own, in the dry run. Pick a slogan for every group, |
 | 26 | 5:21 | Dry run — scrolled up to the board, pointer on the Democracy Score | and watch the Democracy Score climb. |
 | 27 | 5:25 | Card: “Showtime!” | Showtime! |
-| 28 | 5:27 | Sessions page — a new session “Friday Premiere” is created | A session is one performance. Give it a name, pick the language, and the groups that play tonight. |
-| 29 | 5:36 | Console — Access & QR: a code for every table and the projector | Every table gets its own QR code, and so does the projector. You can print them all on one sheet. |
-| 30 | 5:46 | Console: the GM clicks the page “Common Ground Title” → the projector shows it | While the audience comes in, the game master puts the title on the projector. |
-| 31 | 5:54 | Console: back to the scoreboard, Start session, Trigger “Choose your slogan!” | When everyone has found a table, the show begins. The game master starts the clock, and fires the very first beat: choose your slogan! |
-| 32 | 6:05 | The Chamber of Commerce's tablet — the question and its three slogans | At the Chamber of Commerce table, the group reads the question, talks it through, and picks its slogan. |
-| 33 | 6:15 | Tablet — the confirmation, then “Decision confirmed” | Choosing takes two taps, so nobody decides for the whole table by accident. |
-| 34 | 6:22 | Console — the other four groups' decisions are entered | The game master sees every decision come in, and can fix any mistake. The last decision always counts. |
-| 35 | 6:31 | The projector — four value bars and the Democracy Score gauge | And on the wall, the whole town: the four values, and the Democracy Score, moving between Breakdown and In Bloom. |
-| 36 | 6:41 | Console: the GM clicks “Happiness Survey” → the projector shows the survey page | Time to ask the room. The game master puts up the happiness survey: how are you feeling, right now? |
-| 37 | 6:50 | Console: back to the scoreboard, the show of hands typed into Well-Being | Count the hands, type them in, and the room's mood appears on the wall, as an emoji. |
-| 38 | 6:59 | Card: “Later that evening…” | Later that evening. |
-| 39 | 7:02 | Console: Trigger “Positive Starting Proposal” → the tablet shows the options and a 5-minute countdown | Now the key events begin. The Positive Starting Proposal comes with a five-minute countdown, on every table, and on the wall. Pressure makes good theatre. |
-| 40 | 7:14 | Console — the two versions of Key Event 3; the GM triggers the “higher Democracy Score” one | Some moments are written in two versions. Is the Democracy Score high, or low? The game master looks, and fires the version of the Irresistible Proposal that fits the evening. |
-| 41 | 7:28 | Console — Freeze Card triggered and judged a success | When a group needs it, the Freeze Card comes into play. Afterwards, one click: success. |
-| 42 | 7:36 | Console — Referendum 2: the hand count is typed in, “Regulate” wins | Referendum time. The candidates have made their speeches. The game master counts the hands, and declares the result. |
-| 43 | 7:45 | Console — the live board, every group's numbers changed | And the whole town feels it: every group's numbers move. |
-| 44 | 7:50 | Console: End, then the page “Final – Good Ending” → the projector shows the finale | At the end of the evening, the game master looks at the Democracy Score, and puts up the finale. |
-| 45 | 7:60 | Card on the Common Ground artwork: “Have a wonderful show!” | That's Scenex. Everything you've seen, and a lot more, is in the written tutorial. Now go, and make Common Ground your own. Have a wonderful show! |
+| 28 | 5:27 | Sessions page — a new session “Friday Premiere” is created; switch to the new GM console | A session is one performance. Give it a name, pick the language, and the groups that play tonight. |
+| 29 | 5:36 | The new GM console — pointer on the timeline, the beat, the room panel | This is the game master's console. On the left, the timeline of the evening. In the middle, the beat you're working on. And on the right, everything about the room: the numbers, the projector, and the pages. |
+| 30 | 5:53 | Console — Access & QR slides in: a code for every table and the projector | Every table gets its own QR code, and so does the projector. You can print them all on one sheet. |
+| 31 | 6:03 | Console: the GM clicks the page “Common Ground Title” → the projector shows it | While the audience comes in, the game master puts the title on the projector. |
+| 32 | 6:11 | Console: back to the scoreboard, Start session, Trigger “Choose your slogan!” | When everyone has found a table, the show begins. The game master starts the clock, and fires the very first beat: choose your slogan! |
+| 33 | 6:22 | The Chamber of Commerce's tablet — the question and its three slogans | At the Chamber of Commerce table, the group reads the question, talks it through, and picks its slogan. |
+| 34 | 6:32 | Tablet — the confirmation, then “Decision confirmed” | Choosing takes two taps, so nobody decides for the whole table by accident. |
+| 35 | 6:39 | Console — the other four groups' decisions are entered | The game master sees every decision come in, and can fix any mistake. The last decision always counts. |
+| 36 | 6:48 | The projector — four value bars and the Democracy Score gauge | And on the wall, the whole town: the four values, and the Democracy Score, moving between Breakdown and In Bloom. |
+| 37 | 6:58 | Console: “Decisions on screen” → the projector shows every group's slogan | With one click, every group's decision appears on the projector. Now the room has something to talk about. |
+| 38 | 7:07 | Console: the GM clicks “Happiness Survey” → the projector shows the survey page | Time to ask the room. The game master puts up the happiness survey: how are you feeling, right now? |
+| 39 | 7:16 | Console: back to the scoreboard, the show of hands typed into Well-Being | Count the hands, type them in, and the room's mood appears on the wall, as an emoji. |
+| 40 | 7:25 | Card: “Later that evening…” | Later that evening. |
+| 41 | 7:28 | Console: Trigger “Positive Starting Proposal” → the tablet shows the options and a 5-minute countdown | Now the key events begin. The Positive Starting Proposal comes with a five-minute countdown, on every table, and on the wall. Pressure makes good theatre. |
+| 42 | 7:40 | Console — the two versions of Key Event 3 side by side in the timeline; the GM triggers the “higher Democracy Score” one | Some moments are written in two versions. Is the Democracy Score high, or low? The game master looks, and fires the version of the Irresistible Proposal that fits the evening. |
+| 43 | 7:54 | Console — Freeze Card triggered and judged a success | When a group needs it, the Freeze Card comes into play. Afterwards, one click: success. |
+| 44 | 8:02 | Console — Referendum 2: options on screen, the hand count typed in, “Regulate” wins | Referendum time. The candidates have made their speeches. The ballot goes up on the projector, the game master counts the hands, and declares the result. |
+| 45 | 8:14 | Console — the board in the room panel, every group's numbers changed | And the whole town feels it: every group's numbers move. |
+| 46 | 8:20 | Console: End, then the page “Final – Good Ending” → the projector shows the finale | At the end of the evening, the game master looks at the Democracy Score, and puts up the finale. |
+| 47 | 8:29 | Card on the Common Ground artwork: “Have a wonderful show!” | That's Scenex. Everything you've seen, and a lot more, is in the written tutorial. Now go, and make Common Ground your own. Have a wonderful show! |

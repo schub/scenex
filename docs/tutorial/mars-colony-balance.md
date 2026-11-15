@@ -6,95 +6,95 @@
 [← Mars Colony](mars-colony.md) · [Contents](index.md)
 
 ```text
-Mars Colony balance check — 90df39c3-4230-4585-8dd8-433fe897bc1d
+Mars Colony balance check — 084d2169-772c-41b6-a7bb-3061510112a1
 Starting Vitality: 3.70
 
 == Random teams, random wildcard luck (5000 runs)
   Vitality by beat (mean / min / max):
     start          3.70  3.70  3.70   (Struggling)
     what_to_bring  3.99  3.35  5.05   (Struggling)
-    touchdown      4.16  2.98  5.45   (Getting By)
-    settling_in    4.36  2.67  5.97   (Getting By)
-    the_storm      3.81  2.25  5.50   (Struggling)
-    rationing      3.61  2.02  5.50   (Struggling)
-    end            3.61  1.88  5.95   (Struggling)
+    touchdown      4.17  2.98  5.40   (Getting By)
+    settling_in    4.38  2.88  5.90   (Getting By)
+    the_storm      3.81  2.17  5.45   (Struggling)
+    rationing      3.61  2.08  5.45   (Struggling)
+    end            3.61  1.80  5.97   (Struggling)
   Recommended ending:
-    getting_by      55.22%
-    on_the_brink    44.56%
-    colony_holds     0.22%
+    getting_by      55.14%
+    on_the_brink    44.72%
+    colony_holds     0.14%
   Final band:
-    Barely Holding On    0.16%
-    Getting By          28.70%
-    Struggling          71.14%
+    Barely Holding On    0.12%
+    Getting By          27.88%
+    Struggling          72.00%
   Final globals (mean):
     life_support   3.60
-    supplies       3.07
-    progress       5.82
-    risk           8.05
+    supplies       3.11
+    progress       5.80
+    risk           8.04
   Shades / vote:
-    :alone_gated                                  22.22%
-    :vote_held                                    32.92%
-    {:shade, "rationing_holding"}                 36.86%
-    {:shade, "rationing_struggling"}              63.14%
-    {:vote, "Extend the mission"}                 14.38%
-    {:vote, "Go it alone"}                         3.84%
-    {:vote, "Sponsor deal"}                       14.70%
+    :alone_gated                                  23.32%
+    :vote_held                                    34.24%
+    {:shade, "rationing_holding"}                 36.94%
+    {:shade, "rationing_struggling"}              63.06%
+    {:vote, "Extend the mission"}                 15.00%
+    {:vote, "Go it alone"}                         3.76%
+    {:vote, "Sponsor deal"}                       15.48%
   Values pinned at a bound at the end:
-    engineering.life_support=10     35.16%
-    medical.risk=0                  26.02%
-    agriculture.risk=10             14.72%
-    science.progress=10             11.42%
-    engineering.supplies=0          10.30%
-    medical.life_support=10          6.98%
-    medical.supplies=0               6.68%
-    agriculture.supplies=10          6.14%
+    engineering.life_support=10     35.72%
+    medical.risk=0                  24.90%
+    agriculture.risk=10             14.50%
+    science.progress=10             11.48%
+    engineering.supplies=0           9.58%
+    medical.life_support=10          6.94%
+    medical.supplies=0               6.82%
+    agriculture.supplies=10          6.76%
   Gates closed (share of runs the option was locked):
-    Battery bank                                  51.10%
-    Bury the cables                               16.30%
-    Second greenhouse                              8.64%
-    Weather radar                                 24.48%
+    Battery bank                                  49.34%
+    Bury the cables                               16.56%
+    Second greenhouse                              8.66%
+    Weather radar                                 25.50%
   Options never chosen at random:
     (none)
 
 == Mixed teams (70% careful), random wildcard luck (1000 runs)
   Vitality by beat (mean / min / max):
     start          3.70  3.70  3.70   (Struggling)
-    what_to_bring  4.69  3.40  5.05   (Getting By)
-    touchdown      4.92  3.55  5.50   (Getting By)
-    settling_in    5.29  4.08  6.30   (Getting By)
-    the_storm      4.91  3.75  5.90   (Getting By)
-    rationing      4.81  3.30  5.90   (Getting By)
-    end            4.68  3.05  6.30   (Getting By)
+    what_to_bring  4.66  3.40  5.05   (Getting By)
+    touchdown      4.90  3.85  5.50   (Getting By)
+    settling_in    5.27  4.00  6.40   (Getting By)
+    the_storm      4.90  3.58  5.85   (Getting By)
+    rationing      4.80  3.10  5.85   (Getting By)
+    end            4.67  2.85  6.15   (Getting By)
   Recommended ending:
-    getting_by      92.10%
-    colony_holds     6.80%
+    getting_by      91.90%
+    colony_holds     7.00%
     on_the_brink     1.10%
   Final band:
-    Getting By          87.70%
-    Steady               0.60%
-    Struggling          11.70%
+    Getting By          89.20%
+    Steady               0.70%
+    Struggling          10.10%
   Final globals (mean):
-    life_support   5.02
-    supplies       4.56
-    progress       5.86
-    risk           6.74
+    life_support   4.98
+    supplies       4.52
+    progress       5.85
+    risk           6.67
   Shades / vote:
-    :alone_gated                                   5.50%
-    :vote_held                                    38.30%
-    {:shade, "rationing_holding"}                 99.00%
-    {:shade, "rationing_struggling"}               1.00%
-    {:vote, "Extend the mission"}                 22.20%
+    :alone_gated                                   4.50%
+    :vote_held                                    37.30%
+    {:shade, "rationing_holding"}                 98.20%
+    {:shade, "rationing_struggling"}               1.80%
+    {:vote, "Extend the mission"}                 20.50%
     {:vote, "Go it alone"}                         3.50%
-    {:vote, "Sponsor deal"}                       12.60%
+    {:vote, "Sponsor deal"}                       13.30%
   Values pinned at a bound at the end:
-    engineering.life_support=10     37.90%
-    science.supplies=10             12.80%
-    medical.risk=0                   9.60%
-    agriculture.supplies=10          7.70%
-    command.supplies=10              4.80%
-    medical.life_support=10          3.50%
-    engineering.progress=0           3.10%
-    engineering.risk=10              2.30%
+    engineering.life_support=10     42.30%
+    science.supplies=10             13.20%
+    medical.risk=0                  10.10%
+    agriculture.supplies=10          8.30%
+    command.supplies=10              5.20%
+    engineering.progress=0           3.40%
+    medical.life_support=10          3.30%
+    medical.supplies=10              1.90%
 
 == Careful teams, lucky wildcards (200 runs)
   Vitality by beat (mean / min / max):
@@ -108,21 +108,21 @@ Starting Vitality: 3.70
   Recommended ending:
     colony_holds   100.00%
   Final band:
-    Getting By          51.00%
-    Steady              49.00%
+    Getting By          49.50%
+    Steady              50.50%
   Final globals (mean):
     life_support   7.00
-    supplies       5.63
+    supplies       5.66
     progress       6.00
     risk           5.00
   Shades / vote:
-    :vote_held                                    49.00%
+    :vote_held                                    50.50%
     {:shade, "rationing_holding"}                100.00%
-    {:vote, "Extend the mission"}                 49.00%
+    {:vote, "Extend the mission"}                 50.50%
   Values pinned at a bound at the end:
     engineering.life_support=10    100.00%
-    command.supplies=10             49.00%
-    science.supplies=10             49.00%
+    command.supplies=10             50.50%
+    science.supplies=10             50.50%
 
 == Careful teams, unlucky wildcards (200 runs)
   Vitality by beat (mean / min / max):
@@ -152,15 +152,15 @@ Starting Vitality: 3.70
     start          3.70  3.70  3.70   (Struggling)
     what_to_bring  3.35  3.35  3.35   (Struggling)
     touchdown      2.98  2.98  2.98   (Struggling)
-    settling_in    3.31  3.00  3.63   (Struggling)
-    the_storm      2.40  2.20  2.52   (Struggling)
-    rationing      2.05  1.98  2.10   (Struggling)
+    settling_in    3.32  3.00  3.63   (Struggling)
+    the_storm      2.41  2.20  2.52   (Struggling)
+    rationing      2.06  1.98  2.10   (Struggling)
     end            2.02  1.93  2.08   (Struggling)
   Recommended ending:
     on_the_brink   100.00%
   Final band:
-    Barely Holding On   26.00%
-    Struggling          74.00%
+    Barely Holding On   27.00%
+    Struggling          73.00%
   Final globals (mean):
     life_support   2.00
     supplies       1.07
@@ -173,8 +173,8 @@ Starting Vitality: 3.70
     engineering.supplies=0         100.00%
     medical.supplies=0             100.00%
     science.supplies=0             100.00%
-    engineering.life_support=10     54.50%
-    medical.risk=0                  52.50%
-    science.progress=10             24.50%
-    science.risk=10                  6.00%
+    medical.risk=0                  49.50%
+    engineering.life_support=10     47.00%
+    science.progress=10             29.00%
+    science.risk=10                  8.50%
 ```

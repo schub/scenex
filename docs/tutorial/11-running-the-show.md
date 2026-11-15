@@ -6,26 +6,52 @@ The GM console is your prompt book and your lighting desk in one. Let's walk
 through an evening of Common Ground with it — from the first picture on the
 wall to the finale.
 
-## The top of the console
+> This chapter shows the **new GM console**. If your console still looks like
+> one long page, click **✨ New GM console** at the top
+> ([chapter 10](10-sessions.md#the-new-gm-console)). The classic console does
+> the same things and will be retired.
 
-![The top of the console](images/console-pages.png)
+## The console at a glance
 
-- **▶ Start / ⏸ Pause / ▶ Resume / ⏹ End** — the show's status and its
-  **game clock**. Every countdown runs on that clock; pause, and they all
-  freeze.
-- **🔢 Show numbers on displays** — normally the projector and the boards show
-  bars without numbers. Switch this on if you want numbers too. The console
-  always shows them.
+![The new GM console during the show](images/console-live.png)
+
+The console fills the screen and never scrolls away from you. It has three
+areas under one top bar:
+
+- **The top bar** — the session's name, its status and the **game clock**,
+  and the buttons you need in an emergency: **▶ Start / ⏸ Pause / ▶ Resume /
+  ⏹ End**. Every countdown runs on the game clock; pause, and they all
+  freeze. **🔑 Access & QR** opens the codes for the tables and the projector
+  ([chapter 10](10-sessions.md#qr-codes-for-the-tables-and-the-projector)).
+- **The timeline (left)** — every beat of the show, in order. A **▶** next to
+  a beat triggers it straight away; clicking its name opens it in the middle.
+  A tick marks a finished beat, *3/5 decided* shows how far a beat has got,
+  and a running countdown is shown right there.
+- **The beat (middle)** — the beat you've selected: its director's notes,
+  *What the room reads* (the text on the boards), and below that the
+  decisions — every group with its options and what each option does to the
+  numbers.
+- **The room (right)** — everything about the screens in the room:
+
+![The room panel](images/console-room.png)
+
+- **Board** — every group's numbers, the global values, and the Democracy
+  Score with its exact value and band.
 - **On the scoreboard** — switch parts of the projector on or off: the
   values, Well-Being, the Democracy Score, the current beat.
+  **🔢 Show numbers on displays** adds numbers to the bars on the projector and
+  the boards (the console always shows them). **✓ Consolidate now** resets the
+  "what changed" marks on the screens right away (the next beat does that
+  too).
 - **On the group boards** — hide the groups' own numbers, e.g. for a round
   where they should decide "blind".
-- **Value changes → ✓ Consolidate now** — after a decision, the screens mark
-  what changed. Firing the next beat resets those marks; this button does it
-  right away.
 - **Pages** — one button per page. One click puts it on the projector;
   **◼ Back to scoreboard** takes it down. Works any time, even before the
   start.
+- **Well-Being · hand count** — for asking the room (see below).
+
+On a smaller screen the room panel slides in from the side: click
+**📺 The room** in the top bar.
 
 ## Before the doors open
 
@@ -39,19 +65,13 @@ When everyone has found a table, switch to *Welcome to Lux*:
 
 ## Curtain up
 
-Click **▶ Start session**. The clock starts. Below the top bar you see the
-live board — every group's numbers, the global values, and the Democracy
-Score with its exact value and band:
-
-![The console right after the start](images/console-live.png)
-
-Below the board, every beat of the timeline has its own card, with its
-director's notes right there.
+Click **▶ Start session**. The clock starts. The first beat, *Choose your
+slogan!*, is already selected in the middle.
 
 ## The warm-up: choose your slogan
 
-Click **Trigger** on *Choose your slogan!*. Now every table's board shows
-the question and its own three slogans:
+Click **▶ Trigger**. Now every table's board shows the question and its own
+three slogans:
 
 ![The Chamber of Commerce chooses a slogan](images/board-event.png)
 
@@ -60,13 +80,14 @@ table by accident:
 
 ![Confirming on the group board](images/board-confirm.png)
 
-In the console you see every decision arrive. You can also click an option
-yourself — for a table without a device, or to fix a mistake. **The last
-decision always counts.**
+In the console you see every decision arrive — the chosen option lights up,
+and the group gets a tick. You can also click an option yourself — for a
+table without a device, or to fix a mistake. **The last decision always
+counts.**
 
 ![Every group has chosen](images/console-event-decided.png)
 
-The board at the top shows what changed:
+The board in the room panel shows what changed:
 
 ![The live board after the slogans](images/console-board.png)
 
@@ -74,14 +95,34 @@ The board at the top shows what changed:
 
 ![The projector after the slogans](images/display-after-slogans.png)
 
+### Showing the room what everyone chose
+
+Above the decisions, three buttons belong to the beat:
+
+![Decisions on screen, Close event, Undo trigger](images/console-decisions-on-screen.png)
+
+- **Decisions on screen** — the projector shows each group with the option
+  it chose (a group still deciding shows "…"):
+
+  ![Each group's slogan on the projector](images/display-decisions.png)
+
+  Closing the event leaves the decisions up, so the room can talk about them;
+  they come down when you switch them off or trigger the next beat.
+- **⏹ Close event** — ends a beat early. It never chooses anything for
+  anyone.
+- **↩ Undo trigger** — triggered the wrong beat? This puts it back as if you
+  had never clicked: its decisions are discarded (the console asks first and
+  says how many), the board reverts, and you can trigger it again when its
+  moment comes — with a fresh deadline.
+
 ## Asking the room
 
 Time for a reality check. Put up the *Happiness Survey* page:
 
 ![The Happiness Survey page](images/display-page-survey.png)
 
-Count the hands for each answer and type the numbers into the Well-Being
-box:
+Count the hands for each answer and type the numbers into *Well-Being · hand
+count* in the room panel:
 
 ![Typing in the show of hands](images/console-tally-form.png)
 
@@ -100,59 +141,54 @@ it, the countdown runs in the console, on every board and on the projector:
 
 When time runs out, a group without a decision simply stays undecided —
 Common Ground has no default options. You can still enter a decision for them.
-**⏹ Close event** ends a beat early; it never chooses anything for anyone.
-
-Triggered the wrong beat? **↩ Undo trigger** puts it back as if you had
-never clicked: its decisions are discarded (the console asks first and says
-how many), the board reverts, and you can trigger it again when its moment
-comes — with a fresh deadline.
-
-Want the room to see how everyone decided? Click **🚫 Decisions on screen**
-on the event — the projector shows each group with the option it chose (a
-group still deciding shows "…"), and the button turns to 👁. Unlike a vote,
-closing the event leaves the decisions up so the room can discuss them; they
-come down when you switch them off or trigger the next beat.
 
 ## Choosing the right version
 
-Later in the evening comes *Irresistible Proposal* — in two versions. Look at
-the Democracy Score on the console, read the director's notes, and trigger
-**only** the version that fits:
+Later in the evening comes *Irresistible Proposal* — in two versions, which
+sit next to each other in the timeline. Look at the Democracy Score in the
+room panel, read the director's notes, and trigger **only** the version that
+fits:
 
-![Key Event 3: two versions, only one is triggered](images/console-shade.png)
+![Key Event 3, the higher-Democracy-Score version triggered](images/console-shade.png)
 
 ## The Freeze Card
 
 One person keeps talking over their whole group? Hand them the Freeze Card.
-Trigger the Wildcard in the console, and when the event is over, judge:
-did they hold back? **success**. Did they interfere? **failure**.
+Trigger the Wildcard, and when the event is over, judge: did they hold back?
+**success**. Did they interfere? **failure**.
 
 ![The Freeze Card, judged a success](images/console-wildcard.png)
 
 ## The Referendum
 
 Let the candidates make their speeches, then trigger the referendum. When the
-room should see what's on the ballot, click **🚫 Options on screen** on the
-vote — the projector lists the options, and the button turns to 👁. Count
-the hands for each option, type in the numbers, pick the winner, and click
-**Declare result**. If the options are on screen, the winner lights up among
-them and the others fade; closing the vote takes it off the projector
-either way:
+room should see what's on the ballot, click **Options on screen** — the
+projector lists the options:
+
+![The ballot on the projector](images/display-ballot.png)
+
+Count the hands for each option, type in the numbers, pick the winner, and
+click **Declare result**:
 
 ![Counting the vote on the social media policy](images/console-vote.png)
 
-The projector announces the result, and the outcome matrix moves every
-group's numbers:
+On the projector the winner lights up among the options, with the counts;
+the others fade. The outcome matrix moves every group's numbers. Closing the
+vote takes it off the projector.
 
 ![The result on the projector](images/display-vote-result.png)
 
 ## The finale
 
-Click **⏹ End**. Decisions close, and the console lists the scenario's
-endings — with the ones that match the final numbers marked *recommended*
-(see [Endings](07-pages-and-more.md#endings)). Common Ground does its finale
-with pages: look at the Democracy Score, and put up the good, the medium or
-the bad ending.
+Click **⏹ End**. Decisions close, and at the bottom of the timeline appears
+**🏁 Choose the ending**. It lists the scenario's endings and marks the ones
+that match the final numbers as *recommended* — you pick. 🪐 Here Mars
+Colony, whose endings are recommended by its score:
+
+![Choosing the ending (Mars Colony)](images/console-endings-mars.png)
+
+Common Ground does its finale with pages instead: look at the Democracy
+Score, and put up the good, the medium or the bad ending.
 
 ![One of Common Ground's finales](images/display-page-final.png)
 
@@ -163,6 +199,7 @@ Then: *Survey at the End*, lights up, and talk.
 | Problem | What to do |
 |---|---|
 | A group tapped the wrong option | Click the right one in the console — the last decision counts. |
+| You triggered the wrong beat | **↩ Undo trigger** on that beat. |
 | You judged a Wildcard or a vote wrongly | Judge or declare again. |
 | A tablet died | Enter that group's decisions in the console, or open its code on another device. |
 | The projector froze | Reload it. Nothing is lost. |

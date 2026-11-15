@@ -23,7 +23,8 @@
 - [ ] Open the projector link on the projector computer, full screen.
 - [ ] Charge the tablets. Open each table's code once to check it.
 - [ ] Put up the title page.
-- [ ] Keep the console open on your laptop, with the director's notes close.
+- [ ] Keep the **new GM console** open on your laptop (✨ New GM console),
+      with the director's notes close.
 
 ## During the show
 

@@ -103,9 +103,10 @@ A matrix can also treat groups differently — *"regulating social media
 helps Customer's Protection and hurts the Chamber of Commerce"* — and that
 is when campaigning really starts.
 
-Keep ballot options short: the winner appears **large** on the projector.
-If the options need explaining, put them on a [page](07-pages-and-more.md#pages)
-that the game master shows while the room campaigns.
+The ballot options' names are what the room reads: the game master can put
+them on the projector during the vote ([chapter 11](11-running-the-show.md#the-referendum)),
+and the winner lights up there afterwards. Write them so they can be read
+from the back of the room — one or two lines each.
 
 ## Wildcards: a card for one player
 

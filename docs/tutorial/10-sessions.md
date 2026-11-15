@@ -21,12 +21,26 @@ Click **Create session**, and you're in the **GM console**. The session is a
 *draft*: nothing runs yet, the clock shows 00:00. You can always come back
 to it from the sessions list (**Open console**).
 
-![A brand-new session in the GM console](images/console-draft.png)
+## The new GM console
+
+Scenex has two GM consoles at the moment: the **classic** one — one long page
+— and the **new** one, which keeps everything on one screen. For a while both
+are around; the classic one will be retired. This tutorial uses the new one.
+
+If your console opens as the classic one, click **✨ New GM console** at the
+top:
+
+![The classic console's switch to the new one](images/console-classic-switch.png)
+
+![A brand-new session in the new GM console](images/console-draft.png)
+
+The new console has a **Classic console** button too, if you ever need to go
+back.
 
 ## QR codes for the tables and the projector
 
-Scroll down to **Access & QR**. Make one code for every group and one for the
-projector:
+Click **🔑 Access & QR** in the top bar. A panel slides in: make one code for
+every group and one for the projector:
 
 ![Codes for all five groups and the projector](images/console-access.png)
 

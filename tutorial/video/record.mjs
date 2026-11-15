@@ -20,10 +20,11 @@ import { describe, speak } from "./voice.mjs";
 const HERE = new URL(".", import.meta.url).pathname;
 const BUILD = HERE + "build/";
 const IMAGES = new URL("../../docs/tutorial/images/", import.meta.url).pathname;
-// 1280×720 picture + an 80 px caption bar (added by assemble.mjs) = 1280×800.
-// (The projected display gets crowded below 720 px of height.)
-const SIZE = { width: 1280, height: 720 };
-const CAPTION = { width: 1280, height: 80 };
+// The browser works at a typical laptop size (the GM console is laid out for
+// it); the screencast scales every frame down to the 1280×720 video.
+const SIZE = { width: 1600, height: 900 };
+const VIDEO = { width: 1280, height: 720 };
+const CAPTION = { width: VIDEO.width, height: 80 };
 
 await rm(BUILD, { recursive: true, force: true });
 await mkdir(BUILD + "audio", { recursive: true });
@@ -61,7 +62,7 @@ const overlays = () => {
     const cursor = document.createElement("div");
     cursor.id = "__cursor";
     Object.assign(cursor.style, {
-      position: "fixed", width: "26px", height: "26px", borderRadius: "50%",
+      position: "fixed", width: "32px", height: "32px", borderRadius: "50%",
       border: "3px solid #ff5a00", background: "rgba(255,90,0,.25)",
       transform: "translate(-50%,-50%)", pointerEvents: "none", zIndex: 2147483647,
       transition: "background .15s, opacity .4s", opacity: "0"
@@ -102,12 +103,12 @@ await login(ctl);
 const studio = await newContext(browser, { viewport: SIZE });
 await studio.addInitScript(overlays);
 // The projected display is laid out for a 1920×1080 projector; show it at
-// that size, scaled into the 1280×720 frame — from the very first paint.
-await studio.addInitScript(() => {
+// that size, scaled into the browser window — from the very first paint.
+await studio.addInitScript((width) => {
   if (location.pathname.startsWith("/display/")) {
-    document.documentElement.style.zoom = String(1280 / 1920);
+    document.documentElement.style.zoom = String(width / 1920);
   }
-});
+}, SIZE.width);
 const cam = await studio.newPage();
 await login(cam);
 await cam.goto("about:blank");
@@ -130,8 +131,8 @@ screencast.on("Page.screencastFrame", async ({ data, metadata, sessionId }) => {
 await screencast.send("Page.startScreencast", {
   format: "jpeg",
   quality: 90,
-  maxWidth: SIZE.width,
-  maxHeight: SIZE.height
+  maxWidth: VIDEO.width,
+  maxHeight: VIDEO.height
 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -156,9 +157,10 @@ const h = {
     const box = await el.boundingBox();
     await cam.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 30 });
   },
-  // Point at a spot of a full-screen image (1280×720 coordinates).
+  // Point at a spot of a full-screen image, in video coordinates (1280×720).
   async pointAt(x, y) {
-    await cam.mouse.move(x, y, { steps: 30 });
+    const scale = SIZE.width / VIDEO.width;
+    await cam.mouse.move(x * scale, y * scale, { steps: 30 });
   },
   // Calm pacing: let the viewer find the pointer before the click, and see
   // the result after it.
@@ -206,8 +208,8 @@ const h = {
     await cam.setContent(`<!doctype html><html><body style="margin:0;height:100vh;display:flex;
       flex-direction:column;align-items:center;justify-content:center;text-align:center;
       background:${background};color:#fff;font-family:system-ui,sans-serif">
-      <h1 style="font-size:76px;margin:0;color:#f6c915;letter-spacing:.5px">${title}</h1>
-      <p style="font-size:30px;margin:18px 80px 0;opacity:.92">${subtitle}</p></body></html>`);
+      <h1 style="font-size:95px;margin:0;color:#f6c915;letter-spacing:.5px">${title}</h1>
+      <p style="font-size:38px;margin:22px 100px 0;opacity:.92">${subtitle}</p></body></html>`);
     await cam.evaluate(overlays);
   },
   async image(name, { fit = "cover", background = "#000" } = {}) {
