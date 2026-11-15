@@ -480,6 +480,29 @@ defmodule ScenexWeb.SessionLiveTest do
         refute has_element?(lv, "#toggle-ballot-#{election.id}")
       end
 
+      test "the GM reveals an event's group decisions on the scoreboard", ctx do
+        %{conn: conn, session: session, event: event} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        refute has_element?(lv, "#toggle-decisions-#{event.id}")
+        {:ok, _} = Play.trigger_element(session.id, event.id)
+        assert has_element?(lv, "#toggle-decisions-#{event.id}", "🚫 Decisions on screen")
+
+        lv |> element("#toggle-decisions-#{event.id}") |> render_click()
+        assert has_element?(lv, "#toggle-decisions-#{event.id}", "👁 Decisions on screen")
+        assert Play.snapshot(session.id).decisions_shown == event.id
+
+        # Still switchable after close — the reveal outlives it.
+        lv
+        |> element(~s{button[phx-click=close_element][phx-value-id="#{event.id}"]})
+        |> render_click()
+
+        assert Play.snapshot(session.id).decisions_shown == event.id
+        lv |> element("#toggle-decisions-#{event.id}") |> render_click()
+        assert Play.snapshot(session.id).decisions_shown == nil
+      end
+
       test "the console shows the overall index and its precise current band, updating live",
            ctx do
         %{conn: conn, session: session, scenario: scenario, event: event, crack: crack} = ctx

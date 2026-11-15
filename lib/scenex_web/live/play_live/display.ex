@@ -88,6 +88,13 @@ defmodule ScenexWeb.PlayLive.Display do
               </div>
             </div>
 
+            <.decision_reveal
+              :if={@snap.decisions_shown == element.id}
+              snap={@snap}
+              element={element}
+              locale={@locale}
+            />
+
             <%!-- Ballot options, when the GM reveals them; once declared, the
             winner stands out and the rest fade. --%>
             <% winner = declared_winner(@snap, element) %>
@@ -141,6 +148,16 @@ defmodule ScenexWeb.PlayLive.Display do
                 </span>
               </div>
             </div>
+          </section>
+
+          <%!-- A closed event's revealed choices stay up for the discussion --%>
+          <section
+            :for={element <- List.wrap(closed_reveal(@snap))}
+            :if={chosen_ending(@snap) == nil}
+            class="rounded-box bg-base-200 p-6 space-y-3"
+          >
+            <h2 class="text-2xl font-bold">{I18n.t!(element.title, @locale)}</h2>
+            <.decision_reveal snap={@snap} element={element} locale={@locale} />
           </section>
         </div>
 
@@ -351,6 +368,50 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   defp declared_winner(_snap, _element), do: nil
+
+  attr :snap, :map, required: true
+  attr :element, :map, required: true
+  attr :locale, :string, required: true
+
+  defp decision_reveal(assigns) do
+    ~H"""
+    <ul
+      id={"decisions-#{@element.id}"}
+      class="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-3"
+    >
+      <li
+        :for={{group, option} <- group_choices(@snap, @element)}
+        id={"decision-#{group.id}"}
+        class={[
+          "rounded-box border-2 px-5 py-3 transition-all duration-500",
+          (option && "border-primary bg-base-100") || "border-dashed border-base-300"
+        ]}
+      >
+        <div class="text-lg font-semibold opacity-70">{I18n.t!(group.name, @locale)}</div>
+        <.markdown :if={option} text={I18n.t!(option.name, @locale)} class="text-xl" />
+        <div :if={!option} class="text-2xl opacity-40">…</div>
+      </li>
+    </ul>
+    """
+  end
+
+  # Every group in the session, with the option it chose (nil while deciding).
+  defp group_choices(snap, element) do
+    slots = snap.decisions[element.id] || %{}
+
+    for gid <- snap.definition.group_ids,
+        do: {snap.definition.groups[gid], snap.definition.options[slots[gid]]}
+  end
+
+  # The revealed event, once closed — it has left the "current beat" section
+  # but stays on the wall until the GM hides it or triggers the next beat.
+  defp closed_reveal(%{decisions_shown: eid} = snap) when is_binary(eid) do
+    if current_element(snap) && current_element(snap).id == eid,
+      do: nil,
+      else: snap.definition.elements[eid]
+  end
+
+  defp closed_reveal(_snap), do: nil
 
   defp ballot_shown?(snap, %{kind: :election, id: id}), do: id in snap.ballots_shown
   defp ballot_shown?(_snap, _element), do: false

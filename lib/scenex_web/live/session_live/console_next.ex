@@ -425,6 +425,22 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
               else: "🚫 Options on screen"}
           </button>
           <button
+            :if={@element.kind == :event and @triggered?}
+            id={"toggle-decisions-#{@element.id}"}
+            phx-click="toggle_decisions"
+            phx-value-id={@element.id}
+            disabled={not @running?}
+            class={[
+              "btn btn-sm",
+              (@snap.decisions_shown == @element.id && "btn-primary") || "btn-ghost"
+            ]}
+            title="Show each group's choice on the scoreboard"
+          >
+            {if @snap.decisions_shown == @element.id,
+              do: "👁 Decisions on screen",
+              else: "🚫 Decisions on screen"}
+          </button>
+          <button
             :if={@triggered? and not @closed?}
             phx-click="close_element"
             phx-value-id={@element.id}
@@ -965,8 +981,18 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
   end
 
-  def handle_event("close_element", %{"id" => element_id}, socket),
-    do: run(socket, &Play.close_element(&1, element_id))
+  def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
+    visible = socket.assigns.snap.decisions_shown != element_id
+    run(socket, &Play.set_decisions_visible(&1, element_id, visible))
+  end
+
+  def handle_event("close_element", %{"id" => element_id}, socket) do
+    run(
+      socket,
+      &Play.close_element(&1, element_id),
+      &push_patch(&1, to: beat_path(&1.assigns.session, element_id))
+    )
+  end
 
   def handle_event(
         "choose",

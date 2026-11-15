@@ -53,6 +53,7 @@ defmodule Scenex.Play.Projection do
     board_sections: %{globals: true, overall_index: true, current_beat: true},
     group_values_visible: true,
     ballots_shown: [],
+    decisions_shown: nil,
     active_page_id: nil
   ]
 
@@ -133,6 +134,14 @@ defmodule Scenex.Play.Projection do
   defp handle(p, "ballot_visibility_set", %{"element_id" => eid, "visible" => false}, _),
     do: %{p | ballots_shown: List.delete(p.ballots_shown, eid)}
 
+  # Which event's group choices the scoreboard reveals — at most one, and it
+  # outlives closing the event (the room discusses it) until the next trigger.
+  defp handle(p, "decisions_visibility_set", %{"element_id" => eid, "visible" => true}, _),
+    do: %{p | decisions_shown: eid}
+
+  defp handle(p, "decisions_visibility_set", %{"element_id" => eid, "visible" => false}, _),
+    do: if(p.decisions_shown == eid, do: %{p | decisions_shown: nil}, else: p)
+
   defp handle(p, "element_triggered", %{"element_id" => element_id}, game_time_ms) do
     if element_id in p.triggered do
       p
@@ -140,7 +149,8 @@ defmodule Scenex.Play.Projection do
       %{
         p
         | triggered: p.triggered ++ [element_id],
-          triggered_at: Map.put(p.triggered_at, element_id, game_time_ms)
+          triggered_at: Map.put(p.triggered_at, element_id, game_time_ms),
+          decisions_shown: nil
       }
     end
   end

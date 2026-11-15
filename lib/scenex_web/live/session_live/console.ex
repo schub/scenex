@@ -359,11 +359,27 @@ defmodule ScenexWeb.SessionLive.Console do
                 else: "🚫 Options on screen"}
             </button>
             <button
+              :if={element.kind == :event and element.id in @snap.triggered}
+              id={"toggle-decisions-#{element.id}"}
+              phx-click="toggle_decisions"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class={[
+                "btn btn-sm ml-auto",
+                (@snap.decisions_shown == element.id && "btn-primary") || "btn-ghost"
+              ]}
+              title="Show each group's choice on the scoreboard"
+            >
+              {if @snap.decisions_shown == element.id,
+                do: "👁 Decisions on screen",
+                else: "🚫 Decisions on screen"}
+            </button>
+            <button
               :if={element.id in @snap.triggered and element.id not in @snap.closed}
               phx-click="close_element"
               phx-value-id={element.id}
               disabled={@snap.status not in [:live, :paused]}
-              class={["btn btn-sm btn-ghost", element.kind != :election && "ml-auto"]}
+              class={["btn btn-sm btn-ghost", element.kind == :sidequest && "ml-auto"]}
               data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
             >
               ⏹ Close event
@@ -650,6 +666,11 @@ defmodule ScenexWeb.SessionLive.Console do
   def handle_event("toggle_ballot", %{"id" => element_id}, socket) do
     visible = element_id not in socket.assigns.snap.ballots_shown
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
+  end
+
+  def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
+    visible = socket.assigns.snap.decisions_shown != element_id
+    run(socket, &Play.set_decisions_visible(&1, element_id, visible))
   end
 
   def handle_event("close_element", %{"id" => element_id}, socket),
