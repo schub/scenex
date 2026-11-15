@@ -174,6 +174,15 @@ defmodule Scenex.Play do
   def close_element(session_id, element_id),
     do: command(session_id, {:close_element, element_id})
 
+  @doc """
+  Undo a (mis-clicked) trigger: the element is back to untriggered, as if it
+  had never fired, and can be triggered again later with a fresh deadline.
+  Its decisions, vote tally and reveals are discarded, so the board reverts.
+  The log keeps everything — this is a new `trigger_undone` event.
+  """
+  def undo_trigger(session_id, element_id),
+    do: command(session_id, {:undo_trigger, element_id})
+
   @doc "A group's decision on a triggered event element (last entry wins)."
   def choose_option(session_id, element_id, group_id, option_id),
     do: command(session_id, {:choose_option, element_id, group_id, option_id})

@@ -480,6 +480,31 @@ defmodule ScenexWeb.SessionLiveTest do
         refute has_element?(lv, "#toggle-ballot-#{election.id}")
       end
 
+      test "the GM can undo a mis-clicked trigger and trigger the beat again", ctx do
+        %{conn: conn, session: session, event: event} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        refute has_element?(lv, "#undo-trigger-#{event.id}")
+        {:ok, _} = Play.trigger_element(session.id, event.id)
+        {:ok, _} = Play.choose_option(session.id, event.id, ctx.gov.id, ctx.crack.id)
+
+        assert lv
+               |> element("#undo-trigger-#{event.id}")
+               |> render()
+               |> String.contains?("1 decision is discarded")
+
+        lv |> element("#undo-trigger-#{event.id}") |> render_click()
+        refute event.id in Play.snapshot(session.id).triggered
+        refute has_element?(lv, "#undo-trigger-#{event.id}")
+
+        lv
+        |> element(~s{button[phx-click=trigger][phx-value-id="#{event.id}"]:not([id])})
+        |> render_click()
+
+        assert event.id in Play.snapshot(session.id).triggered
+      end
+
       test "the GM reveals an event's group decisions on the scoreboard", ctx do
         %{conn: conn, session: session, event: event} = ctx
         {:ok, _} = Play.start_session(session.id)

@@ -155,6 +155,23 @@ defmodule Scenex.Play.Projection do
     end
   end
 
+  # Undoing a trigger puts the element back to untriggered, as if it had
+  # never fired: its decisions, tally and reveals go too, so the recompute
+  # drops its effects. Earlier events stay in the log; they're folded and
+  # then superseded here, so replay lands on the same board.
+  defp handle(p, "trigger_undone", %{"element_id" => eid}, _) do
+    %{
+      p
+      | triggered: List.delete(p.triggered, eid),
+        triggered_at: Map.delete(p.triggered_at, eid),
+        closed: List.delete(p.closed, eid),
+        decisions: Map.delete(p.decisions, eid),
+        vote_tallies: Map.delete(p.vote_tallies, eid),
+        ballots_shown: List.delete(p.ballots_shown, eid),
+        decisions_shown: if(p.decisions_shown == eid, do: nil, else: p.decisions_shown)
+    }
+  end
+
   # The GM closing out an element manually — no defaults applied, no lock;
   # groups left undecided simply stay undecided (the GM can still enter a
   # decision for them afterward, same as before closing).
