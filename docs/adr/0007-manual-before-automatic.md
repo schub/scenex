@@ -1,6 +1,6 @@
 # 0007. Manual before automatic
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-03
 
 ## Decision
@@ -15,10 +15,16 @@ collected in the room, analog — smiley coins — and entered by the GM.
 - A show works with one GM laptop and no player devices.
 - Device features must degrade to manual entry.
 
-## Open
+## Rationale
 
-- Why: unreliable venue Wi-Fi, audiences without phones, the theatrical value
-  of raised hands and coins? Some or all?
+- **The system knows groups, not players.** There are no individual players
+  in the data model, so individual decisions can't be tracked electronically.
+- **Simple to run.** From the start, the goal was a simple tech setup and
+  simple requirements for running a show — so votes are counted by hand.
+
+Device-based individual voting is not planned: it would need a UI per player
+and trackable individuals, which the group-only model rules out (Markus,
+2026-11-15).
 
 ## Sources
 

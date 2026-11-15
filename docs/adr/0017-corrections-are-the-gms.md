@@ -1,6 +1,6 @@
 # 0017. Groups confirm once; corrections are the GM's alone
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-06
 
 ## Decision
@@ -16,10 +16,11 @@ are refused.
 - No ambiguous re-tappable buttons on the group boards.
 - Every change after the fact goes through the GM.
 
-## Open
+## Rationale
 
-- What prompted it — a playtest where groups changed their minds after seeing
-  the board, or accidental taps?
+The group makes a decision, and that's it. There is a confirm dialog, but no
+reason to change a decision afterwards — basically, to keep it simple
+(Markus, 2026-11-15).
 
 ## Sources
 

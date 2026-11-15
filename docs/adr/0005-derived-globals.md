@@ -1,6 +1,6 @@
 # 0005. Global values are derived, never stored
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-02
 
 ## Decision
@@ -16,11 +16,12 @@ Values are clamped to their `min`/`max`.
 - Effects can only move group values; a "global" effect has to be expressed as
   effects on groups.
 
-## Open
+## Rationale
 
-- The game-design reason: that the world's state is literally the sum of the
-  groups' choices? Is this from the paper prototype?
-- Was storing/overriding globals ever considered (e.g. a GM override)?
+A game-design decision: the state of the world is the result of the groups'
+values — always. Having both derived and directly set globals doesn't work,
+so there is deliberately **no GM override** for a global value (Markus,
+2026-11-15).
 
 ## Sources
 

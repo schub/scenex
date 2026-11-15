@@ -1,6 +1,6 @@
 # 0014. Registration is invitation-only
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-05
 
 ## Decision
@@ -15,10 +15,12 @@ account and the membership in one transaction.
 - Every account is tied to a scenario someone vouched for.
 - A new partner can't get started without an owner.
 
-## Open
+## Rationale
 
-- Why: spam, cost, keeping the platform among partners for now? Is opening it
-  up planned (relevant to the license and to [0024](0024-shared-scenario-vs-copies.md))?
+For now the platform is open to partners only: it runs on limited resources,
+and its purpose is to serve the project. It may open up in the future — that
+is decided later; before it is open to the public, someone has to finance the
+hosting costs (Markus, 2026-11-15).
 
 ## Sources
 

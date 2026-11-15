@@ -1,6 +1,6 @@
 # 0003. Authored content is localized as `jsonb` maps; chrome uses Gettext
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-02
 
 ## Decision
@@ -22,12 +22,13 @@ The event log stores ids, never text, so it stays language-neutral.
 - A partly translated game never shows blanks.
 - Every localized field is a map; queries and forms must handle that.
 
-## Open
+## Rationale
 
-- Why `jsonb` on the row rather than translation tables or a separate
-  translations store? (Simplicity? Copying/exporting a scenario as one unit?)
-- Why must i18n be in the data model from day one — the multi-country
-  partner setup (Portugal, Hungary, …)?
+- **From day one:** the project is international, so i18n was a requirement
+  from the start, not a later feature.
+- **On the row:** translations are content — a translation belongs to the
+  thing it translates, so it lives in the same row rather than in separate
+  translation tables (Markus, 2026-11-15).
 
 ## Sources
 

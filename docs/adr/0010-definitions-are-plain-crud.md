@@ -1,6 +1,6 @@
 # 0010. Only sessions are event-sourced; definitions are plain CRUD
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-04
 
 ## Decision
@@ -16,10 +16,12 @@ a snapshot ([0011](0011-definition-snapshot.md)).
 - No history of a scenario: an edit by one team overwrites the shared state
   for everyone, with no undo — see [0024](0024-shared-scenario-vs-copies.md).
 
-## Open
+## Rationale
 
-- Why not version definitions? Presumably deadline and simplicity. Is it still
-  the right call now that several teams edit the same Common Ground?
+Keep it simple. Version history for definitions would be nice, but it is too
+much for now — still the call with several teams editing the same scenario.
+Something to think about in the future, not now (Markus, 2026-11-15). Related:
+[0024](0024-shared-scenario-vs-copies.md).
 
 ## Sources
 
