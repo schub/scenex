@@ -16,20 +16,14 @@ randomness. Gated options are shown greyed out with the reason, never hidden.
   disposes" (`37df786`).
 - Endings are recommended by condition and priority; the GM picks and may
   override.
+- A lapsed deadline only proposes its default options; the GM applies them
+  with one click in the console (`defaults_applied`). Until v1.11 the server
+  applied them by itself (`deadline_lapsed`); old logs still replay
+  ([#12](https://github.com/schub/scenex/issues/12)).
 
 ## Rationale
 
 It's theatre: the facilitator has to steer the show (Markus, 2026-11-15).
-
-## Open
-
-- **Possible conflict with the code** ([#12](https://github.com/schub/scenex/issues/12)): a lapsed deadline appends the authored
-  default option for every undecided slot without GM action
-  (`lib/scenex/play/session_server.ex`, "A lapsed deadline appends the authored
-  default …", since `6fb5aa2`). Is that intended as an exception — the deadline
-  itself being the GM's choice when authoring — or should defaults become a
-  proposal the GM confirms? Either way, `architecture.md` and `AGENTS.md` call
-  deadline defaults "recommendations", which doesn't match.
 
 ## Sources
 

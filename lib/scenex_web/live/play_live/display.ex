@@ -442,7 +442,7 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   # The declared hand count, in ballot order; options without a count are
-  # omitted (a lapsed-deadline default winner has no tally).
+  # omitted (a winner the GM set by applying the default has no tally).
   defp vote_lines(snap, element) do
     tally = snap.vote_tallies[element.id] || %{}
 

@@ -49,8 +49,8 @@ Click **Edit** on an option to open it:
 - **Key** — internal name, unique within this beat.
 - **Name** — the one line the players read on their board.
 - **Director's notes** — e.g. "this choice comes back in Key Event 4".
-- **Default** — chosen automatically for this group if the deadline runs
-  out. (Common Ground has no defaults: a group that runs out of time simply
+- **Default** — proposed for this group if the deadline runs out; the game
+  master applies it in the console. (Common Ground has no defaults: a group that runs out of time simply
   hasn't decided.)
 - **Condition** — an optional lock, see below.
 - **Labels** — coloured tags ([chapter 7](07-pages-and-more.md#labels)).

@@ -168,11 +168,19 @@ defmodule Scenex.Play do
   Manually close a triggered element — the GM deciding "we're done here",
   deadline or not. Applies no defaults: a group that hasn't decided simply
   stays undecided (the GM can still enter a decision for it afterward, same
-  as before closing — nothing is locked). Also cancels that element's
-  deadline timer, if any, so it can't still lapse and apply defaults later.
+  as before closing — nothing is locked).
   """
   def close_element(session_id, element_id),
     do: command(session_id, {:close_element, element_id})
+
+  @doc """
+  Apply the authored defaults to every still-undecided slot of a triggered
+  element — what its lapsed deadline proposes (`pending_defaults/2`). Nothing
+  applies them automatically. `{:error, :no_pending_defaults}` if there is
+  nothing left to fill.
+  """
+  def apply_defaults(session_id, element_id),
+    do: command(session_id, {:apply_defaults, element_id})
 
   @doc """
   Undo a (mis-clicked) trigger: the element is back to untriggered, as if it
@@ -346,6 +354,49 @@ defmodule Scenex.Play do
 
   defp expired?(%CapabilityToken{expires_at: at}),
     do: DateTime.compare(at, DateTime.utc_now()) == :lt
+
+  @doc """
+  Whether a triggered element's deadline has run out on the game clock. A
+  lapsed deadline applies nothing by itself — the GM disposes.
+  """
+  def deadline_passed?(snapshot, %{deadline_seconds: seconds, id: id})
+      when is_integer(seconds) and seconds > 0 do
+    case snapshot.triggered_at[id] do
+      nil -> false
+      at -> at + seconds * 1000 <= snapshot.game_time_ms
+    end
+  end
+
+  def deadline_passed?(_snapshot, _element), do: false
+
+  @doc """
+  The authored defaults that would fill this element's still-undecided slots,
+  as `[{slot, option_id}]` — per group for events, `:winner` for elections,
+  none for sidequests. What a lapsed deadline proposes to the GM.
+  """
+  def pending_defaults(snapshot, element) do
+    options = snapshot.definition.options_by_element[element.id] || []
+    decided = Map.get(snapshot.decisions, element.id, %{})
+
+    case element.kind do
+      :event ->
+        for option <- options,
+            option.is_default,
+            not Map.has_key?(decided, option.group_id),
+            do: {option.group_id, option.id}
+
+      :election ->
+        with false <- Map.has_key?(decided, :winner),
+             %{id: option_id} <- Enum.find(options, & &1.is_default) do
+          [{:winner, option_id}]
+        else
+          _ -> []
+        end
+
+      :sidequest ->
+        []
+    end
+  end
 
   @doc """
   Whether a triggered element's decisions are all in: elections need a

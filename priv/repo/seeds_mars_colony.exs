@@ -435,7 +435,8 @@ what_to_bring =
     director_notes: """
     The tutorial round: low stakes, no wrong answers. Walk the room through
     the group boards while they decide. The five-minute deadline is real —
-    a team that doesn't decide gets its ⏱ default crate.
+    when it runs out, click **Apply defaults** and a team that didn't decide
+    gets its ⏱ default crate.
 
     Every team's starting numbers are lopsided on purpose. Before you fire
     this, show the scoreboard: Colony Vitality starts in *Struggling*.
@@ -717,7 +718,7 @@ the_storm =
     built, the weather stations Science brought (or didn't).
 
     Every option costs something — that is the point. Teams that don't
-    decide in time get their ⏱ default.
+    decide in time get their ⏱ default once you click **Apply defaults**.
 
     **Command's fork:** if Command chooses *Call Earth*, the Vote *Earth's
     Offer* becomes available later. If not, skip it.
@@ -992,7 +993,8 @@ earths_offer =
     switch on **Options on screen**, so the room sees the ballot while it
     votes. A show of hands per option; enter the count in the console and
     declare the result — the winner lights up on the scoreboard. On a tie,
-    you decide. If time runs out, the ⏱ default (the sponsor deal) wins.
+    you decide. If time runs out, **Apply defaults** declares the ⏱ default
+    (the sponsor deal) the winner.
 
     *Go it alone* is gated on the colony's Supplies — a colony that is
     already starving cannot afford pride. Below 3 Supplies it drops off the

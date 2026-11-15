@@ -154,8 +154,9 @@ number, and a value never goes beyond its range.
 
 A beat can have a **deadline** — a countdown that everyone sees. Pressure
 makes good theatre. An option can be the **default**: if a group hasn't
-decided when time runs out, the default is chosen for them. (Not deciding is
-also a decision — and the world makes it for you.)
+decided when time runs out, the console proposes the default for them, and
+the game master applies it with one click. (Not deciding is also a decision —
+and the world makes it for you.)
 
 **In Common Ground:** Key Events give the groups 5 or 6 minutes.
 

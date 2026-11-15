@@ -6,7 +6,7 @@
 ## Decision
 
 A group confirms its decision explicitly, once. After a decision is recorded —
-by the group, the GM or a lapsed deadline — the element is locked for the
+by the group, the GM or a default the GM applied — the element is locked for the
 group. Only the GM can correct it (a new event, per
 [0009](0009-event-sourced-sessions.md)). Enforced on the server; stale clients
 are refused.

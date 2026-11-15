@@ -203,7 +203,7 @@
 | **Extend the mission** | Engineering & Habitat: Life Support +1, Supplies +2; Science & Exploration: Supplies +2, Progress +1; Agriculture & Life Systems: Life Support +1, Supplies +2; Medical & Crew Welfare: Supplies +1, Risk +1; Command & Earth Relations: Life Support +1, Supplies +1 |  |
 | **Go it alone** | Engineering & Habitat: Supplies -1, Progress +1; Science & Exploration: Supplies -1, Progress +2; Agriculture & Life Systems: Supplies -1, Risk +1; Medical & Crew Welfare: Supplies -1; Command & Earth Relations: Progress +1, Risk +1 | `global(supplies) >= 3` |
 
-⏱ after an option = the default applied when the deadline runs out.
+⏱ after an option = the default the console proposes when the deadline runs out.
 
 ## Endings
 

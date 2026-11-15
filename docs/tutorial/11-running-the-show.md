@@ -139,8 +139,14 @@ it, the countdown runs in the console, on every board and on the projector:
 
 ![Key Event 1 with its countdown](images/console-deadline.png)
 
-When time runs out, a group without a decision simply stays undecided —
-Common Ground has no default options. You can still enter a decision for them.
+When time runs out, the groups' boards stop taking decisions. A group
+without a decision simply stays undecided — Common Ground has no default
+options. You can still enter a decision for them.
+
+In a scenario with default options, the console shows **⏱ Time's up** on the
+beat, listing the default for each group that hasn't decided. Nothing is
+entered until you click **Apply defaults** — or you enter a different
+decision yourself, or let the group finish.
 
 ## Choosing the right version
 
