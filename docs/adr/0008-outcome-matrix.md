@@ -1,6 +1,6 @@
 # 0008. Effects target the deciding group or an explicit group (outcome matrix)
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-03
 
 ## Decision
@@ -16,10 +16,10 @@ whole room, one player.
 - One effect model covers all three kinds.
 - `nil` carries meaning, so it must never be "fixed" into a concrete group id.
 
-## Open
+## Rationale
 
-- The three-scales symmetry comes from the game design document — worth one
-  sentence on why these three scales.
+Why there are three kinds at three scales is its own decision — the megagame
+adapted for theatre: [0028](0028-megagame-for-theatre.md).
 
 ## Sources
 

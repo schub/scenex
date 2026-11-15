@@ -1,6 +1,6 @@
 # 0018. Each session has a play language; console and editor stay English
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-12
 
 ## Decision
@@ -15,10 +15,15 @@ own chrome and the editor stay English "by design".
 - One show, one language on every audience screen.
 - Translating the platform UI is limited to about 28 audience-facing strings.
 
-## Open
+## Rationale
 
-- Why English-only for the console and editor? Partners all work in English,
-  or effort?
+- **The audience gets its language, no compromises:** everything players and
+  the room see is translated.
+- **The people who work with the editor and the GM console don't need it.**
+  Workshops and tutorials are in English anyway, and translating the controls
+  brings no big advantage — with more people involved, every new language
+  would have to be added to all the controls. Keep it simple: English
+  (Markus, 2026-11-15).
 
 ## Sources
 

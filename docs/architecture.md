@@ -60,10 +60,10 @@ live show. The GM triggers every beat, adjudicates sidequests, breaks ties and
 declares the end. Conditions, deadline defaults and ending matches are
 *recommendations*. No dice, no hidden randomness.
 
-**Manual before automatic.** Election votes can always be entered as a GM
-hand-count tally; device-based individual voting is an enhancement, never a
-dependency. Per-participant values are collected in the room and entered by
-the GM.
+**Manual before automatic.** Election votes are entered as a GM hand-count
+tally. The system knows groups, not individual players, so there is no
+device-based individual voting, and none is planned. Per-participant values
+are collected in the room and entered by the GM.
 
 **One person, one vote.** Vote weight is never derived from game state —
 mechanics must not depend on content.
