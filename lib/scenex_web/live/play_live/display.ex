@@ -375,7 +375,7 @@ defmodule ScenexWeb.PlayLive.Display do
 
   defp decision_reveal(assigns) do
     ~H"""
-<% choices = group_choices(@snap, @element) %>
+    <% choices = group_choices(@snap, @element) %>
     <ul
       id={"decisions-#{@element.id}"}
       class="grid gap-3"
