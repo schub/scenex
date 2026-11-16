@@ -20,6 +20,9 @@ defmodule Scenex.Media.Storage.Local do
   end
 
   @impl true
+  def copy(from_key, to_key), do: put(to_key, path(from_key))
+
+  @impl true
   def delete(key) do
     # Remove the file's whole <id>/ directory; missing files are fine.
     key |> path() |> Path.dirname() |> File.rm_rf()

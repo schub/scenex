@@ -237,6 +237,27 @@ defmodule ScenexWeb.ScenarioLiveTest do
                live(conn, ~p"/scenarios/#{hidden.id}")
     end
 
+    test "Copy makes a draft the current user owns", %{conn: conn, user: user, scenario: scenario} do
+      group_fixture(scenario, key: "gov", name: %{"en" => "Government"})
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      assert has_element?(lv, "#copy-scenario")
+
+      assert {:ok, show_lv, html} =
+               lv |> element("#copy-scenario") |> render_click() |> follow_redirect(conn)
+
+      assert html =~ "Copied — you&#39;re the owner of the new draft."
+      assert has_element?(show_lv, "#copy-scenario")
+
+      copies =
+        Authoring.list_scenarios_for_user(user)
+        |> Enum.reject(&(&1.id == scenario.id))
+
+      assert [%{key: key, visibility: :draft} = copy] = copies
+      assert key =~ "(copy)"
+      assert Authoring.is_owner?(copy, user)
+      assert [%{key: "gov"}] = Authoring.list_groups(copy)
+    end
+
     test "adds a timeline element", %{conn: conn, scenario: scenario} do
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
       lv |> element("button[phx-value-section=timeline]") |> render_click()
