@@ -8,9 +8,11 @@ defmodule Scenex.Media.Storage do
 
   @callback put(key :: String.t(), source_path :: Path.t()) :: :ok | {:error, term()}
   @callback delete(key :: String.t()) :: :ok
+  @callback copy(from_key :: String.t(), to_key :: String.t()) :: :ok | {:error, term()}
 
   def put(key, source_path), do: impl().put(key, source_path)
   def delete(key), do: impl().delete(key)
+  def copy(from_key, to_key), do: impl().copy(from_key, to_key)
 
   defp impl do
     Application.fetch_env!(:scenex, Scenex.Media)[:storage] || Scenex.Media.Storage.Local

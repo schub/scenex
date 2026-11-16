@@ -54,6 +54,15 @@ defmodule ScenexWeb.ScenarioLive.Show do
           >
             Sessions
           </.link>
+          <button
+            id="copy-scenario"
+            type="button"
+            phx-click="copy_scenario"
+            data-confirm="Copy this scenario? You'll own the copy as a new draft."
+            class="btn btn-sm btn-soft"
+          >
+            Copy
+          </button>
           <.link navigate={~p"/scenarios"} class="btn btn-sm btn-ghost">← All scenarios</.link>
         </:actions>
       </.header>
@@ -1580,6 +1589,24 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("set_locale", %{"locale" => locale}, socket) do
     {:noreply, assign(socket, :locale, locale)}
+  end
+
+  def handle_event("copy_scenario", _params, socket) do
+    user = socket.assigns.current_scope.user
+
+    case Authoring.copy_scenario(user, socket.assigns.scenario) do
+      {:ok, copy} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Copied — you're the owner of the new draft.")
+         |> push_navigate(to: ~p"/scenarios/#{copy.id}")}
+
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, "You can't copy this scenario.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Copy failed.")}
+    end
   end
 
   # ── Draft tracking (localized forms) ──────────────────────────────────

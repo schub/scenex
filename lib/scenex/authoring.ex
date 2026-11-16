@@ -85,6 +85,16 @@ defmodule Scenex.Authoring do
     end
   end
 
+  @doc """
+  Copy a scenario the user may at least read; the user owns the copy. See
+  `Scenex.Authoring.Copy` for what is copied. Options: `:key`, `:locales`.
+  """
+  def copy_scenario(%User{} = user, %Scenario{} = scenario, opts \\ []) do
+    if get_user_role(scenario, user),
+      do: Scenex.Authoring.Copy.copy(user, scenario, opts),
+      else: {:error, :unauthorized}
+  end
+
   def update_scenario(%Scenario{} = scenario, attrs),
     do: scenario |> Scenario.changeset(attrs) |> Repo.update()
 

@@ -70,6 +70,13 @@ in the option editor.
 
 ![🪐 Mars Colony's labels](images/labels-mars.png)
 
+## Copying a scenario
+
+Anyone who can open a scenario can **Copy** it (button next to Dry run).
+You become the owner of a new draft with everything inside — groups, values,
+timeline, pages, media, all languages. Sessions and other people's
+memberships stay behind. The two scenarios never sync afterwards.
+
 ## Members
 
 Only a scenario's **owner** sees this tab. Invite people by email and give
