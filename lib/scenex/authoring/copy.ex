@@ -44,7 +44,8 @@ defmodule Scenex.Authoring.Copy do
 
   @doc """
   Copy `scenario` for `user`. Options: `:key` (the copy's key; default
-  `"<key> (copy)"`), `:locales` (the locales to keep; default all).
+  `"<name> (copy)"` in the source locale), `:locales` (the locales to keep;
+  default all).
   """
   def copy(%User{} = user, %Scenario{} = source, opts \\ []) do
     locales = opts |> Keyword.get(:locales) |> keep_locales(source)
@@ -57,7 +58,7 @@ defmodule Scenex.Authoring.Copy do
         Repo.transaction(fn ->
           scenario =
             clone(ctx, source, %{
-              key: Keyword.get(opts, :key) || "#{source.key} (copy)",
+              key: Keyword.get(opts, :key) || default_key(source),
               visibility: :draft
             })
 
@@ -94,6 +95,11 @@ defmodule Scenex.Authoring.Copy do
 
   defp keep_locales(nil, _source), do: nil
   defp keep_locales(locales, source), do: Enum.uniq([source.source_locale | locales])
+
+  defp default_key(%Scenario{} = source) do
+    name = Scenex.I18n.t!(source.name, source.source_locale, default: source.key)
+    "#{name} (copy)"
+  end
 
   # ── Media ─────────────────────────────────────────────────────────────
 

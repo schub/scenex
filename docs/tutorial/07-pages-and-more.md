@@ -72,8 +72,10 @@ in the option editor.
 
 ## Copying a scenario
 
-Anyone who can open a scenario can **Copy** it (button next to Dry run).
-You become the owner of a new draft with everything inside — groups, values,
+Anyone who can open a scenario can use **Copy scenario** (button next to Dry
+run). You pick a key for the copy (default: the scenario's name plus
+`(copy)`), then choose whether to open the new draft or stay where you are.
+You become the owner of a draft with everything inside — groups, values,
 timeline, pages, media, all languages. Sessions and other people's
 memberships stay behind. The two scenarios never sync afterwards.
 

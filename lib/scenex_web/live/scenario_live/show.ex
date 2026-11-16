@@ -57,11 +57,10 @@ defmodule ScenexWeb.ScenarioLive.Show do
           <button
             id="copy-scenario"
             type="button"
-            phx-click="copy_scenario"
-            data-confirm="Copy this scenario? You'll own the copy as a new draft."
+            phx-click="open_copy_dialog"
             class="btn btn-sm btn-soft"
           >
-            Copy
+            Copy scenario
           </button>
           <.link navigate={~p"/scenarios"} class="btn btn-sm btn-ghost">← All scenarios</.link>
         </:actions>
@@ -1524,6 +1523,57 @@ defmodule ScenexWeb.ScenarioLive.Show do
           </div>
         </div>
       </div>
+
+      <%!-- Copy scenario: pick a key, then choose whether to open the copy --%>
+      <div
+        :if={@copy_dialog == :form}
+        id="copy-scenario-dialog"
+        class="modal modal-open"
+        role="dialog"
+        aria-labelledby="copy-scenario-title"
+      >
+        <div class="modal-box space-y-4">
+          <h3 id="copy-scenario-title" class="text-lg font-bold">Copy scenario</h3>
+          <p class="text-sm opacity-70">
+            You'll own the copy as a new draft. Sessions and other members stay behind.
+          </p>
+          <.form for={@copy_form} id="copy-scenario-form" phx-submit="confirm_copy" class="space-y-4">
+            <.input field={@copy_form[:key]} label="Key for the copy" class="w-full" />
+            <div class="modal-action">
+              <button type="button" phx-click="cancel_copy" class="btn">Cancel</button>
+              <button type="submit" class="btn btn-primary" phx-disable-with="Copying…">
+                Copy scenario
+              </button>
+            </div>
+          </.form>
+        </div>
+        <div class="modal-backdrop" phx-click="cancel_copy"></div>
+      </div>
+
+      <div
+        :if={@copy_dialog == :done}
+        id="copy-scenario-done"
+        class="modal modal-open"
+        role="dialog"
+        aria-labelledby="copy-scenario-done-title"
+      >
+        <div class="modal-box space-y-4">
+          <h3 id="copy-scenario-done-title" class="text-lg font-bold">Scenario copied</h3>
+          <p class="text-sm">
+            The copy <span class="font-mono text-xs opacity-70">{@copied_key}</span>
+            is ready as a draft you own.
+          </p>
+          <div class="modal-action">
+            <button type="button" id="copy-stay" phx-click="stay_after_copy" class="btn">
+              Stay here
+            </button>
+            <button type="button" id="copy-open" phx-click="open_copy" class="btn btn-primary">
+              Open the copy
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" phx-click="stay_after_copy"></div>
+      </div>
     </Layouts.app>
     """
   end
@@ -1547,7 +1597,11 @@ defmodule ScenexWeb.ScenarioLive.Show do
            section: :settings,
            locale: scenario.source_locale,
            locales: Enum.uniq([scenario.source_locale | @locale_choices]),
-           page_title: I18n.t!(scenario.name, scenario.source_locale, default: "Scenario")
+           page_title: I18n.t!(scenario.name, scenario.source_locale, default: "Scenario"),
+           copy_dialog: nil,
+           copy_form: to_form(%{"key" => ""}, as: :copy),
+           copied_id: nil,
+           copied_key: nil
          )
          |> assign(
            selected_timeline_element: nil,
@@ -1591,23 +1645,63 @@ defmodule ScenexWeb.ScenarioLive.Show do
     {:noreply, assign(socket, :locale, locale)}
   end
 
-  def handle_event("copy_scenario", _params, socket) do
-    user = socket.assigns.current_scope.user
+  def handle_event("open_copy_dialog", _params, socket) do
+    key = default_copy_key(socket.assigns.scenario)
 
-    case Authoring.copy_scenario(user, socket.assigns.scenario) do
-      {:ok, copy} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Copied — you're the owner of the new draft.")
-         |> push_navigate(to: ~p"/scenarios/#{copy.id}")}
+    {:noreply,
+     socket
+     |> assign(:copy_dialog, :form)
+     |> assign(:copy_form, to_form(%{"key" => key}, as: :copy))
+     |> assign(:copied_id, nil)
+     |> assign(:copied_key, nil)}
+  end
 
-      {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, "You can't copy this scenario.")}
+  def handle_event("cancel_copy", _params, socket),
+    do: {:noreply, clear_copy_dialog(socket)}
 
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Copy failed.")}
+  def handle_event("confirm_copy", %{"copy" => %{"key" => key}}, socket) do
+    key = String.trim(key)
+
+    if key == "" do
+      {:noreply,
+       assign(
+         socket,
+         :copy_form,
+         to_form(%{"key" => key}, as: :copy, errors: [key: {"can't be blank", []}])
+       )}
+    else
+      user = socket.assigns.current_scope.user
+
+      case Authoring.copy_scenario(user, socket.assigns.scenario, key: key) do
+        {:ok, copy} ->
+          {:noreply,
+           socket
+           |> assign(:copy_dialog, :done)
+           |> assign(:copied_id, copy.id)
+           |> assign(:copied_key, copy.key)}
+
+        {:error, :unauthorized} ->
+          {:noreply,
+           socket
+           |> clear_copy_dialog()
+           |> put_flash(:error, "You can't copy this scenario.")}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, "Copy failed.")}
+      end
     end
   end
+
+  def handle_event("open_copy", _params, %{assigns: %{copied_id: id}} = socket)
+      when is_binary(id) do
+    {:noreply,
+     socket
+     |> clear_copy_dialog()
+     |> push_navigate(to: ~p"/scenarios/#{id}")}
+  end
+
+  def handle_event("stay_after_copy", _params, socket),
+    do: {:noreply, clear_copy_dialog(socket)}
 
   # ── Draft tracking (localized forms) ──────────────────────────────────
   # Every keystroke lands in the form's params, so switching the working
@@ -2350,6 +2444,20 @@ defmodule ScenexWeb.ScenarioLive.Show do
   defp assign_settings_form(socket, scenario),
     do:
       assign(socket, :settings_form, to_form(Authoring.change_scenario(scenario), as: :scenario))
+
+  # ── Copy scenario dialog ──────────────────────────────────────────────
+
+  defp clear_copy_dialog(socket) do
+    socket
+    |> assign(:copy_dialog, nil)
+    |> assign(:copied_id, nil)
+    |> assign(:copied_key, nil)
+  end
+
+  defp default_copy_key(scenario) do
+    name = I18n.t!(scenario.name, scenario.source_locale, default: scenario.key)
+    "#{name} (copy)"
+  end
 
   # ── Draft tracking helpers ────────────────────────────────────────────
 

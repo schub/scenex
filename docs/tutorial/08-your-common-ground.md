@@ -7,9 +7,8 @@ one shared scenario on scenex.org, with all its languages inside. You
 **translate** it, maybe **add** a local touch, and **perform** it.
 
 (If you want your own version to adapt freely — different numbers, different
-beats — use **Copy** in the editor. That makes a new draft you own; the
-original stays as it is. See [chapter 7](07-pages-and-more.md#media) for why
-media links start with `/media/…`.)
+beats — use **Copy scenario** in the editor. That makes a new draft you own;
+the original stays as it is. See [chapter 7](07-pages-and-more.md#copying-a-scenario).)
 
 ## What's shared, what's yours
 

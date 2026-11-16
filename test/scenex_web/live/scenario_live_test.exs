@@ -237,25 +237,52 @@ defmodule ScenexWeb.ScenarioLiveTest do
                live(conn, ~p"/scenarios/#{hidden.id}")
     end
 
-    test "Copy makes a draft the current user owns", %{conn: conn, user: user, scenario: scenario} do
+    test "Copy scenario asks for a key, then whether to open the copy", %{
+      conn: conn,
+      user: user,
+      scenario: scenario
+    } do
       group_fixture(scenario, key: "gov", name: %{"en" => "Government"})
       {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
-      assert has_element?(lv, "#copy-scenario")
+      assert has_element?(lv, "#copy-scenario", "Copy scenario")
+      refute has_element?(lv, "#copy-scenario-dialog")
 
-      assert {:ok, show_lv, html} =
-               lv |> element("#copy-scenario") |> render_click() |> follow_redirect(conn)
+      lv |> element("#copy-scenario") |> render_click()
+      assert has_element?(lv, "#copy-scenario-dialog")
+      assert has_element?(lv, "#copy-scenario-form")
 
-      assert html =~ "Copied — you&#39;re the owner of the new draft."
-      assert has_element?(show_lv, "#copy-scenario")
+      lv
+      |> form("#copy-scenario-form", %{copy: %{key: "My Copy"}})
+      |> render_submit()
+
+      assert has_element?(lv, "#copy-scenario-done")
+      refute has_element?(lv, "#copy-scenario-dialog")
 
       copies =
         Authoring.list_scenarios_for_user(user)
         |> Enum.reject(&(&1.id == scenario.id))
 
-      assert [%{key: key, visibility: :draft} = copy] = copies
-      assert key =~ "(copy)"
+      assert [%{key: "My Copy", visibility: :draft} = copy] = copies
       assert Authoring.is_owner?(copy, user)
       assert [%{key: "gov"}] = Authoring.list_groups(copy)
+
+      # Stay here keeps the original editor open.
+      lv |> element("#copy-stay") |> render_click()
+      refute has_element?(lv, "#copy-scenario-done")
+      assert has_element?(lv, "#copy-scenario", "Copy scenario")
+
+      # A second copy, then open it.
+      lv |> element("#copy-scenario") |> render_click()
+
+      lv
+      |> form("#copy-scenario-form", %{copy: %{key: "Open Me"}})
+      |> render_submit()
+
+      assert {:ok, show_lv, _html} =
+               lv |> element("#copy-open") |> render_click() |> follow_redirect(conn)
+
+      assert has_element?(show_lv, "#copy-scenario", "Copy scenario")
+      assert Authoring.get_scenario!(copy.id).key == "My Copy"
     end
 
     test "adds a timeline element", %{conn: conn, scenario: scenario} do
