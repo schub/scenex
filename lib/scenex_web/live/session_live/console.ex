@@ -422,6 +422,26 @@ defmodule ScenexWeb.SessionLive.Console do
             <.markdown text={notes} />
           </div>
 
+          <div
+            :if={
+              element.id not in @snap.closed and Play.deadline_passed?(@snap, element) and
+                Play.pending_defaults(@snap, element) != []
+            }
+            id={"pending-defaults-#{element.id}"}
+            class="flex flex-wrap items-center gap-2 rounded border border-warning bg-warning/10 p-2 text-sm"
+          >
+            <span class="font-semibold">⏱ Time's up.</span>
+            <span>Defaults: {default_lines(@snap, element, @locale)}</span>
+            <button
+              phx-click="apply_defaults"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class="btn btn-xs btn-warning ml-auto"
+            >
+              Apply defaults
+            </button>
+          </div>
+
           <%!-- Decision entry, once triggered --%>
           <div :if={element.id in @snap.triggered}>
             <%!-- Event: one decision per group --%>
@@ -699,6 +719,9 @@ defmodule ScenexWeb.SessionLive.Console do
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
   end
 
+  def handle_event("apply_defaults", %{"id" => element_id}, socket),
+    do: run(socket, &Play.apply_defaults(&1, element_id))
+
   def handle_event("undo_trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.undo_trigger(&1, element_id))
 
@@ -932,6 +955,22 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp options_for_group(snap, element_id, group_id),
     do: Enum.filter(options_for_element(snap, element_id), &(&1.group_id == group_id))
+
+  # "Government → Crack, Media → Talk" — what Apply defaults would enter.
+  defp default_lines(snap, element, locale) do
+    Enum.map_join(Play.pending_defaults(snap, element), ", ", fn {slot, option_id} ->
+      option = snap.definition.options[option_id]
+
+      case slot do
+        :winner ->
+          option.key
+
+        group_id ->
+          group = snap.definition.groups[group_id]
+          "#{I18n.t!(group.name, locale, default: group.key)} → #{option.key}"
+      end
+    end)
+  end
 
   defp undo_trigger_confirm(snap, element) do
     case map_size(snap.decisions[element.id] || %{}) do

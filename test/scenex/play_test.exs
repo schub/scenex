@@ -430,62 +430,118 @@ defmodule Scenex.PlayTest do
     assert {:error, :unknown_ending} = Play.select_ending(session.id, ctx.crack.id)
   end
 
-  test "a lapsed deadline applies default options to undecided slots", ctx do
-    %{session: session, scenario: scenario, stability: stability, gov: gov, media: media} = ctx
+  describe "a lapsed deadline" do
+    setup ctx do
+      # An event element with a deadline; gov and media each have a default.
+      {:ok, timed} =
+        Authoring.create_timeline_element(ctx.scenario, %{
+          key: "Timed",
+          title: %{"en" => "Timed"},
+          position: 4,
+          deadline_seconds: 3600
+        })
 
-    # An event element with a deadline; gov and media each have a default.
-    {:ok, timed} =
-      Authoring.create_timeline_element(scenario, %{
-        key: "Timed",
-        title: %{"en" => "Timed"},
-        position: 4,
-        deadline_seconds: 3600
+      {:ok, gov_default} =
+        Authoring.create_decision_option(timed, ctx.gov, %{
+          key: "Gov default",
+          name: %{"en" => "Gov default"},
+          is_default: true
+        })
+
+      Authoring.set_option_effect(gov_default, ctx.stability, -2.0)
+
+      {:ok, media_default} =
+        Authoring.create_decision_option(timed, ctx.media, %{
+          key: "Media default",
+          name: %{"en" => "Media default"},
+          is_default: true
+        })
+
+      {:ok, media_active} =
+        Authoring.create_decision_option(timed, ctx.media, %{
+          key: "Media active",
+          name: %{"en" => "Media active"}
+        })
+
+      Authoring.set_option_effect(media_active, ctx.stability, 1.0)
+
+      %{
+        timed: timed,
+        gov_default: gov_default,
+        media_default: media_default,
+        media_active: media_active
+      }
+    end
+
+    test "only proposes the defaults; the GM applies them to undecided slots", ctx do
+      %{session: session, timed: timed, gov: gov, media: media} = ctx
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, snap} = Play.trigger_element(session.id, timed.id)
+      deadline_at = snap.triggered_at[timed.id] + timed.deadline_seconds * 1000
+      refute Play.deadline_passed?(%{snap | game_time_ms: deadline_at - 1}, timed)
+      assert Play.deadline_passed?(%{snap | game_time_ms: deadline_at}, timed)
+
+      assert Enum.sort(Play.pending_defaults(snap, timed)) ==
+               Enum.sort([{gov.id, ctx.gov_default.id}, {media.id, ctx.media_default.id}])
+
+      # Media decides in time; gov does not.
+      {:ok, snap} = Play.choose_option(session.id, timed.id, media.id, ctx.media_active.id)
+      assert Play.pending_defaults(snap, timed) == [{gov.id, ctx.gov_default.id}]
+
+      # Nothing is applied by itself.
+      refute Map.has_key?(snap.decisions[timed.id], gov.id)
+
+      assert {:ok, snap} = Play.apply_defaults(session.id, timed.id)
+      # Gov got its default (5 - 2 = 3); media's real decision survived (5 + 1 = 6).
+      assert stab(snap, ctx, gov) == 3.0
+      assert stab(snap, ctx, media) == 6.0
+      assert snap.decisions[timed.id][gov.id] == ctx.gov_default.id
+      assert snap.decisions[timed.id][media.id] == ctx.media_active.id
+      assert Play.pending_defaults(snap, timed) == []
+
+      assert {:error, :no_pending_defaults} = Play.apply_defaults(session.id, timed.id)
+
+      types = session |> Play.list_session_events() |> Enum.map(& &1.type)
+      assert Enum.count(types, &(&1 == "defaults_applied")) == 1
+
+      Play.stop_running(session.id)
+      assert Play.snapshot(session.id).decisions == snap.decisions
+    end
+
+    test "only on a triggered beat in a running session", ctx do
+      %{session: session, timed: timed} = ctx
+      assert {:error, :not_running} = Play.apply_defaults(session.id, timed.id)
+
+      {:ok, _} = Play.start_session(session.id)
+      assert {:error, :not_triggered} = Play.apply_defaults(session.id, timed.id)
+
+      {:ok, _} = Play.trigger_element(session.id, timed.id)
+      {:ok, _} = Play.undo_trigger(session.id, timed.id)
+      assert {:error, :not_triggered} = Play.apply_defaults(session.id, timed.id)
+    end
+
+    test "older logs, where the server applied defaults itself, still replay", ctx do
+      %{session: session, timed: timed, gov: gov} = ctx
+
+      {:ok, _} = Play.start_session(session.id)
+      {:ok, _} = Play.trigger_element(session.id, timed.id)
+      Play.stop_running(session.id)
+
+      sequence = session |> Play.list_session_events() |> length()
+
+      Repo.insert!(%Scenex.Play.SessionEvent{
+        session_id: session.id,
+        sequence: sequence + 1,
+        type: "deadline_lapsed",
+        payload: %{element_id: timed.id, group_id: gov.id, option_id: ctx.gov_default.id},
+        game_time_ms: 0
       })
 
-    {:ok, gov_default} =
-      Authoring.create_decision_option(timed, gov, %{
-        key: "Gov default",
-        name: %{"en" => "Gov default"},
-        is_default: true
-      })
-
-    Authoring.set_option_effect(gov_default, stability, -2.0)
-
-    {:ok, _media_default} =
-      Authoring.create_decision_option(timed, media, %{
-        key: "Media default",
-        name: %{"en" => "Media default"},
-        is_default: true
-      })
-
-    {:ok, media_active} =
-      Authoring.create_decision_option(timed, media, %{
-        key: "Media active",
-        name: %{"en" => "Media active"}
-      })
-
-    Authoring.set_option_effect(media_active, stability, 1.0)
-
-    {:ok, _} = Play.start_session(session.id)
-    {:ok, _} = Play.trigger_element(session.id, timed.id)
-
-    # Media decides in time; gov does not.
-    {:ok, _} = Play.choose_option(session.id, timed.id, media.id, media_active.id)
-
-    # Fire the deadline directly (deterministic — no sleeping on real timers).
-    pid = Scenex.Play.SessionServer.whereis(session.id)
-    send(pid, {:deadline, timed.id, Play.snapshot(session.id).triggered_at[timed.id]})
-
-    snap = Play.snapshot(session.id)
-
-    # Gov got its default (5 - 2 = 3); media's real decision survived (5 + 1 = 6).
-    assert stab(snap, ctx, ctx.gov) == 3.0
-    assert stab(snap, ctx, ctx.media) == 6.0
-    assert snap.decisions[timed.id][gov.id] == gov_default.id
-    assert snap.decisions[timed.id][media.id] == media_active.id
-
-    types = session |> Play.list_session_events() |> Enum.map(& &1.type)
-    assert Enum.count(types, &(&1 == "deadline_lapsed")) == 1
+      snap = Play.snapshot(session.id)
+      assert snap.decisions[timed.id][gov.id] == ctx.gov_default.id
+      assert stab(snap, ctx, gov) == 3.0
+    end
   end
 
   describe "undoing a trigger" do
@@ -532,45 +588,6 @@ defmodule Scenex.PlayTest do
       assert replayed.sim == snap.sim
     end
 
-    test "a deadline timer from before the undo can't fire the new trigger early", ctx do
-      %{session: session, scenario: scenario, gov: gov} = ctx
-
-      {:ok, timed} =
-        Authoring.create_timeline_element(scenario, %{
-          key: "Timed",
-          title: %{"en" => "Timed"},
-          position: 4,
-          deadline_seconds: 3600
-        })
-
-      {:ok, gov_default} =
-        Authoring.create_decision_option(timed, gov, %{
-          key: "Gov default",
-          name: %{"en" => "Gov default"},
-          is_default: true
-        })
-
-      {:ok, _} = Play.start_session(session.id)
-      {:ok, first} = Play.trigger_element(session.id, timed.id)
-      stale_at = first.triggered_at[timed.id] - 1
-      {:ok, _} = Play.undo_trigger(session.id, timed.id)
-
-      pid = Scenex.Play.SessionServer.whereis(session.id)
-
-      # Untriggered: a leftover message does nothing.
-      send(pid, {:deadline, timed.id, stale_at})
-      refute Map.has_key?(Play.snapshot(session.id).decisions, timed.id)
-
-      # Re-triggered: the old trigger's message still does nothing …
-      {:ok, second} = Play.trigger_element(session.id, timed.id)
-      send(pid, {:deadline, timed.id, stale_at})
-      refute Map.has_key?(Play.snapshot(session.id).decisions, timed.id)
-
-      # … while the new trigger's own deadline applies the default as usual.
-      send(pid, {:deadline, timed.id, second.triggered_at[timed.id]})
-      assert Play.snapshot(session.id).decisions[timed.id][gov.id] == gov_default.id
-    end
-
     test "only a triggered beat in a running session", ctx do
       %{session: session} = ctx
       assert {:error, :not_running} = Play.undo_trigger(session.id, ctx.event.id)
@@ -605,41 +622,6 @@ defmodule Scenex.PlayTest do
                Play.choose_option(session.id, ctx.event.id, ctx.media.id, media_opt.id)
 
       assert snap.decisions[ctx.event.id][ctx.media.id] == media_opt.id
-    end
-
-    test "cancels the pending deadline — a race-delivered timer message still no-ops", ctx do
-      %{session: session, scenario: scenario, gov: gov} = ctx
-
-      {:ok, timed} =
-        Authoring.create_timeline_element(scenario, %{
-          key: "Timed",
-          title: %{"en" => "Timed"},
-          position: 4,
-          deadline_seconds: 3600
-        })
-
-      {:ok, _gov_default} =
-        Authoring.create_decision_option(timed, gov, %{
-          key: "Gov default",
-          name: %{"en" => "Gov default"},
-          is_default: true
-        })
-
-      {:ok, _} = Play.start_session(session.id)
-      {:ok, _} = Play.trigger_element(session.id, timed.id)
-      assert {:ok, snap} = Play.close_element(session.id, timed.id)
-      assert timed.id in snap.closed
-
-      # Simulate a timer message that was already in the mailbox the instant
-      # the GM closed — fire_deadline must still refuse to apply defaults.
-      pid = Scenex.Play.SessionServer.whereis(session.id)
-      send(pid, {:deadline, timed.id, Play.snapshot(session.id).triggered_at[timed.id]})
-
-      snap = Play.snapshot(session.id)
-      refute Map.has_key?(snap.decisions[timed.id] || %{}, gov.id)
-
-      types = session |> Play.list_session_events() |> Enum.map(& &1.type)
-      refute "deadline_lapsed" in types
     end
 
     test "can't close what isn't triggered, and can't close twice", ctx do

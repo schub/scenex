@@ -10,8 +10,11 @@ defmodule Scenex.Play.SessionServer do
   **Crash recovery = replay:** `init/1` re-reads the session row, the
   definition, and the whole log, and folds it back into the identical board.
 
-  Timers run against the **pausable game clock**: `game_time_ms` accumulates
-  while live; every appended event is stamped with the current game time.
+  Deadlines run against the **pausable game clock**: `game_time_ms`
+  accumulates while live; every appended event is stamped with the current
+  game time. Nothing is scheduled — a lapsed deadline is derived from the
+  clock (`Scenex.Play.deadline_passed?/2`) and only *proposes* its defaults;
+  the GM applies them (`{:apply_defaults, id}`).
 
   Emits `:telemetry` events (exported by `Scenex.PromEx.ScenexPlugin`):
 
@@ -77,8 +80,7 @@ defmodule Scenex.Play.SessionServer do
       session: session,
       definition: definition,
       projection: projection,
-      seq: sequence,
-      timers: %{}
+      seq: sequence
     }
 
     :telemetry.execute(
@@ -87,7 +89,7 @@ defmodule Scenex.Play.SessionServer do
       %{session_id: session_id}
     )
 
-    {:ok, schedule_deadlines(state)}
+    {:ok, state}
   end
 
   @impl true
@@ -119,7 +121,6 @@ defmodule Scenex.Play.SessionServer do
       {:ok, type, payload, row_changes} ->
         case persist(state, type, payload, row_changes) do
           {:ok, state} ->
-            state = schedule_deadlines(state)
             broadcast(state)
             {{:ok, build_snapshot(state)}, state}
 
@@ -136,111 +137,6 @@ defmodule Scenex.Play.SessionServer do
     do: elem(command, 0)
 
   defp command_name(_command), do: :unknown
-
-  @impl true
-  def handle_info({:deadline, element_id, triggered_at}, state) do
-    {:noreply, fire_deadline(state, element_id, triggered_at)}
-  end
-
-  # ── Deadline timers ───────────────────────────────────────────────────
-  # Timers run against the game clock: scheduled only while :live, cancelled
-  # on pause, rescheduled with the remaining game time on resume/restart.
-  # A lapsed deadline appends the authored default option for every still-
-  # undecided slot (event kind: per group; election: the default ballot
-  # option). Sidequests have no defaults — the GM adjudicates.
-
-  defp schedule_deadlines(state) do
-    state = cancel_timers(state)
-
-    if state.projection.status == :live do
-      timers =
-        for {element_id, remaining_ms} <- pending_deadlines(state), into: %{} do
-          message = {:deadline, element_id, state.projection.triggered_at[element_id]}
-          {element_id, Process.send_after(self(), message, max(remaining_ms, 0))}
-        end
-
-      %{state | timers: timers}
-    else
-      state
-    end
-  end
-
-  defp cancel_timers(state) do
-    Enum.each(state.timers, fn {_id, ref} -> Process.cancel_timer(ref) end)
-    %{state | timers: %{}}
-  end
-
-  defp pending_deadlines(state) do
-    game_time = current_game_time(state.session)
-
-    for element_id <- state.projection.triggered,
-        element_id not in state.projection.closed,
-        element = state.definition.elements[element_id],
-        is_integer(element.deadline_seconds),
-        missing_defaults(state, element) != [],
-        deadline_at = state.projection.triggered_at[element_id] + element.deadline_seconds * 1000,
-        do: {element_id, deadline_at - game_time}
-  end
-
-  # The default decisions a lapsed deadline would apply right now.
-  defp missing_defaults(state, element) do
-    options = state.definition.options_by_element[element.id] || []
-    decided = Map.get(state.projection.decisions, element.id, %{})
-
-    case element.kind do
-      :event ->
-        for option <- options,
-            option.is_default,
-            not Map.has_key?(decided, option.group_id),
-            do: {option.group_id, option.id}
-
-      :election ->
-        with false <- Map.has_key?(decided, :winner),
-             %{id: option_id} <- Enum.find(options, & &1.is_default) do
-          [{:winner, option_id}]
-        else
-          _ -> []
-        end
-
-      :sidequest ->
-        []
-    end
-  end
-
-  defp fire_deadline(state, element_id, triggered_at) do
-    case state.definition.elements[element_id] do
-      nil ->
-        state
-
-      element ->
-        # A timer already in flight when the GM closes the element (or undoes
-        # its trigger) can still deliver its message — cancellation isn't
-        # guaranteed — so guard here too, not just in the scheduling. The
-        # message names the trigger it belongs to, so one left over from
-        # before an undo + re-trigger can't fire the new deadline early.
-        if state.projection.status == :live and element_id not in state.projection.closed and
-             state.projection.triggered_at[element_id] == triggered_at do
-          state =
-            Enum.reduce(missing_defaults(state, element), state, fn {slot, option_id}, acc ->
-              payload =
-                case slot do
-                  :winner -> %{element_id: element_id, option_id: option_id}
-                  group_id -> %{element_id: element_id, group_id: group_id, option_id: option_id}
-                end
-
-              case persist(acc, "deadline_lapsed", payload, %{}) do
-                {:ok, acc2} -> acc2
-                {:error, _reason} -> acc
-              end
-            end)
-
-          broadcast(state)
-          schedule_deadlines(state)
-        else
-          state
-        end
-    end
-  end
 
   # ── Command validation ────────────────────────────────────────────────
   # Structural integrity is enforced; gates are not (the GM disposes).
@@ -284,6 +180,25 @@ defmodule Scenex.Play.SessionServer do
       if element_id in state.projection.triggered,
         do: {:error, :already_triggered},
         else: {:ok, "element_triggered", %{element_id: element_id}, %{}}
+    end
+  end
+
+  # A lapsed deadline only proposes its defaults; the GM applies them, all
+  # still-undecided slots in one event.
+  defp validate({:apply_defaults, element_id}, state) do
+    with :ok <- running(state),
+         {:ok, element} <- fetch_triggered(state, element_id) do
+      case Scenex.Play.pending_defaults(
+             %{definition: state.definition, decisions: state.projection.decisions},
+             element
+           ) do
+        [] ->
+          {:error, :no_pending_defaults}
+
+        defaults ->
+          choices = Map.new(defaults, fn {slot, option_id} -> {to_string(slot), option_id} end)
+          {:ok, "defaults_applied", %{element_id: element_id, choices: choices}, %{}}
+      end
     end
   end
 

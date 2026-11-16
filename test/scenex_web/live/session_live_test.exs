@@ -2,6 +2,7 @@ defmodule ScenexWeb.SessionLiveTest do
   # async: false — session processes access the DB (shared sandbox).
   use ScenexWeb.ConnCase, async: false
 
+  import Ecto.Query
   import Phoenix.LiveViewTest
   import Scenex.AccountsFixtures
   import Scenex.AuthoringFixtures
@@ -503,6 +504,32 @@ defmodule ScenexWeb.SessionLiveTest do
         |> render_click()
 
         assert event.id in Play.snapshot(session.id).triggered
+      end
+
+      test "a lapsed deadline proposes the defaults; the GM applies them", ctx do
+        %{conn: conn, session: session, event: event, gov: gov, crack: crack} = ctx
+        {:ok, _} = Authoring.update_timeline_element(event, %{deadline_seconds: 60})
+        {:ok, _} = Authoring.update_decision_option(crack, %{is_default: true})
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, _} = Play.trigger_element(session.id, event.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+        refute has_element?(lv, "#pending-defaults-#{event.id}")
+
+        # Let the deadline run out on the game clock.
+        Play.stop_running(session.id)
+
+        Scenex.Repo.update_all(
+          from(s in Scenex.Play.Session, where: s.id == ^session.id),
+          inc: [game_time_ms: 60_000]
+        )
+
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+        assert has_element?(lv, "#pending-defaults-#{event.id}", "Crack")
+        refute Map.has_key?(Play.snapshot(session.id).decisions, event.id)
+
+        lv |> element("#pending-defaults-#{event.id} button") |> render_click()
+        assert Play.snapshot(session.id).decisions[event.id][gov.id] == crack.id
+        refute has_element?(lv, "#pending-defaults-#{event.id}")
       end
 
       test "the GM shows a Wildcard on the scoreboard, or keeps it secret", ctx do

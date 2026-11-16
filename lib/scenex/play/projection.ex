@@ -206,8 +206,19 @@ defmodule Scenex.Play.Projection do
        do: put_decision(p, eid, gid, oid)
 
   # A lapsed election deadline resolves to the default ballot option.
+  # (`deadline_lapsed` is what older logs carry: the server used to apply
+  # defaults on its own. Kept so those logs replay unchanged.)
   defp handle(p, "deadline_lapsed", %{"element_id" => eid, "option_id" => oid}, _),
     do: put_decision(p, eid, :winner, oid)
+
+  # The GM applying the defaults a lapsed deadline proposed — one event for
+  # every still-undecided slot ("winner" or a group id).
+  defp handle(p, "defaults_applied", %{"element_id" => eid, "choices" => choices}, _) do
+    Enum.reduce(choices, p, fn
+      {"winner", oid}, acc -> put_decision(acc, eid, :winner, oid)
+      {group_id, oid}, acc -> put_decision(acc, eid, group_id, oid)
+    end)
+  end
 
   # The winner decides; the hand-count tally is kept for presentation.
   defp handle(p, "election_resolved", %{"element_id" => eid, "option_id" => oid} = payload, _) do
