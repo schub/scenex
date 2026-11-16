@@ -62,6 +62,15 @@ defmodule ScenexWeb.ScenarioLive.Show do
           >
             Copy scenario
           </button>
+          <button
+            :if={@role == :owner}
+            id="delete-scenario"
+            type="button"
+            phx-click="open_delete_dialog"
+            class="btn btn-sm btn-error btn-soft"
+          >
+            Delete scenario
+          </button>
           <.link navigate={~p"/scenarios"} class="btn btn-sm btn-ghost">← All scenarios</.link>
         </:actions>
       </.header>
@@ -1574,6 +1583,40 @@ defmodule ScenexWeb.ScenarioLive.Show do
         </div>
         <div class="modal-backdrop" phx-click="stay_after_copy"></div>
       </div>
+
+      <div
+        :if={@delete_dialog}
+        id="delete-scenario-dialog"
+        class="modal modal-open"
+        role="dialog"
+        aria-labelledby="delete-scenario-title"
+      >
+        <div class="modal-box space-y-4">
+          <h3 id="delete-scenario-title" class="text-lg font-bold">Delete this scenario?</h3>
+          <p class="text-sm">
+            This permanently removes
+            <span class="font-semibold">
+              {I18n.t!(@scenario.name, @locale, default: @scenario.key)}
+            </span>
+            — its timeline, media, and every session played with it. This cannot be undone.
+          </p>
+          <div class="modal-action">
+            <button type="button" id="delete-cancel" phx-click="cancel_delete" class="btn">
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="delete-confirm"
+              phx-click="confirm_delete"
+              class="btn btn-error"
+              phx-disable-with="Deleting…"
+            >
+              Delete scenario
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" phx-click="cancel_delete"></div>
+      </div>
     </Layouts.app>
     """
   end
@@ -1601,7 +1644,8 @@ defmodule ScenexWeb.ScenarioLive.Show do
            copy_dialog: nil,
            copy_form: to_form(%{"key" => ""}, as: :copy),
            copied_id: nil,
-           copied_key: nil
+           copied_key: nil,
+           delete_dialog: false
          )
          |> assign(
            selected_timeline_element: nil,
@@ -1702,6 +1746,39 @@ defmodule ScenexWeb.ScenarioLive.Show do
 
   def handle_event("stay_after_copy", _params, socket),
     do: {:noreply, clear_copy_dialog(socket)}
+
+  def handle_event("open_delete_dialog", _params, socket) do
+    if socket.assigns.role == :owner do
+      {:noreply, assign(socket, :delete_dialog, true)}
+    else
+      {:noreply, put_flash(socket, :error, "Only the owner can delete this scenario.")}
+    end
+  end
+
+  def handle_event("cancel_delete", _params, socket),
+    do: {:noreply, assign(socket, :delete_dialog, false)}
+
+  def handle_event("confirm_delete", _params, socket) do
+    user = socket.assigns.current_scope.user
+
+    case Authoring.delete_scenario(user, socket.assigns.scenario) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> assign(:delete_dialog, false)
+         |> put_flash(:info, "Scenario deleted.")
+         |> push_navigate(to: ~p"/scenarios")}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         socket
+         |> assign(:delete_dialog, false)
+         |> put_flash(:error, "Only the owner can delete this scenario.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Delete failed.")}
+    end
+  end
 
   # ── Draft tracking (localized forms) ──────────────────────────────────
   # Every keystroke lands in the form's params, so switching the working

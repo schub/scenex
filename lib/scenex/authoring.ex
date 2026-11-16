@@ -98,7 +98,27 @@ defmodule Scenex.Authoring do
   def update_scenario(%Scenario{} = scenario, attrs),
     do: scenario |> Scenario.changeset(attrs) |> Repo.update()
 
-  def delete_scenario(%Scenario{} = scenario), do: Repo.delete(scenario)
+  @doc """
+  Delete a scenario the user owns. Cascades the definition, media rows,
+  memberships and sessions; media bytes on disk are removed afterwards.
+  `{:error, :unauthorized}` if the user is not the owner.
+  """
+  def delete_scenario(%User{} = user, %Scenario{} = scenario) do
+    if is_owner?(scenario, user) do
+      files = Scenex.Media.list_files(scenario)
+
+      case Repo.delete(scenario) do
+        {:ok, deleted} ->
+          Enum.each(files, &Scenex.Media.Storage.delete(Scenex.Media.key(&1)))
+          {:ok, deleted}
+
+        {:error, _} = error ->
+          error
+      end
+    else
+      {:error, :unauthorized}
+    end
+  end
 
   def change_scenario(%Scenario{} = scenario, attrs \\ %{}),
     do: Scenario.changeset(scenario, attrs)

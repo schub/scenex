@@ -86,9 +86,13 @@ them a role:
 
 | Role | Can |
 |---|---|
-| **Owner** | everything, including inviting people and deleting |
+| **Owner** | everything, including inviting people and **Delete scenario** |
 | **Author** | edit everything, run sessions |
 | **Viewer** | look and try dry runs, but change nothing |
+
+**Delete scenario** (owner only, in the editor header) asks for confirmation
+first — it removes the whole definition, its media, and every session played
+with it. There is no undo.
 
 ![The Members tab](images/members.png)
 

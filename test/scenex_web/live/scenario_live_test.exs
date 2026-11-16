@@ -237,6 +237,41 @@ defmodule ScenexWeb.ScenarioLiveTest do
                live(conn, ~p"/scenarios/#{hidden.id}")
     end
 
+    test "owner can delete a scenario after confirming", %{
+      conn: conn,
+      user: user,
+      scenario: scenario
+    } do
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      assert has_element?(lv, "#delete-scenario", "Delete scenario")
+      refute has_element?(lv, "#delete-scenario-dialog")
+
+      lv |> element("#delete-scenario") |> render_click()
+      assert has_element?(lv, "#delete-scenario-dialog")
+
+      lv |> element("#delete-cancel") |> render_click()
+      refute has_element?(lv, "#delete-scenario-dialog")
+      assert Authoring.get_scenario!(scenario.id)
+
+      lv |> element("#delete-scenario") |> render_click()
+
+      assert {:ok, _index_lv, html} =
+               lv |> element("#delete-confirm") |> render_click() |> follow_redirect(conn)
+
+      assert html =~ "Scenario deleted."
+      assert Authoring.list_scenarios_for_user(user) == []
+    end
+
+    test "authors see Copy but not Delete", %{conn: conn, scenario: scenario} do
+      author = user_fixture()
+      Authoring.add_member(scenario, author, :author)
+      conn = log_in_user(conn, author)
+
+      {:ok, lv, _html} = live(conn, ~p"/scenarios/#{scenario.id}")
+      assert has_element?(lv, "#copy-scenario", "Copy scenario")
+      refute has_element?(lv, "#delete-scenario")
+    end
+
     test "Copy scenario asks for a key, then whether to open the copy", %{
       conn: conn,
       user: user,
