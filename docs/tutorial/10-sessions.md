@@ -21,21 +21,13 @@ Click **Create session**, and you're in the **GM console**. The session is a
 *draft*: nothing runs yet, the clock shows 00:00. You can always come back
 to it from the sessions list (**Open console**).
 
-## The new GM console
+## The GM console
 
-Scenex has two GM consoles at the moment: the **classic** one — one long page
-— and the **new** one, which keeps everything on one screen. For a while both
-are around; the classic one will be retired. This tutorial uses the new one.
-
-If your console opens as the classic one, click **✨ New GM console** at the
-top:
-
-![The classic console's switch to the new one](images/console-classic-switch.png)
+You land in the **new** GM console, which keeps everything on one screen. The
+classic one-long-page console is still available via **Classic console** while
+it is being retired; this tutorial uses the new one.
 
 ![A brand-new session in the new GM console](images/console-draft.png)
-
-The new console has a **Classic console** button too, if you ever need to go
-back.
 
 ## QR codes for the tables and the projector
 

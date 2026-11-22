@@ -2,6 +2,7 @@ defmodule ScenexWeb.SessionLiveTest do
   # async: false — session processes access the DB (shared sandbox).
   use ScenexWeb.ConnCase, async: false
 
+  import Ecto.Query
   import Phoenix.LiveViewTest
   import Scenex.AccountsFixtures
   import Scenex.AuthoringFixtures
@@ -118,6 +119,7 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "Second night"
     assert html =~ "GM console"
+    assert html =~ "Deutsch"
 
     session = Enum.find(Play.list_sessions(scenario), &(&1.label == "Second night"))
     assert session.locale == "de"
@@ -176,23 +178,35 @@ defmodule ScenexWeb.SessionLiveTest do
       {:ok, _lv, html} = live(ctx.conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
       assert html =~ "GM: you"
       assert html =~ "Open console"
+      assert html =~ "English"
     end
   end
 
-  test "the classic console is the default and links to the new one, and back", ctx do
+  test "the new console is the default and links to the classic one, and back", ctx do
     %{conn: conn, session: session} = ctx
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+    assert has_element?(lv, "#timeline")
+    assert html =~ "English"
+
+    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
     refute has_element?(lv, "#timeline")
+    assert render(lv) =~ "English"
 
     {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
     assert has_element?(lv, "#timeline")
+  end
 
-    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
-    refute has_element?(lv, "#timeline")
+  test "the legacy /console/new URL redirects to /console", ctx do
+    %{conn: conn, session: session} = ctx
+
+    assert {:error, {:redirect, %{to: to}}} =
+             live(conn, ~p"/sessions/#{session.id}/console/new?beat=foo")
+
+    assert to == "/sessions/#{session.id}/console?beat=foo"
   end
 
   # Both consoles drive the same commands; every console test runs against each.
-  for {label, path} <- [{"classic", "/console"}, {"new", "/console/new"}] do
+  for {label, path} <- [{"classic", "/console/old"}, {"new", "/console"}] do
     @console path
 
     describe "#{label} console" do
@@ -503,6 +517,49 @@ defmodule ScenexWeb.SessionLiveTest do
         |> render_click()
 
         assert event.id in Play.snapshot(session.id).triggered
+      end
+
+      test "a lapsed deadline proposes the defaults; the GM applies them", ctx do
+        %{conn: conn, session: session, event: event, gov: gov, crack: crack} = ctx
+        {:ok, _} = Authoring.update_timeline_element(event, %{deadline_seconds: 60})
+        {:ok, _} = Authoring.update_decision_option(crack, %{is_default: true})
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, _} = Play.trigger_element(session.id, event.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+        refute has_element?(lv, "#pending-defaults-#{event.id}")
+
+        # Let the deadline run out on the game clock.
+        Play.stop_running(session.id)
+
+        Scenex.Repo.update_all(
+          from(s in Scenex.Play.Session, where: s.id == ^session.id),
+          inc: [game_time_ms: 60_000]
+        )
+
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+        assert has_element?(lv, "#pending-defaults-#{event.id}", "Crack")
+        refute Map.has_key?(Play.snapshot(session.id).decisions, event.id)
+
+        lv |> element("#pending-defaults-#{event.id} button") |> render_click()
+        assert Play.snapshot(session.id).decisions[event.id][gov.id] == crack.id
+        refute has_element?(lv, "#pending-defaults-#{event.id}")
+      end
+
+      test "the GM shows a Wildcard on the scoreboard, or keeps it secret", ctx do
+        %{conn: conn, session: session, sidequest: sidequest} = ctx
+        {:ok, _} = Play.start_session(session.id)
+        {:ok, lv, _html} = live(conn, "/sessions/#{session.id}" <> @console)
+
+        refute has_element?(lv, "#toggle-sidequest-#{sidequest.id}")
+        {:ok, _} = Play.trigger_element(session.id, sidequest.id)
+        assert has_element?(lv, "#toggle-sidequest-#{sidequest.id}", "🚫 On screen")
+
+        lv |> element("#toggle-sidequest-#{sidequest.id}") |> render_click()
+        assert has_element?(lv, "#toggle-sidequest-#{sidequest.id}", "👁 On screen")
+        assert Play.snapshot(session.id).sidequests_shown == [sidequest.id]
+
+        lv |> element("#toggle-sidequest-#{sidequest.id}") |> render_click()
+        assert Play.snapshot(session.id).sidequests_shown == []
       end
 
       test "the GM reveals an event's group decisions on the scoreboard", ctx do

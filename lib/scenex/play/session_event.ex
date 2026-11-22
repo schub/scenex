@@ -10,12 +10,14 @@ defmodule Scenex.Play.SessionEvent do
 
   Game events: `session_started`, `session_paused`, `session_resumed`,
   `element_triggered`, `trigger_undone`, `element_closed`, `option_chosen`,
-  `deadline_lapsed`, `election_resolved`, `sidequest_adjudicated`,
+  `defaults_applied`, `election_resolved`, `sidequest_adjudicated`,
   `tally_recorded`, `values_consolidated`, `session_ended`,
-  `ending_selected`. Display preferences ride the same log so they survive a
+  `ending_selected`. Older logs also carry `deadline_lapsed` (the server
+  once applied defaults by itself; they now wait for the GM). Display preferences ride the same log so they survive a
   restart: `board_numbers_set`, `board_section_toggled`,
   `group_values_visibility_set`, `page_shown`, `page_cleared`,
-  `ballot_visibility_set`, `decisions_visibility_set`.
+  `ballot_visibility_set`, `decisions_visibility_set`,
+  `sidequest_visibility_set`.
   """
   use Ecto.Schema
 

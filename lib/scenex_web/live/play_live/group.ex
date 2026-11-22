@@ -7,13 +7,13 @@ defmodule ScenexWeb.PlayLive.Group do
   values plus the globals, and enters its decision on each triggered event
   element. Gates are enforced here (players cannot pick locked options — only
   the GM may override in the console), and a lapsed deadline closes the
-  element.
+  element (its defaults are only applied once the GM confirms them).
 
   A decision is **confirmed once**: tapping an option opens a styled confirm
   modal (a pending choice held in assigns — no native `window.confirm`), and
   confirming locks the element for this group — corrections are the GM's
   alone. The lock derives from the projection ("a decision exists"), so a GM
-  entry or a lapsed-deadline default locks the group out the same way.
+  entry or a default the GM applied locks the group out the same way.
   """
   use ScenexWeb, :live_view
 
@@ -235,7 +235,7 @@ defmodule ScenexWeb.PlayLive.Group do
     do: {:noreply, assign(socket, :pending, nil)}
 
   # Step 2: the confirmation — re-validated, since the board may have moved
-  # (GM entry, lapsed deadline, pause) while the modal was open.
+  # (GM entry, applied default, lapsed deadline, pause) while the modal was open.
   def handle_event("choose", %{"element" => element_id, "option" => option_id}, socket) do
     socket = assign(socket, :pending, nil)
 
@@ -301,13 +301,12 @@ defmodule ScenexWeb.PlayLive.Group do
   end
 
   # The GM ending the event manually (console "Close event") — deadline or
-  # not. Unlike a deadline lapse, it applies no defaults; it just stops
-  # taking new player decisions. The GM's own console isn't gated by this
+  # not. It applies no defaults; it just stops taking new player decisions. The GM's own console isn't gated by this
   # (same split as everywhere else: gates are enforced here, not there).
   defp closed?(snap, element_id), do: element_id in snap.closed
 
-  # Confirmed once: any recorded decision (the group's, the GM's, or a
-  # lapsed-deadline default) closes the element for this group.
+  # Confirmed once: any recorded decision (the group's, the GM's, or an
+  # applied default) closes the element for this group.
   defp locked?(snap, element_id, group_id),
     do: get_in(snap.decisions, [element_id, group_id]) != nil
 

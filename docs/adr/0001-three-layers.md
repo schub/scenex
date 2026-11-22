@@ -1,6 +1,6 @@
 # 0001. Three layers: engine, definition, session
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-01
 
 ## Decision
@@ -22,13 +22,12 @@ One definition runs as many concurrent, isolated sessions.
   touching each other.
 - Listed first under "Never cut" in the former implementation plan.
 
-## Open
+## Background
 
-- What preceded this? The plan mentions a paper prototype and "legacy
-  paper-prototype content". Was there an earlier software attempt, or was the
-  split clear from the start?
-- Alternatives considered — e.g. one app per game, or a generic spreadsheet-like
-  tool?
+Anything before Scenex was just playing around, not an earlier attempt to
+learn from. The three-layer split was the plan from the start; no
+alternatives (one app per game, a spreadsheet-like tool) were considered
+(Markus, 2026-11-15).
 
 ## Sources
 

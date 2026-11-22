@@ -347,12 +347,14 @@ defmodule ScenexWeb.PlayLive.Display do
 
   # The latest triggered element that isn't closed yet. Once the GM closes
   # it, it drops off the wall entirely — closing means "we're done with
-  # this," not just "stop the countdown."
+  # this," not just "stop the countdown." A Wildcard the GM keeps secret is
+  # skipped, so the beat before it stays up and nothing gives it away.
   defp current_element(snap) do
-    case Enum.find(Enum.reverse(snap.triggered), &(&1 not in snap.closed)) do
-      nil -> nil
-      eid -> snap.definition.elements[eid]
-    end
+    snap.triggered
+    |> Enum.reverse()
+    |> Enum.reject(&(&1 in snap.closed))
+    |> Enum.map(&snap.definition.elements[&1])
+    |> Enum.find(&(&1.kind != :sidequest or &1.id in snap.sidequests_shown))
   end
 
   defp chosen_ending(%{ending_id: nil}), do: nil
@@ -440,7 +442,7 @@ defmodule ScenexWeb.PlayLive.Display do
   end
 
   # The declared hand count, in ballot order; options without a count are
-  # omitted (a lapsed-deadline default winner has no tally).
+  # omitted (a winner the GM set by applying the default has no tally).
   defp vote_lines(snap, element) do
     tally = snap.vote_tallies[element.id] || %{}
 

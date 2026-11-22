@@ -1,6 +1,6 @@
 # 0013. Players get capability tokens, not accounts
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-04
 
 ## Decision
@@ -19,10 +19,11 @@ Two-tier identity:
 - Players scan and play; no sign-up.
 - A leaked QR code grants access to one group in one session, nothing more.
 
-## Open
+## Rationale
 
-- The reason: friction in a theatre audience? Privacy / no personal data from
-  the audience? Both?
+- **No sign-up hassle for the audience**, and **no personal data** from them.
+- **As simple as possible for the people who run the show:** scan a QR code,
+  place the tables, and that's it (Markus, 2026-11-15).
 
 ## Sources
 

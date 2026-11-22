@@ -58,12 +58,13 @@ writes a global directly.
 **The system proposes, the GM disposes.** Nothing fires automatically in a
 live show. The GM triggers every beat, adjudicates sidequests, breaks ties and
 declares the end. Conditions, deadline defaults and ending matches are
-*recommendations*. No dice, no hidden randomness.
+*recommendations* — a lapsed deadline only proposes its defaults; the GM
+applies them. No dice, no hidden randomness.
 
-**Manual before automatic.** Election votes can always be entered as a GM
-hand-count tally; device-based individual voting is an enhancement, never a
-dependency. Per-participant values are collected in the room and entered by
-the GM.
+**Manual before automatic.** Election votes are entered as a GM hand-count
+tally. The system knows groups, not individual players, so there is no
+device-based individual voting, and none is planned. Per-participant values
+are collected in the room and entered by the GM.
 
 **One person, one vote.** Vote weight is never derived from game state —
 mechanics must not depend on content.
@@ -145,10 +146,10 @@ One `Scenex.Play.SessionServer` per running session, supervised by
 `Scenex.Play.SessionSupervisor` (a `DynamicSupervisor`) and found by id through
 `Scenex.Play.Registry` — both started in `Scenex.Application`.
 
-**Timers run against the game clock, not wall-clock.** The clock is pausable;
-`game_time_ms` accumulates while live, and every appended event is stamped
-with it. Deadlines and their default consequences are measured in elapsed
-*game* time.
+**Deadlines run against the game clock, not wall-clock.** The clock is
+pausable; `game_time_ms` accumulates while live, and every appended event is
+stamped with it. Deadlines are measured in elapsed *game* time and derived
+from the clock — nothing is scheduled in the session process.
 
 **The definition is snapshotted at session start** (`Scenex.Play.Definition`),
 so mid-session edits to a scenario don't silently change a running game.

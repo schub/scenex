@@ -18,8 +18,8 @@ defmodule ScenexWeb.SessionLive.Console do
   regardless of session status (before the show starts, onboarding) — a
   display override that doesn't pause or affect the game underneath.
 
-  This classic console stays the default; the redesigned
-  `ScenexWeb.SessionLive.ConsoleNext` is one click away.
+  This classic console is kept as a fallback; the redesigned
+  `ScenexWeb.SessionLive.ConsoleNext` is the default.
   """
   use ScenexWeb, :live_view
 
@@ -36,6 +36,9 @@ defmodule ScenexWeb.SessionLive.Console do
         <:subtitle>
           <span class="badge badge-sm badge-accent">GM console</span>
           <span class={["badge badge-sm", status_badge(@snap.status)]}>{@snap.status}</span>
+          <span class="badge badge-sm badge-ghost" title="Play language (audience screens)">
+            {I18n.locale_name(@locale)}
+          </span>
           <span class="ml-2 font-mono tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
         </:subtitle>
         <:actions>
@@ -76,7 +79,7 @@ defmodule ScenexWeb.SessionLive.Console do
           </button>
           <.link
             id="switch-console"
-            navigate={~p"/sessions/#{@session.id}/console/new"}
+            navigate={~p"/sessions/#{@session.id}/console"}
             class="btn btn-sm btn-accent btn-soft"
           >
             ✨ New GM console
@@ -375,11 +378,30 @@ defmodule ScenexWeb.SessionLive.Console do
                 else: "🚫 Decisions on screen"}
             </button>
             <button
+              :if={
+                element.kind == :sidequest and element.id in @snap.triggered and
+                  element.id not in @snap.closed
+              }
+              id={"toggle-sidequest-#{element.id}"}
+              phx-click="toggle_sidequest"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class={[
+                "btn btn-sm ml-auto",
+                (element.id in @snap.sidequests_shown && "btn-primary") || "btn-ghost"
+              ]}
+              title="Show this Wildcard on the scoreboard — or keep it secret"
+            >
+              {if element.id in @snap.sidequests_shown,
+                do: "👁 On screen",
+                else: "🚫 On screen"}
+            </button>
+            <button
               :if={element.id in @snap.triggered and element.id not in @snap.closed}
               phx-click="close_element"
               phx-value-id={element.id}
               disabled={@snap.status not in [:live, :paused]}
-              class={["btn btn-sm btn-ghost", element.kind == :sidequest && "ml-auto"]}
+              class="btn btn-sm btn-ghost"
               data-confirm="Close this event? Groups that haven't decided stay undecided — you can still enter a decision for them yourself afterward."
             >
               ⏹ Close event
@@ -401,6 +423,26 @@ defmodule ScenexWeb.SessionLive.Console do
           <div :if={notes = notes(element, @locale)} class="rounded bg-base-200 p-2 text-xs">
             <span class="font-semibold">🎭 Director's notes</span>
             <.markdown text={notes} />
+          </div>
+
+          <div
+            :if={
+              element.id not in @snap.closed and Play.deadline_passed?(@snap, element) and
+                Play.pending_defaults(@snap, element) != []
+            }
+            id={"pending-defaults-#{element.id}"}
+            class="flex flex-wrap items-center gap-2 rounded border border-warning bg-warning/10 p-2 text-sm"
+          >
+            <span class="font-semibold">⏱ Time's up.</span>
+            <span>Defaults: {default_lines(@snap, element, @locale)}</span>
+            <button
+              phx-click="apply_defaults"
+              phx-value-id={element.id}
+              disabled={@snap.status not in [:live, :paused]}
+              class="btn btn-xs btn-warning ml-auto"
+            >
+              Apply defaults
+            </button>
           </div>
 
           <%!-- Decision entry, once triggered --%>
@@ -680,8 +722,16 @@ defmodule ScenexWeb.SessionLive.Console do
     run(socket, &Play.set_ballot_visible(&1, element_id, visible))
   end
 
+  def handle_event("apply_defaults", %{"id" => element_id}, socket),
+    do: run(socket, &Play.apply_defaults(&1, element_id))
+
   def handle_event("undo_trigger", %{"id" => element_id}, socket),
     do: run(socket, &Play.undo_trigger(&1, element_id))
+
+  def handle_event("toggle_sidequest", %{"id" => element_id}, socket) do
+    visible = element_id not in socket.assigns.snap.sidequests_shown
+    run(socket, &Play.set_sidequest_visible(&1, element_id, visible))
+  end
 
   def handle_event("toggle_decisions", %{"id" => element_id}, socket) do
     visible = socket.assigns.snap.decisions_shown != element_id
@@ -908,6 +958,22 @@ defmodule ScenexWeb.SessionLive.Console do
 
   defp options_for_group(snap, element_id, group_id),
     do: Enum.filter(options_for_element(snap, element_id), &(&1.group_id == group_id))
+
+  # "Government → Crack, Media → Talk" — what Apply defaults would enter.
+  defp default_lines(snap, element, locale) do
+    Enum.map_join(Play.pending_defaults(snap, element), ", ", fn {slot, option_id} ->
+      option = snap.definition.options[option_id]
+
+      case slot do
+        :winner ->
+          option.key
+
+        group_id ->
+          group = snap.definition.groups[group_id]
+          "#{I18n.t!(group.name, locale, default: group.key)} → #{option.key}"
+      end
+    end)
+  end
 
   defp undo_trigger_confirm(snap, element) do
     case map_size(snap.decisions[element.id] || %{}) do

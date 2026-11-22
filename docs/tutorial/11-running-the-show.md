@@ -6,10 +6,9 @@ The GM console is your prompt book and your lighting desk in one. Let's walk
 through an evening of Common Ground with it — from the first picture on the
 wall to the finale.
 
-> This chapter shows the **new GM console**. If your console still looks like
-> one long page, click **✨ New GM console** at the top
-> ([chapter 10](10-sessions.md#the-new-gm-console)). The classic console does
-> the same things and will be retired.
+> This chapter shows the **GM console** you open from the sessions list
+> ([chapter 10](10-sessions.md#the-gm-console)). The classic one-long-page
+> console is still reachable via **Classic console** and will be retired.
 
 ## The console at a glance
 
@@ -139,8 +138,14 @@ it, the countdown runs in the console, on every board and on the projector:
 
 ![Key Event 1 with its countdown](images/console-deadline.png)
 
-When time runs out, a group without a decision simply stays undecided —
-Common Ground has no default options. You can still enter a decision for them.
+When time runs out, the groups' boards stop taking decisions. A group
+without a decision simply stays undecided — Common Ground has no default
+options. You can still enter a decision for them.
+
+In a scenario with default options, the console shows **⏱ Time's up** on the
+beat, listing the default for each group that hasn't decided. Nothing is
+entered until you click **Apply defaults** — or you enter a different
+decision yourself, or let the group finish.
 
 ## Choosing the right version
 
@@ -158,6 +163,10 @@ Trigger the Wildcard, and when the event is over, judge: did they hold back?
 **success**. Did they interfere? **failure**.
 
 ![The Freeze Card, judged a success](images/console-wildcard.png)
+
+A Wildcard starts **secret**: the projector keeps showing the beat before it,
+so only you and the player know. If the whole room should know, click
+**On screen** on the Wildcard.
 
 ## The Referendum
 

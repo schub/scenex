@@ -3,9 +3,12 @@
 [← Pages, media, endings and more](07-pages-and-more.md) · [Contents](index.md) · [Next: The dry run →](09-dry-run.md)
 
 Every theatre that stages Common Ground plays **the same Common Ground** —
-one shared scenario on scenex.org, with all its languages inside. You don't copy it,
-you don't rebuild it: you **translate** it, maybe **add** a local touch, and
-**perform** it.
+one shared scenario on scenex.org, with all its languages inside. You
+**translate** it, maybe **add** a local touch, and **perform** it.
+
+(If you want your own version to adapt freely — different numbers, different
+beats — use **Copy scenario** in the editor. That makes a new draft you own;
+the original stays as it is. See [chapter 7](07-pages-and-more.md#copying-a-scenario).)
 
 ## What's shared, what's yours
 

@@ -1,6 +1,6 @@
 # 0012. Timers run on a pausable game clock, not wall-clock
 
-- **Status:** Accepted, rationale open
+- **Status:** Accepted
 - **Date:** 2026-07-04
 
 ## Decision
@@ -15,10 +15,10 @@ pause and reschedules them with the remaining game time on resume or restart.
 - Pausing the show freezes every deadline.
 - Restarting a session process resumes timers correctly from the log.
 
-## Open
+## Rationale
 
-- The reason: interruptions in the room (discussion, technical problems, an
-  intermission)? Anything else?
+The GM must be able to pause a show, stop the time, and resume later
+(Markus, 2026-11-15).
 
 ## Sources
 

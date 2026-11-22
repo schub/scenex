@@ -403,7 +403,7 @@
 | **failure: Freeze Failure!** | Public Services: Stability -2, Solidarity -2, Prosperity -2, Fairness -2 |  |
 | **success: Freeze success!** | Public Services: Stability +2, Solidarity +2, Prosperity +2, Fairness +2 |  |
 
-⏱ after an option = the default applied when the deadline runs out.
+⏱ after an option = the default the console proposes when the deadline runs out.
 
 ## Endings
 

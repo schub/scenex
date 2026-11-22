@@ -70,6 +70,15 @@ in the option editor.
 
 ![🪐 Mars Colony's labels](images/labels-mars.png)
 
+## Copying a scenario
+
+Anyone who can open a scenario can use **Copy scenario** (button next to Dry
+run). You pick a key for the copy (default: the scenario's name plus
+`(copy)`), then choose whether to open the new draft or stay where you are.
+You become the owner of a draft with everything inside — groups, values,
+timeline, pages, media, all languages. Sessions and other people's
+memberships stay behind. The two scenarios never sync afterwards.
+
 ## Members
 
 Only a scenario's **owner** sees this tab. Invite people by email and give
@@ -77,9 +86,13 @@ them a role:
 
 | Role | Can |
 |---|---|
-| **Owner** | everything, including inviting people and deleting |
+| **Owner** | everything, including inviting people and **Delete scenario** |
 | **Author** | edit everything, run sessions |
 | **Viewer** | look and try dry runs, but change nothing |
+
+**Delete scenario** (owner only, in the editor header) asks for confirmation
+first — it removes the whole definition, its media, and every session played
+with it. There is no undo.
 
 ![The Members tab](images/members.png)
 

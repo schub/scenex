@@ -19,6 +19,19 @@ defmodule Scenex.AuthoringTest do
       assert Authoring.can_edit?(scenario, user)
     end
 
+    test "only the owner can delete a scenario" do
+      owner = user_fixture()
+      author = user_fixture()
+      scenario = scenario_fixture(owner)
+      Authoring.add_member(scenario, author, :author)
+
+      assert {:error, :unauthorized} = Authoring.delete_scenario(author, scenario)
+      assert Authoring.get_scenario!(scenario.id)
+
+      assert {:ok, _} = Authoring.delete_scenario(owner, scenario)
+      assert_raise Ecto.NoResultsError, fn -> Authoring.get_scenario!(scenario.id) end
+    end
+
     test "requires a non-blank localized name" do
       user = user_fixture()
       assert {:error, changeset} = Authoring.create_scenario(user, %{name: %{"en" => "  "}})

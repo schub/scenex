@@ -14,7 +14,9 @@ Two long-lived branches:
 
 ## Cutting a release
 
-Fully scripted — don't do the steps by hand:
+Markus runs releases from his own checkout: `main` only accepts changes
+through a pull request, and only his account may push to it. Fully
+scripted — don't do the steps by hand:
 
 ```bash
 ./release.sh [patch|minor|major|X.Y.Z]
@@ -41,6 +43,12 @@ If a check fails the script stops with a clear message and changes nothing.
 Fix the cause rather than working around it — in particular, if `mix precommit`
 reformats files, commit those first and re-run.
 
+The one failure the checks can't catch is a rejected push to `main` (an
+account without permission for it): by then step 2 has already pushed `dev`
+with the release version. Recover with a new commit on `dev` that puts the
+`-dev` suffix back (never force-push), delete the local tag, reset local
+`main` to `origin/main`, and re-run from an account that may push to `main`.
+
 ## Deploying
 
 Releasing does **not** deploy. That is a separate, manual step:
@@ -54,7 +62,8 @@ See [`deployment.md`](deployment.md).
 
 ## Automation
 
-`.claude/skills/release/SKILL.md` lets an AI assistant run this on request. It
+`.claude/skills/release/SKILL.md` lets an AI assistant run this on request —
+but only one working in Markus's own checkout, with his credentials. It
 delegates to `release.sh` and does not reimplement any of it — which is the
 point: there is one implementation of the release process, and it's the
 script.
