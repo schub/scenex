@@ -65,10 +65,12 @@ defmodule ScenexWeb.Router do
       live "/scenarios/:id", ScenarioLive.Show, :show
       live "/scenarios/:id/simulate", ScenarioLive.Simulate, :show
       live "/scenarios/:id/sessions", SessionLive.Index, :index
-      live "/sessions/:id/console", SessionLive.Console, :show
-      live "/sessions/:id/console/new", SessionLive.ConsoleNext, :show
+      live "/sessions/:id/console/old", SessionLive.Console, :show
+      live "/sessions/:id/console", SessionLive.ConsoleNext, :show
     end
 
+    # Legacy URL from when the redesigned console lived at /console/new.
+    get "/sessions/:id/console/new", SessionConsoleRedirectController, :to_console
     get "/sessions/:id/qr_codes.pdf", SessionQrPdfController, :download
     post "/users/update-password", UserSessionController, :update_password
   end

@@ -45,4 +45,15 @@ defmodule Scenex.I18nTest do
       assert I18n.t!(%{"en" => "Stability"}, "en") == "Stability"
     end
   end
+
+  describe "locale_name/1" do
+    test "returns the native name for a supported code" do
+      assert I18n.locale_name("de") == "Deutsch"
+      assert I18n.locale_name(:no) == "Norsk"
+    end
+
+    test "returns the code itself when unknown" do
+      assert I18n.locale_name("xx") == "xx"
+    end
+  end
 end
