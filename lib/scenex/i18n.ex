@@ -40,6 +40,18 @@ defmodule Scenex.I18n do
   def locale_options, do: Enum.map(@supported_locales, fn {code, name} -> {name, code} end)
 
   @doc """
+  Human name for a supported locale code (e.g. `"de"` → `"Deutsch"`).
+
+  Unknown codes are returned as-is so a session with a custom locale still
+  shows something readable.
+  """
+  def locale_name(code) when is_atom(code), do: locale_name(Atom.to_string(code))
+
+  def locale_name(code) when is_binary(code) do
+    Enum.find_value(@supported_locales, code, fn {c, name} -> if c == code, do: name end)
+  end
+
+  @doc """
   Fetch the localized string for `locale`.
 
   Resolution order:

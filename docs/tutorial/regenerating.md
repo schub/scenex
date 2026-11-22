@@ -87,7 +87,7 @@ Image names are stable: `capture.mjs` saves `shot("console-vote")` as
   console is laid out for that), and the frames are scaled to 1280×720. A
   pointer appears only while it moves (to click or point at something) and
   fades out when it comes to rest. Screenshots and video use the **new** GM
-  console (`/console/new`).
+  console (`/console`).
 - `tutorial/video/assemble.mjs` — combines picture and voice with `ffmpeg`
   into `tutorial/video/build/scenex-tutorial.mp4` (1280×720) with the
   captions as a switchable subtitle track, plus the same captions as `.srt`.

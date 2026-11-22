@@ -61,6 +61,9 @@ defmodule ScenexWeb.SessionLive.Index do
             <div>
               <span class="text-lg font-semibold">{session.label}</span>
               <span class="badge badge-sm ml-2">{session.status}</span>
+              <span class="badge badge-sm badge-ghost ml-2">
+                {I18n.locale_name(session.locale)}
+              </span>
               <span class="ml-2 text-xs opacity-60">created {session.inserted_at}</span>
               <span class="ml-2 text-xs opacity-60">
                 GM: {gm_label(session, @current_scope.user)}

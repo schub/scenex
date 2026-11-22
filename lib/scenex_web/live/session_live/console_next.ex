@@ -18,9 +18,9 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
   regardless of session status (before the show starts, onboarding) — a
   display override that doesn't pause or affect the game underneath.
 
-  This is the redesigned console, offered alongside the classic
-  `ScenexWeb.SessionLive.Console` (still the default) so GMs mid-production
-  can switch when they're ready. Both drive the same commands.
+  This is the default console. The classic
+  `ScenexWeb.SessionLive.Console` remains one click away while GMs migrate.
+  Both drive the same commands.
 
   Layout: the page fills the window and never scrolls. A compact timeline
   list (left) selects the beat shown in the detail pane (middle) — pinned by
@@ -50,6 +50,9 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
           <span class="badge badge-sm badge-accent badge-soft">GM console</span>
           <span id="session-status" class={["badge badge-sm", status_badge(@snap.status)]}>
             {@snap.status}
+          </span>
+          <span class="badge badge-sm badge-ghost" title="Play language (audience screens)">
+            {I18n.locale_name(@locale)}
           </span>
           <span class="font-mono text-xl tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
 
@@ -103,7 +106,7 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
             </button>
             <.link
               id="switch-console"
-              navigate={~p"/sessions/#{@session.id}/console"}
+              navigate={~p"/sessions/#{@session.id}/console/old"}
               class="btn btn-sm btn-ghost"
             >
               Classic console
@@ -1210,7 +1213,7 @@ defmodule ScenexWeb.SessionLive.ConsoleNext do
 
   # ── Layout helpers ────────────────────────────────────────────────────
 
-  defp beat_path(session, beat), do: ~p"/sessions/#{session.id}/console/new?beat=#{beat}"
+  defp beat_path(session, beat), do: ~p"/sessions/#{session.id}/console?beat=#{beat}"
 
   defp selected?({:beat, %{id: id}}, %{id: id}), do: true
   defp selected?(_selection, _element), do: false

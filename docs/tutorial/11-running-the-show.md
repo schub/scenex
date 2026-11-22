@@ -6,10 +6,9 @@ The GM console is your prompt book and your lighting desk in one. Let's walk
 through an evening of Common Ground with it — from the first picture on the
 wall to the finale.
 
-> This chapter shows the **new GM console**. If your console still looks like
-> one long page, click **✨ New GM console** at the top
-> ([chapter 10](10-sessions.md#the-new-gm-console)). The classic console does
-> the same things and will be retired.
+> This chapter shows the **GM console** you open from the sessions list
+> ([chapter 10](10-sessions.md#the-gm-console)). The classic one-long-page
+> console is still reachable via **Classic console** and will be retired.
 
 ## The console at a glance
 

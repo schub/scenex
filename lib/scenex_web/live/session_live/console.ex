@@ -18,8 +18,8 @@ defmodule ScenexWeb.SessionLive.Console do
   regardless of session status (before the show starts, onboarding) — a
   display override that doesn't pause or affect the game underneath.
 
-  This classic console stays the default; the redesigned
-  `ScenexWeb.SessionLive.ConsoleNext` is one click away.
+  This classic console is kept as a fallback; the redesigned
+  `ScenexWeb.SessionLive.ConsoleNext` is the default.
   """
   use ScenexWeb, :live_view
 
@@ -36,6 +36,9 @@ defmodule ScenexWeb.SessionLive.Console do
         <:subtitle>
           <span class="badge badge-sm badge-accent">GM console</span>
           <span class={["badge badge-sm", status_badge(@snap.status)]}>{@snap.status}</span>
+          <span class="badge badge-sm badge-ghost" title="Play language (audience screens)">
+            {I18n.locale_name(@locale)}
+          </span>
           <span class="ml-2 font-mono tabular-nums">{fmt_clock(@snap.game_time_ms)}</span>
         </:subtitle>
         <:actions>
@@ -76,7 +79,7 @@ defmodule ScenexWeb.SessionLive.Console do
           </button>
           <.link
             id="switch-console"
-            navigate={~p"/sessions/#{@session.id}/console/new"}
+            navigate={~p"/sessions/#{@session.id}/console"}
             class="btn btn-sm btn-accent btn-soft"
           >
             ✨ New GM console

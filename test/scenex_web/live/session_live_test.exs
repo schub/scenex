@@ -119,6 +119,7 @@ defmodule ScenexWeb.SessionLiveTest do
 
     assert html =~ "Second night"
     assert html =~ "GM console"
+    assert html =~ "Deutsch"
 
     session = Enum.find(Play.list_sessions(scenario), &(&1.label == "Second night"))
     assert session.locale == "de"
@@ -177,23 +178,35 @@ defmodule ScenexWeb.SessionLiveTest do
       {:ok, _lv, html} = live(ctx.conn, ~p"/scenarios/#{ctx.scenario.id}/sessions")
       assert html =~ "GM: you"
       assert html =~ "Open console"
+      assert html =~ "English"
     end
   end
 
-  test "the classic console is the default and links to the new one, and back", ctx do
+  test "the new console is the default and links to the classic one, and back", ctx do
     %{conn: conn, session: session} = ctx
-    {:ok, lv, _html} = live(conn, ~p"/sessions/#{session.id}/console")
+    {:ok, lv, html} = live(conn, ~p"/sessions/#{session.id}/console")
+    assert has_element?(lv, "#timeline")
+    assert html =~ "English"
+
+    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
     refute has_element?(lv, "#timeline")
+    assert render(lv) =~ "English"
 
     {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
     assert has_element?(lv, "#timeline")
+  end
 
-    {:ok, lv, _html} = lv |> element("#switch-console") |> render_click() |> follow_redirect(conn)
-    refute has_element?(lv, "#timeline")
+  test "the legacy /console/new URL redirects to /console", ctx do
+    %{conn: conn, session: session} = ctx
+
+    assert {:error, {:redirect, %{to: to}}} =
+             live(conn, ~p"/sessions/#{session.id}/console/new?beat=foo")
+
+    assert to == "/sessions/#{session.id}/console?beat=foo"
   end
 
   # Both consoles drive the same commands; every console test runs against each.
-  for {label, path} <- [{"classic", "/console"}, {"new", "/console/new"}] do
+  for {label, path} <- [{"classic", "/console/old"}, {"new", "/console"}] do
     @console path
 
     describe "#{label} console" do
